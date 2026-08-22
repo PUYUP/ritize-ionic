@@ -1,0 +1,7 @@
+{
+  "name": "Ritize",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}

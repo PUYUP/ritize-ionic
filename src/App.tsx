@@ -3,6 +3,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { Navigate, Route } from 'react-router-dom';
 import Menu from './components/Menu';
 import Page from './pages/Page';
+import CanvasEditorPage from './pages/editor/canvas/Page';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -33,18 +34,35 @@ import '@ionic/react/css/palettes/dark.system.css';
 
 /* Theme variables */
 import './theme/variables.css';
+import { useEffect, useState } from 'react';
 
-setupIonicReact();
+setupIonicReact({ mode: "md", animated: false });
 
 const App: React.FC = () => {
+  const [fontReady, setFontReady] = useState(false);
+
+  useEffect(() => {
+    const font = new FontFace('Excalifont', 'url(/fonts/Inter-Regular.woff2)');
+    font.load()
+      .then((loadedFont) => {
+        document.fonts.add(loadedFont);
+        setFontReady(true);
+        console.log('Font berhasil di-load:', loadedFont.status);
+      })
+      .catch((err) => {
+        console.error('Font GAGAL di-load:', err);
+      });
+  }, []);
+
   return (
     <IonApp>
       <IonReactRouter>
-        <IonSplitPane contentId="main">
+        <IonSplitPane contentId="main" when={false}>
           <Menu />
           <IonRouterOutlet id="main">
-            <Route path="/" element={<Navigate to="/folder/Inbox" replace />} />
-            <Route path="/folder/:name" element={<Page />} />
+            <Route path="/" element={<Page />} />
+            {/* <Route path="/folder/:name" element={<Page />} /> */}
+            <Route path="/editor/canvas" element={<CanvasEditorPage />} />
           </IonRouterOutlet>
         </IonSplitPane>
       </IonReactRouter>

@@ -1,0 +1,31 @@
+@font-face {
+    font-family: 'Excalifont';
+    src: url('/fonts/Inter-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
+.App-menu_top {
+    grid-template-columns: 1fr !important;
+}
+
+.excalidraw .App-bottom-bar {
+    max-width: 360px !important;
+}
+
+.excalidraw .App-menu_top__left,
+.excalidraw .layer-ui__wrapper__top-right,
+.excalidraw .App-toolbar__divider,
+.excalidraw .App-toolbar__extra-tools-trigger,
+.excalidraw .ToolIcon__lock,
+.excalidraw .main-menu-trigger,
+.excalidraw button[data-testid="toolbar-text"],
+.excalidraw button[data-testid="toolbar-image"],
+.excalidraw button[data-testid="toolbar-frame"],
+.excalidraw button[data-testid="toolbar-hand"],
+.excalidraw button[data-testid="toolbar-freedraw"]:is(.ToolIcon--checked)+div,
+.excalidraw button[data-testid="toolbar-selection"]:is(.ToolIcon--checked)+div,
+.excalidraw .compact-action-item:has(.FontPicker__container) {
+    display: none !important;
+}

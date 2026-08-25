@@ -17,6 +17,7 @@ const Page: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        <h2 className='text-red-400'>AAA</h2>
         <IonButton routerLink="/editor/canvas">Open</IonButton>
       </IonContent>
     </IonPage>

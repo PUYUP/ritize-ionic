@@ -4,6 +4,7 @@ import { Navigate, Route } from 'react-router-dom';
 import Menu from './components/Menu';
 import Page from './pages/Page';
 import CanvasEditorPage from './pages/editor/canvas/Page';
+import RichTextEditorPage from './pages/editor/richtext/Page';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -63,6 +64,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Page />} />
             {/* <Route path="/folder/:name" element={<Page />} /> */}
             <Route path="/editor/canvas" element={<CanvasEditorPage />} />
+            <Route path="/editor/richtext" element={<RichTextEditorPage />} />
           </IonRouterOutlet>
         </IonSplitPane>
       </IonReactRouter>

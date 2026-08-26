@@ -1,0 +1,55 @@
+.quill-editor-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+.quill-editor-container .ql-toolbar.ql-snow {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-shrink: 0;
+    background: var(--ion-background-color, #fff);
+    border-color: var(--ion-color-step-200, #e0e0e0);
+}
+
+.quill-editor-container .ql-container.ql-snow {
+    flex: 1 1 auto;
+    border-color: var(--ion-color-step-200, #e0e0e0);
+    font-size: 1rem;
+}
+
+.quill-editor-container .ql-editor {
+    min-height: 100%;
+    color: var(--ion-text-color, #000);
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.quill-editor-container .ql-editor.ql-blank::before {
+    color: var(--ion-color-medium, #92949c);
+    font-style: normal;
+}
+
+/* Quill's SVG icons are hardcoded dark strokes/fills — they disappear
+   against Ionic's dark palette unless overridden. */
+.ion-palette-dark .quill-editor-container .ql-snow .ql-stroke {
+    stroke: var(--ion-text-color, #e8e8e8);
+}
+
+.ion-palette-dark .quill-editor-container .ql-snow .ql-fill {
+    fill: var(--ion-text-color, #e8e8e8);
+}
+
+.ion-palette-dark .quill-editor-container .ql-snow .ql-picker {
+    color: var(--ion-text-color, #e8e8e8);
+}
+
+.ion-palette-dark .quill-editor-container .ql-snow .ql-picker-options {
+    background: var(--ion-color-step-100, #1e1e1e);
+}
+
+/* Ionic strips default focus outlines app-wide; restore one for a11y. */
+.quill-editor-container .ql-toolbar.ql-snow button:focus-visible {
+    outline: 2px solid var(--ion-color-primary, #3880ff);
+    outline-offset: 2px;
+}

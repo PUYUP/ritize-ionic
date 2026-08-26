@@ -6,16 +6,14 @@ import {
   IonContent,
   IonHeader,
   IonIcon,
-  IonMenuButton,
   IonPage,
   IonText,
-  IonTitle,
   IonToolbar,
   useIonViewDidEnter,
   useIonViewDidLeave,
 } from '@ionic/react';
 import { useParams } from 'react-router';
-import { Excalidraw, Footer, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
+import { Excalidraw, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import './Page.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -28,7 +26,7 @@ import Swiper from 'swiper';
 import { FreeMode, Mousewheel } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/free-mode';
-import { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
+import { AppState, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { Note, Page } from '../../../databases/entities/notes';
 import NotesRepository from '../../../databases/datasources/NotesRepository';
@@ -51,7 +49,7 @@ const CanvasEditorPage: React.FC = () => {
   const width = useDeviceWidth();
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const changeSubject = useRef(new Subject<readonly ExcalidrawElement[]>()).current;
+  const changeSubject = useRef(new Subject<{ elements: readonly ExcalidrawElement[]; appState: AppState; }>()).current;
   const lastSavedDataRef = useRef<string | null>(null);
 
   const [showClearAlert, setShowClearAlert] = useState(false);
@@ -186,44 +184,44 @@ const CanvasEditorPage: React.FC = () => {
   }, []);
 
   // Lapis 1: cegah gesture zoom/pan sebelum sempat diproses Excalidraw
-  useEffect(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
+  // useEffect(() => {
+  //   const el = wrapperRef.current;
+  //   if (!el) return;
 
-    const blockWheel = (e: WheelEvent) => {
-      if (pagesSwiperElRef.current?.contains(e.target as Node)) return;
-      e.preventDefault();
-      e.stopPropagation();
-    };
+  //   const blockWheel = (e: WheelEvent) => {
+  //     if (pagesSwiperElRef.current?.contains(e.target as Node)) return;
+  //     e.preventDefault();
+  //     e.stopPropagation();
+  //   };
 
-    // 1 jari tetap bebas untuk menggambar, 2+ jari (pinch/pan) diblokir
-    const blockMultiTouch = (e: TouchEvent) => {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
+  //   // 1 jari tetap bebas untuk menggambar, 2+ jari (pinch/pan) diblokir
+  //   const blockMultiTouch = (e: TouchEvent) => {
+  //     if (e.touches.length > 1) {
+  //       e.preventDefault();
+  //       e.stopPropagation();
+  //     }
+  //   };
 
-    // gesturestart/gesturechange: event khusus Safari saat pinch dimulai
-    const blockGesture = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
+  //   // gesturestart/gesturechange: event khusus Safari saat pinch dimulai
+  //   const blockGesture = (e: Event) => {
+  //     e.preventDefault();
+  //     e.stopPropagation();
+  //   };
 
-    el.addEventListener('wheel', blockWheel, { passive: false, capture: true });
-    el.addEventListener('touchstart', blockMultiTouch, { passive: false, capture: true });
-    el.addEventListener('touchmove', blockMultiTouch, { passive: false, capture: true });
-    el.addEventListener('gesturestart', blockGesture as EventListener);
-    el.addEventListener('gesturechange', blockGesture as EventListener);
+  //   el.addEventListener('wheel', blockWheel, { passive: false, capture: true });
+  //   el.addEventListener('touchstart', blockMultiTouch, { passive: false, capture: true });
+  //   el.addEventListener('touchmove', blockMultiTouch, { passive: false, capture: true });
+  //   el.addEventListener('gesturestart', blockGesture as EventListener);
+  //   el.addEventListener('gesturechange', blockGesture as EventListener);
 
-    return () => {
-      el.removeEventListener('wheel', blockWheel, true);
-      el.removeEventListener('touchstart', blockMultiTouch, true);
-      el.removeEventListener('touchmove', blockMultiTouch, true);
-      el.removeEventListener('gesturestart', blockGesture as EventListener);
-      el.removeEventListener('gesturechange', blockGesture as EventListener);
-    };
-  }, []);
+  //   return () => {
+  //     el.removeEventListener('wheel', blockWheel, true);
+  //     el.removeEventListener('touchstart', blockMultiTouch, true);
+  //     el.removeEventListener('touchmove', blockMultiTouch, true);
+  //     el.removeEventListener('gesturestart', blockGesture as EventListener);
+  //     el.removeEventListener('gesturechange', blockGesture as EventListener);
+  //   };
+  // }, []);
 
   // add custom button
   useEffect(() => {
@@ -275,14 +273,14 @@ const CanvasEditorPage: React.FC = () => {
   useEffect(() => {
     const subscription = changeSubject
       .pipe(debounceTime(250))
-      .subscribe(async (elements) => {
+      .subscribe(async ({ elements, appState }) => {
         if (!excalidrawAPI || !selectedPage) return;
 
-        const appState = excalidrawAPI.getAppState();
+        const _appState = excalidrawAPI.getAppState();
         const files = excalidrawAPI.getFiles();
 
         // json ini tipenya adalah string
-        const json = serializeAsJSON(elements, appState, files, 'local');
+        const json = serializeAsJSON(elements, _appState, files, 'local');
 
         // MENCEGAH INFINITE LOOP: 
         // Jika JSON yang baru sama persis dengan yang terakhir disimpan, batalkan proses!
@@ -507,14 +505,14 @@ const CanvasEditorPage: React.FC = () => {
               setExcalidrawAPI(api);
               if (api) setIsLoaded(true);
             }}
-            onChange={(elements) => {
+            onChange={(elements, appState) => {
               const visibleElements = elements.filter((el) => !el.isDeleted);
               setHasContent(visibleElements.length > 0);
 
               if (!excalidrawAPI) return;
-              changeSubject.next(elements);
+              changeSubject.next({ elements: elements, appState: appState });
             }}
-            onScrollChange={handleScrollChange}
+            // onScrollChange={handleScrollChange}
             gridModeEnabled={true}
             zenModeEnabled={true}
             viewModeEnabled={false}

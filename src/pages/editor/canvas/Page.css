@@ -10,9 +10,9 @@
     grid-template-columns: 1fr !important;
 }
 
-/* .excalidraw .App-bottom-bar {
-    max-width: 360px !important;
-} */
+.excalidraw .App-bottom-bar {
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0)) !important;
+}
 
 .excalidraw .App-menu_top__left,
 .excalidraw .layer-ui__wrapper__top-right,
@@ -29,6 +29,14 @@
 .excalidraw button[data-testid="toolbar-selection"]:is(.ToolIcon--checked)+div,
 .excalidraw .compact-action-item:has(.FontPicker__container) {
     display: none !important;
+}
+
+.excalidraw .App-toolbar,
+.excalidraw .color-picker__button,
+.excalidraw .compact-action-button,
+.excalidraw .App-toolbar .ToolIcon_type_toggle .ToolIcon__icon {
+    --radius: 60px;
+    border-radius: 60px !important;
 }
 
 ion-back-button {
@@ -52,4 +60,8 @@ ion-button.page-active::part(native) {
     border-width: 1px;
     border-style: solid;
     border-color: #565656;
+}
+
+ion-toolbar::part(background) {
+    background: transparent;
 }

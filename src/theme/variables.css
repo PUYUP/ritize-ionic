@@ -1,3 +1,8 @@
 /* For information on how to create your own theme, please refer to:
 http://ionicframework.com/docs/theming/ */
 @import "tailwindcss";
+
+ion-toolbar {
+    --min-height: 48px !important;
+    --ion-padding: 12px;
+}

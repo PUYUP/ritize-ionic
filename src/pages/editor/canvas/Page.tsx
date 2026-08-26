@@ -76,9 +76,9 @@ const CanvasEditorPage: React.FC = () => {
         fromSelection: false,
       },
       penMode: false,
-      scrollX: LOCKED_VIEW.scrollX,
-      scrollY: LOCKED_VIEW.scrollY,
-      zoom: { value: LOCKED_VIEW.zoomValue as any },
+      // scrollX: LOCKED_VIEW.scrollX,
+      // scrollY: LOCKED_VIEW.scrollY,
+      // zoom: { value: LOCKED_VIEW.zoomValue as any },
     } as any
   }
 
@@ -456,13 +456,13 @@ const CanvasEditorPage: React.FC = () => {
   return (
     <IonPage>
       <IonHeader className='ion-no-border'>
-        <IonToolbar className='fixed' style={{ '--min-height': '36px', 'top': '10px' }}>
+        <IonToolbar className='fixed'>
           <IonButtons slot="start" className='ion-padding-start'>
             <IonBackButton defaultHref='/' />
           </IonButtons>
 
           {/* pages tools */}
-          <div slot="end" className='flex flex-row items-center gap-3 absolute right-3 top-0 z-60'>
+          <div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
             <IonButton
               size='small'
               shape="round"
@@ -537,7 +537,7 @@ const CanvasEditorPage: React.FC = () => {
 
           <div
             className='fixed w-[38px] right-2 bottom-[120px] z-10'
-            style={{ 'top': 'calc(60px + var(--ion-safe-area-top, 0))', 'padding-bottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
+            style={{ 'top': 'calc(60px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
           >
             <div className='flex flex-col gap-3 items-center justify-between h-full'>
               <div className='flex-1 pt-2 overflow-hidden'>

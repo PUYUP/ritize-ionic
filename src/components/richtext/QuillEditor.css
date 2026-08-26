@@ -23,6 +23,7 @@
     min-height: 100%;
     color: var(--ion-text-color, #000);
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    padding-right: 50px;
 }
 
 .quill-editor-container .ql-editor.ql-blank::before {
@@ -52,4 +53,24 @@
 .quill-editor-container .ql-toolbar.ql-snow button:focus-visible {
     outline: 2px solid var(--ion-color-primary, #3880ff);
     outline-offset: 2px;
+}
+
+.quill-editor-container .ql-container {
+    border-width: 0 !important;
+}
+
+.quill-editor-container .ql-toolbar {
+    border-right: 0 !important;
+    border-left: 0 !important;
+    display: flex;
+    flex-direction: row;
+}
+
+.quill-editor-container .ql-toolbar .ql-formats {
+    display: flex;
+    gap: 10px;
+}
+
+.quill-editor-container .ql-editor ol {
+    padding-left: 0;
 }

@@ -15,17 +15,12 @@ export interface QuillEditorProps {
     /** If omitted, falls back to Quill's default (base64-embedded) image handling. */
     onImageUpload?: ImageUploadHandler;
     className?: string;
+    clearSignal?: number;
 }
 
 const DEFAULT_TOOLBAR = [
-    [{ header: [1, 2, 3, false] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ color: [] }, { background: [] }],
+    ['bold', 'underline', 'image'],
     [{ list: 'ordered' }, { list: 'bullet' }],
-    [{ indent: '-1' }, { indent: '+1' }],
-    [{ align: [] }],
-    ['blockquote', 'code-block'],
-    ['link', 'image'],
     ['clean'],
 ];
 
@@ -45,6 +40,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
             onSelectionChange,
             onImageUpload,
             className,
+            clearSignal,
         },
         ref
     ) => {
@@ -141,6 +137,21 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
             };
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
+
+        // Parent memicu clear secara deklaratif lewat prop, bukan lewat ref.current.setText()
+        // langsung — jadi API-nya tetap konsisten walau parent tidak pegang instance Quill.
+        const clearSignalRef = useRef(clearSignal);
+        useEffect(() => {
+            if (clearSignal === undefined || clearSignal === clearSignalRef.current) return;
+            clearSignalRef.current = clearSignal;
+
+            const quill = (ref as React.MutableRefObject<Quill | null> | null)?.current;
+            if (!quill) return;
+
+            quill.setText('', 'user'); // source 'user' → tetap memicu text-change, jadi onTextChange/autosave ikut jalan
+            quill.setSelection(0, 0, 'silent');
+            quill.focus();
+        }, [clearSignal, ref]);
 
         return <div ref={containerRef} className={className} aria-label={placeholder} />;
     }

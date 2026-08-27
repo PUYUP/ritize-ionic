@@ -6,3 +6,12 @@ ion-toolbar {
     --min-height: 48px !important;
     --ion-padding: 12px;
 }
+
+ion-card-content {
+    -webkit-padding-start: 12px !important;
+    padding-inline-start: 12px !important;
+    -webkit-padding-end: 12px !important;
+    padding-inline-end: 12px !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+}

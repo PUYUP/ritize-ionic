@@ -3,8 +3,9 @@ import { IonReactRouter } from '@ionic/react-router';
 import { Navigate, Route } from 'react-router-dom';
 import Menu from './components/Menu';
 import Page from './pages/Page';
-import CanvasEditorPage from './pages/editor/canvas/Page';
-import RichTextEditorPage from './pages/editor/richtext/Page';
+import CanvasEditorPage from './pages/dashboard/editor/canvas/Page';
+import RichTextEditorPage from './pages/dashboard/editor/richtext/Page';
+
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -36,6 +37,7 @@ import '@ionic/react/css/palettes/dark.system.css';
 /* Theme variables */
 import './theme/variables.css';
 import { useEffect, useState } from 'react';
+import { dashboardRoutes } from './routes/dashboard.routes';
 
 setupIonicReact({ mode: "md", animated: false });
 
@@ -61,10 +63,16 @@ const App: React.FC = () => {
         <IonSplitPane contentId="main" when={false}>
           <Menu />
           <IonRouterOutlet id="main">
-            <Route path="/" element={<Page />} />
+            {/* <Route path="/dashboard" element={<DashboardPage />} /> */}
             {/* <Route path="/folder/:name" element={<Page />} /> */}
-            <Route path="/editor/canvas" element={<CanvasEditorPage />} />
+            {/* <Route path="/editor/canvas" element={<CanvasEditorPage />} />
             <Route path="/editor/richtext" element={<RichTextEditorPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} /> */}
+
+            <Route path="/" element={<Page />} />
+            {dashboardRoutes.map((route) => (
+              <Route key={route.path as string} {...route} />
+            ))}
           </IonRouterOutlet>
         </IonSplitPane>
       </IonReactRouter>

@@ -14,11 +14,11 @@ const TodayWorkspace: React.FC<TodayWorkspaceProps> = () => {
                             <div className='flex items-center justify-between w-full'>
                                 <div className='text-xl font-semibold leading-3 text-neutral-700'>37k</div>
                                 <div className='ml-auto flex items-center'>
-                                    <IonIcon icon={readerOutline} className='text-lg' />
+                                    <IonIcon icon={readerOutline} className='text-xl' />
                                 </div>
                             </div>
 
-                            <div className='text-xs mt-4'>
+                            <div className='text-sm mt-4'>
                                 <IonText className='font-semibold'>Notes</IonText>
                             </div>
 
@@ -35,11 +35,11 @@ const TodayWorkspace: React.FC<TodayWorkspaceProps> = () => {
                             <div className='flex items-center justify-between w-full'>
                                 <div className='text-xl font-semibold leading-3 text-neutral-700'>634</div>
                                 <div className='ml-auto flex items-center'>
-                                    <IonIcon icon={folderOpenOutline} className='text-lg' />
+                                    <IonIcon icon={folderOpenOutline} className='text-xl' />
                                 </div>
                             </div>
 
-                            <div className='text-xs mt-4'>
+                            <div className='text-sm mt-4'>
                                 <IonText className='font-semibold'>Materials</IonText>
                             </div>
 
@@ -56,11 +56,11 @@ const TodayWorkspace: React.FC<TodayWorkspaceProps> = () => {
                             <div className='flex items-center justify-between w-full'>
                                 <div className='text-xl font-semibold leading-3 text-neutral-700'>24</div>
                                 <div className='ml-auto flex items-center'>
-                                    <IonIcon icon={bulbOutline} className='text-lg' />
+                                    <IonIcon icon={bulbOutline} className='text-xl' />
                                 </div>
                             </div>
 
-                            <div className='text-xs mt-4'>
+                            <div className='text-sm mt-4'>
                                 <IonText className='font-semibold'>Digest</IonText>
                             </div>
 

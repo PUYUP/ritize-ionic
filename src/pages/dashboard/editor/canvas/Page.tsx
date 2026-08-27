@@ -18,7 +18,7 @@ import '@excalidraw/excalidraw/index.css';
 import './Page.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
-import { useDeviceWidth } from '../../../utils/sizing';
+import { useDeviceWidth } from '../../../../utils/sizing';
 import { debounceTime, Subject } from 'rxjs';
 import { menuController } from '@ionic/core/components';
 
@@ -28,8 +28,8 @@ import 'swiper/css';
 import 'swiper/css/free-mode';
 import { AppState, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
-import { Note, Page } from '../../../databases/entities/notes';
-import NotesRepository from '../../../databases/datasources/NotesRepository';
+import { Note, Page } from '../../../../databases/entities/notes';
+import NotesRepository from '../../../../databases/datasources/NotesRepository';
 
 // Dumy note
 const NOTE_ID: number = 1;

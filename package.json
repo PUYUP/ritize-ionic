@@ -18,6 +18,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor/app": "8.1.1",
     "@capacitor/core": "8.5.0",
@@ -26,6 +27,7 @@
     "@capacitor/keyboard": "8.0.5",
     "@capacitor/status-bar": "8.0.3",
     "@capacitor/toast": "^8.0.1",
+    "@capgo/capacitor-speech-recognition": "^8.1.11",
     "@excalidraw/excalidraw": "^0.18.0-abeeaeb",
     "@ionic/pwa-elements": "^3.4.0",
     "@ionic/react": "^9.0.0",
@@ -35,6 +37,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "ionicons": "^8.1.0",
+    "iso-language-codes": "^2.0.1",
     "postcss": "^8.5.26",
     "quill": "^2.0.3",
     "radix-ui": "^1.6.7",

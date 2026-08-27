@@ -59,7 +59,7 @@ ion-back-button::part(icon) {
 ion-button.page-active::part(native) {
     border-width: 1px;
     border-style: solid;
-    border-color: #565656;
+    border-color: #767676;
 }
 
 ion-toolbar::part(background) {

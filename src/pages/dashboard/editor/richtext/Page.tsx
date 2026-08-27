@@ -5,10 +5,10 @@ import {
     IonButton,
     IonButtons,
     IonContent,
+    IonFooter,
     IonHeader,
     IonIcon,
     IonPage,
-    IonSpinner,
     IonText,
     IonToolbar,
     useIonToast,
@@ -19,14 +19,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Quill from 'quill';
 import { Delta, EmitterSource } from 'quill';
-import QuillEditor, { type ImageUploadHandler } from '../../../components/richtext/QuillEditor';
+import QuillEditor, { type ImageUploadHandler } from '../../../../components/richtext/QuillEditor';
 import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
-import { Note, Page } from '../../../databases/entities/notes';
+import { Note, Page } from '../../../../databases/entities/notes';
 import Swiper from 'swiper';
 import { FreeMode, Mousewheel } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/free-mode';
-import NotesRepository from '../../../databases/datasources/NotesRepository';
+import NotesRepository from '../../../../databases/datasources/NotesRepository';
 
 const AUTOSAVE_DELAY_MS = 1500;
 const NOTE_ID = 2;
@@ -146,9 +146,9 @@ const RichTextEditorPage: React.FC = () => {
                 // Langsung inisialisasi Swiper tanpa syarat overflow
                 pagesSwiperRef.current = new Swiper(containerEl, {
                     modules: [FreeMode, Mousewheel],
-                    direction: 'vertical',
+                    direction: 'horizontal',
                     slidesPerView: 'auto',
-                    spaceBetween: 6, // Jarak antar item (pengganti gap-4)
+                    spaceBetween: 8, // Jarak antar item (pengganti gap-4)
                     freeMode: {
                         enabled: true,
                         momentum: true,
@@ -327,7 +327,7 @@ const RichTextEditorPage: React.FC = () => {
     // --- END CRUD NOTES ---
 
     return (
-        <IonPage className='ion-padding-bottom'>
+        <IonPage>
             <IonHeader className="ion-no-border">
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
@@ -370,15 +370,14 @@ const RichTextEditorPage: React.FC = () => {
                     onEnter={handleEnter}
                     className="quill-editor-container"
                 />
+            </IonContent>
 
-                <div
-                    className='fixed w-[42px] right-2 bottom-[20px] z-10'
-                    style={{ 'top': 'calc(100px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
-                >
-                    <div className='flex flex-col gap-3 items-center justify-between h-full'>
-                        <div className='flex-1 pt-2 overflow-hidden'>
-                            <div ref={pagesSwiperElRef} className='swiper h-full w-full'>
-                                <div id="pages-list" className='swiper-wrapper flex flex-col'>
+            <IonFooter>
+                <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
+                    <div className='flex flex-row gap-2 items-center justify-between h-full px-2 py-2'>
+                        <div className='flex-1 overflow-hidden'>
+                            <div ref={pagesSwiperElRef} className='swiper !px-2'>
+                                <div id="pages-list" className='swiper-wrapper flex flex-row pb-1'>
                                     {pages.map((page) => (
                                         <div key={page.id} className='swiper-slide !h-auto !w-auto flex-none'>
                                             <IonButton
@@ -386,7 +385,7 @@ const RichTextEditorPage: React.FC = () => {
                                                 shape="round"
                                                 color={page.isActive ? 'light' : 'light'}
                                                 onClick={async () => await selectPageHandler(page)}
-                                                className={`mb-2 font-normal ${page.isActive ? 'font-semibold page-active' : ''}`}
+                                                className={`font-normal ${page.isActive ? 'font-semibold page-active' : ''}`}
                                             >
                                                 <IonText slot='icon-only'>{page.pageNum}</IonText>
                                             </IonButton>
@@ -396,14 +395,14 @@ const RichTextEditorPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div>
+                        <div className='flex items-center pb-1 pr-2'>
                             <IonButton size='small' shape="round" color={'light'} onClick={async () => await newPageHandler()}>
                                 <IonIcon icon={duplicateOutline} slot='icon-only'></IonIcon>
                             </IonButton>
                         </div>
                     </div>
                 </div>
-            </IonContent>
+            </IonFooter>
 
             {/* clear content alert */}
             <IonAlert

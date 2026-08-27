@@ -1,0 +1,12 @@
+import { RouteProps } from "react-router-dom";
+import CanvasEditorPage from "../pages/dashboard/editor/canvas/Page";
+import RichTextEditorPage from "../pages/dashboard/editor/richtext/Page";
+import HomePage from "../pages/dashboard/home/Home";
+import VoiceRecorderPage from "../pages/dashboard/editor/voice/Page";
+
+export const dashboardRoutes: RouteProps[] = [
+    { path: "/dashboard", element: <HomePage /> },
+    { path: "/dashboard/editor/canvas", element: <CanvasEditorPage /> },
+    { path: "/dashboard/editor/richtext", element: <RichTextEditorPage /> },
+    { path: "/dashboard/editor/voice", element: <VoiceRecorderPage /> },
+];

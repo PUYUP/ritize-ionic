@@ -85,6 +85,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
                         input.click();
                         input.onchange = async () => {
                             const file = input.files?.[0];
+                            console.log(file);
                             const upload = onImageUploadRef.current;
                             if (!file || !upload) return;
                             const range = this.quill.getSelection(true);

@@ -23,7 +23,7 @@
     min-height: 100%;
     color: var(--ion-text-color, #000);
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
-    padding-right: 50px;
+    padding-right: 56px;
 }
 
 .quill-editor-container .ql-editor.ql-blank::before {

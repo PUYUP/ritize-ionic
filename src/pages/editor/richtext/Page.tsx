@@ -361,7 +361,7 @@ const RichTextEditorPage: React.FC = () => {
                 />
 
                 <div
-                    className='fixed w-[38px] right-2 bottom-[20px] z-10'
+                    className='fixed w-[42px] right-2 bottom-[20px] z-10'
                     style={{ 'top': 'calc(100px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
                 >
                     <div className='flex flex-col gap-3 items-center justify-between h-full'>

@@ -536,7 +536,7 @@ const CanvasEditorPage: React.FC = () => {
           </Excalidraw>
 
           <div
-            className='fixed w-[38px] right-2 bottom-[120px] z-10'
+            className='fixed w-[42px] right-2 bottom-[120px] z-10'
             style={{ 'top': 'calc(60px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
           >
             <div className='flex flex-col gap-3 items-center justify-between h-full'>

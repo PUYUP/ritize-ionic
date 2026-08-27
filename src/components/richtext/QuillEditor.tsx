@@ -35,7 +35,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
         {
             readOnly = false,
             defaultValue,
-            placeholder = 'Write something…',
+            placeholder = 'Tap here to start…',
             toolbarOptions = DEFAULT_TOOLBAR,
             onTextChange,
             onSelectionChange,

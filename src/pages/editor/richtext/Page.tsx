@@ -363,7 +363,7 @@ const RichTextEditorPage: React.FC = () => {
                 <QuillEditor
                     ref={quillRef}
                     defaultValue={initialContent}
-                    placeholder="Start writing…"
+                    placeholder="Tap here to start…"
                     onTextChange={handleTextChange}
                     onImageUpload={handleImageUpload}
                     clearSignal={clearSignal}

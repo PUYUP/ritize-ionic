@@ -1,13 +1,15 @@
-import { IonButton, IonButtons, IonContent, IonHeader, IonMenuButton, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonButton, IonButtons, IonContent, IonHeader, IonMenuButton, IonPage, IonText, IonTitle, IonToolbar } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Page.css';
+import StartNote from '../components/startnote/StartNote';
+import TodayWorkspace from '../components/today-workspace/TodayWorkspace';
 
 const Page: React.FC = () => {
   const { name = '' } = useParams<{ name: string; }>();
 
   return (
     <IonPage>
-      <IonHeader>
+      <IonHeader className='ion-no-border'>
         <IonToolbar>
           <IonButtons slot="start">
             <IonMenuButton />
@@ -17,9 +19,22 @@ const Page: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
-        <h2 className='text-red-400'>AAA</h2>
-        <IonButton routerLink="/editor/canvas">Canvas</IonButton>
-        <IonButton routerLink="/editor/richtext">RichText</IonButton>
+        <div className='ion-padding'>
+          <div className='block mb-1 leading-3 text-lg'>
+            <IonText>Good Morning, <strong>Rahman</strong></IonText>
+          </div>
+          <div className='text-base mb-4 text-neutral-800'>
+            <IonText>Start lecture notes</IonText>
+          </div>
+          <StartNote />
+        </div>
+
+        <div className='ion-padding'>
+          <div className='block mb-3 text-lg'>
+            <IonText>Today at Workspaces</IonText>
+          </div>
+          <TodayWorkspace />
+        </div>
       </IonContent>
     </IonPage>
   );

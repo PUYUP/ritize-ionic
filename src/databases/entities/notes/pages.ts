@@ -13,6 +13,9 @@ export class Page {
     @Column()
     isActive!: boolean;
 
+    @Column('datetime', { nullable: true })
+    syncedAt!: Date | null;
+
     @Column({
         type: 'blob', // Gunakan 'bytea' jika menggunakan PostgreSQL
         nullable: true, // Set true jika halaman bisa tidak memiliki file/blob

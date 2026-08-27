@@ -10,10 +10,11 @@ export interface QuillEditorProps {
     defaultValue?: Delta;
     placeholder?: string;
     toolbarOptions?: unknown[];
-    onTextChange?: (delta: Delta, oldDelta: Delta, source: EmitterSource) => void;
+    onTextChange?: (delta: Delta, oldDelta: Delta, source: EmitterSource, quill: Quill) => void;
     onSelectionChange?: (range: QuillRange | null, oldRange: QuillRange | null, source: EmitterSource) => void;
     /** If omitted, falls back to Quill's default (base64-embedded) image handling. */
     onImageUpload?: ImageUploadHandler;
+    onEnter?: (quill: Quill) => void;
     className?: string;
     clearSignal?: number;
 }
@@ -39,6 +40,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
             onTextChange,
             onSelectionChange,
             onImageUpload,
+            onEnter,
             className,
             clearSignal,
         },
@@ -106,7 +108,28 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
                 theme: 'snow',
                 placeholder,
                 readOnly,
-                modules: { toolbar: toolbarModule },
+                modules: {
+                    toolbar: toolbarModule,
+                    keyboard: {
+                        bindings: {
+                            enter: {
+                                key: "Enter",
+                                handler: (range: any, context: any) => {
+                                    if (ref) {
+                                        // @ts-ignore
+                                        ref.current.insertText(range.index, '\n', 'user');
+                                        // @ts-ignore
+                                        ref.current.setSelection(range.index + 1, 'silent');
+                                        // @ts-ignore
+                                        onEnter?.(ref.current);
+                                    }
+
+                                    return false;
+                                }
+                            },
+                        }
+                    }
+                },
             };
 
             const quill = new Quill(editorEl, options);
@@ -116,8 +139,8 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
                 quill.setContents(defaultValueRef.current, 'silent');
             }
 
-            const handleTextChange = (delta: Delta, oldDelta: Delta, source: EmitterSource) => {
-                onTextChangeRef.current?.(delta, oldDelta, source);
+            const handleTextChange = (delta: Delta, oldDelta: Delta, source: EmitterSource, quill: Quill) => {
+                onTextChangeRef.current?.(delta, oldDelta, source, quill);
             };
             const handleSelectionChange = (
                 range: QuillRange | null,

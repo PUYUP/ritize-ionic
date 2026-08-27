@@ -18,7 +18,7 @@ import {
 } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Quill from 'quill';
-import { Delta } from 'quill';
+import { Delta, EmitterSource } from 'quill';
 import QuillEditor, { type ImageUploadHandler } from '../../../components/richtext/QuillEditor';
 import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
 import { Note, Page } from '../../../databases/entities/notes';
@@ -32,6 +32,7 @@ const AUTOSAVE_DELAY_MS = 1500;
 const NOTE_ID = 2;
 
 const RichTextEditorPage: React.FC = () => {
+    const ionContentRef = useRef<HTMLIonContentElement>(null);
     const quillRef = useRef<Quill | null>(null);
     const autosaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const [isDirty, setIsDirty] = useState(false);
@@ -85,7 +86,12 @@ const RichTextEditorPage: React.FC = () => {
         }
     }, [presentToast, selectedPage]);
 
-    const handleTextChange = useCallback((delta: Delta) => {
+    const handleTextChange = useCallback((
+        delta: Delta,
+        oldDelta: Delta,
+        source: EmitterSource,
+        quill: Quill
+    ) => {
         setIsDirty(true);
 
         if (!hasContent && delta.ops.length > 0) {
@@ -99,6 +105,10 @@ const RichTextEditorPage: React.FC = () => {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
         autosaveTimer.current = setTimeout(persist, AUTOSAVE_DELAY_MS);
     }, [persist]);
+
+    const handleEnter = useCallback((quill: Quill) => {
+        ionContentRef.current?.scrollToBottom(0);
+    }, []);
 
     // Ionic's router outlet keeps pages mounted in its history stack, so plain
     // unmount isn't a reliable "user is leaving" signal — flush explicitly.
@@ -317,7 +327,7 @@ const RichTextEditorPage: React.FC = () => {
     // --- END CRUD NOTES ---
 
     return (
-        <IonPage>
+        <IonPage className='ion-padding-bottom'>
             <IonHeader className="ion-no-border">
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
@@ -349,7 +359,7 @@ const RichTextEditorPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent className='relative'>
+            <IonContent ref={ionContentRef} className='relative'>
                 <QuillEditor
                     ref={quillRef}
                     defaultValue={initialContent}
@@ -357,6 +367,7 @@ const RichTextEditorPage: React.FC = () => {
                     onTextChange={handleTextChange}
                     onImageUpload={handleImageUpload}
                     clearSignal={clearSignal}
+                    onEnter={handleEnter}
                     className="quill-editor-container"
                 />
 

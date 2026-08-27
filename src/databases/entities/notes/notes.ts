@@ -13,4 +13,7 @@ export class Note {
     @OneToMany(() => Page, page => page.note)
     pages!: Page[];
 
+    @Column('datetime', { nullable: true })
+    syncedAt!: Date | null;
+
 }

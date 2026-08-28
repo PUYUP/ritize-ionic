@@ -20,7 +20,7 @@ export interface QuillEditorProps {
 }
 
 const DEFAULT_TOOLBAR = [
-    ['bold', 'underline', 'image'],
+    ['bold', 'underline'],
     [{ list: 'ordered' }, { list: 'bullet' }],
     ['clean'],
 ];

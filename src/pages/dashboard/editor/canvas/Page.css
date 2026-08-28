@@ -22,7 +22,7 @@
 .excalidraw .main-menu-trigger,
 .excalidraw button[data-testid="toolbar-text"],
 .excalidraw button[data-testid="toolbar-arrow"],
-.excalidraw button[data-testid="toolbar-image--"],
+.excalidraw button[data-testid="toolbar-image"],
 .excalidraw button[data-testid="toolbar-frame"],
 .excalidraw button[data-testid="toolbar-hand--"],
 .excalidraw button[data-testid="toolbar-freedraw"]:is(.ToolIcon--checked)+div,

@@ -5,6 +5,7 @@ import StartNote from '../../../components/startnote/StartNote';
 import TodayWorkspace from '../../../components/today-workspace/TodayWorkspace';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
 import { addCircleOutline, addOutline } from 'ionicons/icons';
+import { getGreeting } from '../../../utils/dayGreeting';
 
 const HomePage: React.FC = () => {
     const { name = '' } = useParams<{ name: string; }>();
@@ -23,17 +24,17 @@ const HomePage: React.FC = () => {
             <IonContent fullscreen>
                 <div className='ion-padding'>
                     <div className='block mb-1 leading-3 text-lg'>
-                        <IonText>Good Morning, <strong>Rahman</strong></IonText>
+                        <IonText>{getGreeting({ locale: 'en' })}, <strong>Rahman</strong></IonText>
                     </div>
                     <div className='text-base mb-4 text-neutral-800'>
-                        <IonText>Start lecture notes</IonText>
+                        <IonText>Start your notes...</IonText>
                     </div>
                     <StartNote />
                 </div>
 
                 <div className='ion-padding !pb-2'>
                     <div className='block mb-3 text-lg'>
-                        <IonText>Happening Today</IonText>
+                        <IonText>Happening Today's</IonText>
                     </div>
                     <TodayWorkspace />
                 </div>

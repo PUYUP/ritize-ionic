@@ -4,6 +4,7 @@ import { albumsOutline, analyticsOutline, cafeOutline, chatbubbleOutline, chatbu
 interface WorkspaceListProps { }
 
 interface WorkspaceItemProps {
+    readonly id: number;
     title: string;
     icon?: string;
     color?: string;
@@ -14,6 +15,7 @@ interface WorkspaceItemProps {
 
 const workspaces: WorkspaceItemProps[] = [
     {
+        id: 1,
         title: 'Fisika Dr. Hermawan',
         icon: 'text',
         color: '#EEE4FA',
@@ -22,6 +24,7 @@ const workspaces: WorkspaceItemProps[] = [
         todayNoteCount: 1
     },
     {
+        id: 2,
         title: 'Psikologi Marketing Dra. Ernita',
         icon: 'analytics',
         color: '#EEE4FA',
@@ -30,6 +33,7 @@ const workspaces: WorkspaceItemProps[] = [
         todayNoteCount: 2
     },
     {
+        id: 3,
         title: 'Kimia Dasar 2 Dr. Haryanti',
         icon: 'mic',
         color: '#EEE4FA',
@@ -38,6 +42,7 @@ const workspaces: WorkspaceItemProps[] = [
         todayNoteCount: 0
     },
     {
+        id: 4,
         title: 'Fisika Teknik',
         icon: 'text',
         color: '#EEE4FA',
@@ -46,6 +51,7 @@ const workspaces: WorkspaceItemProps[] = [
         todayNoteCount: 3
     },
     {
+        id: 5,
         title: 'Matematika Terapan',
         icon: 'analytics',
         color: '#EEE4FA',
@@ -54,6 +60,7 @@ const workspaces: WorkspaceItemProps[] = [
         todayNoteCount: 1
     },
     {
+        id: 6,
         title: 'Bahasa Arab',
         icon: 'mic',
         color: '#EEE4FA',
@@ -64,10 +71,17 @@ const workspaces: WorkspaceItemProps[] = [
 ];
 
 const WorkspaceItem: React.FC<{ item: WorkspaceItemProps }> = ({ item }) => {
-    const { title, scope, memberCount, todayNoteCount } = item;
+    const { id, title, scope, memberCount, todayNoteCount } = item;
 
     return (
-        <IonItem className="ion-no-padding" lines="none" detail={true} mode="ios">
+        <IonItem
+            className="ion-no-padding"
+            lines="none"
+            detail={true}
+            mode="ios"
+            routerLink={`/dashboard/workspace/${id}?name=${title}`}
+            routerDirection="forward"
+        >
             <div slot="start" className="w-9 h-9 bg-neutral-100 rounded-full flex items-center justify-center">
                 <IonIcon className="text-lg" icon={scope === 'personal' ? ellipseOutline : chatbubblesOutline} color={scope === 'personal' ? 'primary' : 'secondary'} />
             </div>

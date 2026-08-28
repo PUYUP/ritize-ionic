@@ -4,6 +4,7 @@ import RichTextEditorPage from "../pages/dashboard/editor/richtext/Page";
 import HomePage from "../pages/dashboard/home/Home";
 import VoiceRecorderPage from "../pages/dashboard/editor/voice/Page";
 import WorkspaceEditorPage from "../pages/dashboard/editor/workspace/Page";
+import WorkspaceDetailPage from "../pages/dashboard/workspace/detail/Page";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -11,4 +12,5 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/editor/richtext", element: <RichTextEditorPage /> },
     { path: "/dashboard/editor/voice", element: <VoiceRecorderPage /> },
     { path: "/dashboard/editor/workspace", element: <WorkspaceEditorPage /> },
+    { path: "/dashboard/workspace/:id", element: <WorkspaceDetailPage /> },
 ];

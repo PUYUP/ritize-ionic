@@ -41,7 +41,7 @@ const HomePage: React.FC = () => {
                 <div className='ion-padding !pr-1'>
                     <div className='block mb-3 text-lg flex items-center justify-between'>
                         <IonText>My Workspaces</IonText>
-                        <IonButton fill="clear" aria-label='Add workspace'>
+                        <IonButton fill="clear" aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
                             <IonIcon icon={addCircleOutline} className='text-2xl' />
                         </IonButton>
                     </div>

@@ -11,7 +11,7 @@ import {
 } from '@ionic/react';
 
 import { useLocation } from 'react-router-dom';
-import { home, homeOutline, people, peopleOutline, settingsOutline, settingsSharp } from 'ionicons/icons';
+import { briefcase, briefcaseOutline, home, homeOutline, people, peopleOutline, settingsOutline, settingsSharp } from 'ionicons/icons';
 import './Menu.css';
 
 interface AppPage {
@@ -27,6 +27,12 @@ const appPages: AppPage[] = [
     url: '/dashboard',
     iosIcon: homeOutline,
     mdIcon: home
+  },
+  {
+    title: 'Workspaces',
+    url: '/workspaces',
+    iosIcon: briefcaseOutline,
+    mdIcon: briefcase
   },
   {
     title: 'Profile',

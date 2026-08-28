@@ -11,8 +11,8 @@ const StartNote: React.FC<StartNoteProps> = () => {
                 <div className='flex flex-col items-center justify-center gap-4'>
                     <IonCard className='w-full rounded-xl' routerLink='/dashboard/editor/richtext' routerDirection='forward'>
                         <IonCardContent>
-                            <div className='w-8 h-8 flex items-center justify-center bg-neutral-100 rounded-full mb-3'>
-                                <IonIcon icon={textOutline} className='text-xl text-neutral-700' />
+                            <div className='w-8 h-8 flex items-center justify-center bg-[#E1F2F1] rounded-full mb-3'>
+                                <IonIcon icon={textOutline} className='text-xl text-[#008C88]' />
                             </div>
 
                             <div className='block mt-0 mb-0'>
@@ -31,8 +31,8 @@ const StartNote: React.FC<StartNoteProps> = () => {
                 <div className='flex flex-col items-center justify-center gap-4'>
                     <IonCard className='w-full rounded-xl' routerLink='/dashboard/editor/canvas' routerDirection='forward'>
                         <IonCardContent>
-                            <div className='w-8 h-8 flex items-center justify-center bg-neutral-100 rounded-full mb-3'>
-                                <IonIcon icon={analyticsOutline} className='text-xl text-neutral-700' />
+                            <div className='w-8 h-8 flex items-center justify-center bg-[#E9F4E5] rounded-full mb-3'>
+                                <IonIcon icon={analyticsOutline} className='text-xl text-[#32A315]' />
                             </div>
 
                             <div className='block mt-0 mb-0'>
@@ -51,8 +51,8 @@ const StartNote: React.FC<StartNoteProps> = () => {
                 <div className='flex flex-col items-center justify-center gap-4'>
                     <IonCard className='w-full rounded-xl' routerLink='/dashboard/editor/voice' routerDirection='forward'>
                         <IonCardContent>
-                            <div className='w-8 h-8 flex items-center justify-center bg-neutral-100 rounded-full mb-3'>
-                                <IonIcon icon={micOutline} className='text-xl text-neutral-700' />
+                            <div className='w-8 h-8 flex items-center justify-center bg-[#EEE4FA] rounded-full mb-3'>
+                                <IonIcon icon={micOutline} className='text-xl text-[#5B00C9]' />
                             </div>
 
                             <div className='block mt-0 mb-0'>

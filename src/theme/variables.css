@@ -15,3 +15,9 @@ ion-card-content {
     padding-top: 12px !important;
     padding-bottom: 12px !important;
 }
+
+.ion-color-success {
+    --ion-color-success: #20B84F;
+    --ion-color-success-shade: #1CA344;
+    --ion-color-success-tint: #36C45F;
+}

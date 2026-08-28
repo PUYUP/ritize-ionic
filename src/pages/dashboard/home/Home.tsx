@@ -1,8 +1,10 @@
-import { IonButton, IonButtons, IonContent, IonHeader, IonMenuButton, IonPage, IonText, IonTitle, IonToolbar } from '@ionic/react';
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonMenuButton, IonPage, IonText, IonTitle, IonToolbar } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Home.css';
 import StartNote from '../../../components/startnote/StartNote';
 import TodayWorkspace from '../../../components/today-workspace/TodayWorkspace';
+import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
+import { addCircleOutline, addOutline } from 'ionicons/icons';
 
 const HomePage: React.FC = () => {
     const { name = '' } = useParams<{ name: string; }>();
@@ -29,11 +31,21 @@ const HomePage: React.FC = () => {
                     <StartNote />
                 </div>
 
-                <div className='ion-padding'>
+                <div className='ion-padding !pb-2'>
                     <div className='block mb-3 text-lg'>
-                        <IonText>Today at Workspaces</IonText>
+                        <IonText>Happening Today</IonText>
                     </div>
                     <TodayWorkspace />
+                </div>
+
+                <div className='ion-padding !pr-1'>
+                    <div className='block mb-3 text-lg flex items-center justify-between'>
+                        <IonText>My Workspaces</IonText>
+                        <IonButton fill="clear" aria-label='Add workspace'>
+                            <IonIcon icon={addCircleOutline} className='text-2xl' />
+                        </IonButton>
+                    </div>
+                    <WorkspaceList />
                 </div>
             </IonContent>
         </IonPage>

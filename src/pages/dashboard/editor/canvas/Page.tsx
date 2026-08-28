@@ -8,6 +8,7 @@ import {
   IonIcon,
   IonPage,
   IonText,
+  IonTitle,
   IonToolbar,
   useIonViewDidEnter,
   useIonViewDidLeave,
@@ -460,6 +461,8 @@ const CanvasEditorPage: React.FC = () => {
           <IonButtons slot="start" className='ion-padding-start'>
             <IonBackButton defaultHref='/' />
           </IonButtons>
+
+          <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>Kimia Jaya Analisis Teknik Dasar Terapan Dr. Fitri</IonTitle>
 
           {/* pages tools */}
           <div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>

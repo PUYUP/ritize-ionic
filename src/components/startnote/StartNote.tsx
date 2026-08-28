@@ -1,6 +1,6 @@
-import { analyticsOutline, createOutline, documentOutline, imageOutline, listOutline, micOutline, textOutline } from 'ionicons/icons';
+import { analyticsOutline, cloudUploadOutline, fileTrayOutline, imageOutline, imagesOutline, micOutline, textOutline } from 'ionicons/icons';
 import './StartNote.css';
-import { IonCard, IonCardContent, IonCardTitle, IonIcon, IonText } from '@ionic/react';
+import { IonCard, IonCardContent, IonIcon, IonText } from '@ionic/react';
 
 interface StartNoteProps {
     workspace?: {
@@ -74,6 +74,32 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                     </IonCard>
                 </div>
             </div>
+
+            <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/image${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                <IonCardContent>
+                    <div className='flex gap-3 items-center'>
+                        <div className='w-8 h-8 flex items-center justify-center bg-[#FFF0D9] rounded-full'>
+                            <IonIcon icon={imageOutline} className='text-xl text-[#C95F00]' />
+                        </div>
+
+                        <div className='block flex-1'>
+                            <div className='block mt-0 mb-0'>
+                                <IonText className="font-semibold text-sm text-neutral-700">Upload Image</IonText>
+                            </div>
+
+                            <div className='block leading-3 line-clamp-1'>
+                                <IonText className='text-xs line-clamp-1'>
+                                    Take photo of your note book
+                                </IonText>
+                            </div>
+                        </div>
+
+                        <div className='ml-auto'>
+                            <IonIcon icon={cloudUploadOutline} className='text-2xl' />
+                        </div>
+                    </div>
+                </IonCardContent>
+            </IonCard>
         </div>
     );
 };

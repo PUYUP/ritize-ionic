@@ -2,10 +2,10 @@ import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonMenuButton, I
 import { useParams } from 'react-router';
 import './Home.css';
 import StartNote from '../../../components/startnote/StartNote';
-import TodayWorkspace from '../../../components/today-workspace/TodayWorkspace';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
-import { addCircleOutline, addOutline } from 'ionicons/icons';
+import { addCircleOutline, arrowForwardOutline, chevronForwardCircleOutline, chevronForwardOutline } from 'ionicons/icons';
 import { getGreeting } from '../../../utils/dayGreeting';
+import WorkspaceStats from '../../../components/workspace-stats/WorkspaceStats';
 
 const HomePage: React.FC = () => {
     const { name = '' } = useParams<{ name: string; }>();
@@ -26,18 +26,31 @@ const HomePage: React.FC = () => {
                     <div className='block mb-1 leading-3 text-lg'>
                         <IonText>{getGreeting({ locale: 'en' })}, <strong>Rahman</strong></IonText>
                     </div>
-                    <div className='text-base mb-4 text-neutral-800'>
+                    {/* <div className='text-base mb-4 text-neutral-800'>
                         <IonText>Start your notes...</IonText>
                     </div>
-                    <StartNote />
+                    <StartNote /> */}
+
+                    <div className='text-base mb-4 text-neutral-800'>
+                        <IonText>Happening Today's</IonText>
+                    </div>
+                    <WorkspaceStats
+                        note={{ todayCount: 2, total: 34000 }}
+                        material={{ todayCount: 1, total: 221 }}
+                        digest={{ todayCount: 3, total: 62 }}
+                    />
                 </div>
 
-                <div className='ion-padding !pb-2'>
+                {/* <div className='ion-padding !pb-2'>
                     <div className='block mb-3 text-lg'>
                         <IonText>Happening Today's</IonText>
                     </div>
-                    <TodayWorkspace />
-                </div>
+                    <WorkspaceStats
+                        note={{ todayCount: 2, total: 34000 }}
+                        material={{ todayCount: 1, total: 221 }}
+                        digest={{ todayCount: 3, total: 62 }}
+                    />
+                </div> */}
 
                 <div className='ion-padding !pr-1'>
                     <div className='block mb-3 text-lg flex items-center justify-between'>
@@ -47,6 +60,13 @@ const HomePage: React.FC = () => {
                         </IonButton>
                     </div>
                     <WorkspaceList />
+
+                    <div className='mt-4 text-center'>
+                        <IonButton fill='clear' mode='ios'>
+                            <IonText>View all</IonText>
+                            <IonIcon icon={arrowForwardOutline} size='small' className='ml-2' />
+                        </IonButton>
+                    </div>
                 </div>
             </IonContent>
         </IonPage>

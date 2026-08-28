@@ -483,11 +483,8 @@ const VoiceRecorderPage: React.FC = () => {
                         <IonBackButton defaultHref="/" />
                     </IonButtons>
 
-                    <IonTitle className="text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
-                        Listen Lecture
-                        <IonText className='block text-center text-xs italic'>
-                            in <span className="text-red-700" onClick={selectLanguageHandler}>{language.name}</span>
-                        </IonText>
+                    <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>
+                        Kimia Jaya Analisis Teknik Dasar Terapan Dr. Fitri
                     </IonTitle>
 
                     {isSupported && (
@@ -515,6 +512,15 @@ const VoiceRecorderPage: React.FC = () => {
                         </div>
                     )}
                 </IonToolbar>
+
+                {isSupported && (
+                    <div className='flex items-center justify-center gap-2 border-t border-neutral-200 pt-2'>
+                        <IonIcon icon={languageOutline} />
+                        <IonText className='text-sm'>
+                            in <span className="text-red-700" onClick={selectLanguageHandler}>{language.name}</span>
+                        </IonText>
+                    </div>
+                )}
             </IonHeader>
 
             <IonContent ref={ionContentRef} className="relative">

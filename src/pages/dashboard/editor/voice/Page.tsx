@@ -78,12 +78,6 @@ const VoiceRecorderPage: React.FC = () => {
     const updateTranscript = async (text: string) => {
         transcriptRef.current = text;
         setTranscript(text);
-
-        // update the page database
-        if (selectedNote && selectedPage && text?.trim()) {
-            const bufferData = Buffer.from(JSON.stringify(text), 'utf-8');
-            await NotesRepository.updatePage(selectedPage.id as number, { contentData: bufferData });
-        }
     };
 
     const updateInterimText = (text: string) => {
@@ -258,12 +252,13 @@ const VoiceRecorderPage: React.FC = () => {
         if (!partialListenerRef.current) {
             partialListenerRef.current = await SpeechRecognition.addListener(
                 'partialResults',
-                (event: SpeechRecognitionPartialResultEvent) => {
+                async (event: SpeechRecognitionPartialResultEvent) => {
                     const matchText = event.matches?.[0] ?? '';
                     // PENTING: Jangan timpa interimText jika hasilnya kosong.
                     // Ini mencegah kata terakhir terhapus tepat sebelum auto-restart.
                     if (matchText.trim() !== '') {
                         updateInterimText(matchText);
+                        await saveTextToDatabase(matchText);
                     }
                 }
             );
@@ -305,8 +300,10 @@ const VoiceRecorderPage: React.FC = () => {
             return;
         }
 
-        // add new page
-        await newPageHandler();
+        // add new page if current page have content
+        if (selectedPage && selectedPage?.contentData) {
+            await newPageHandler();
+        }
 
         await attachListeners();
 
@@ -419,6 +416,64 @@ const VoiceRecorderPage: React.FC = () => {
     const selectLanguageHandler = async () => {
         await selectLanguageRef.current?.open();
     }
+
+    // load content data from database
+    useEffect(() => {
+        console.log("loadContentData useEffect triggered", { selectedPage: selectedPage?.id });
+        if (!selectedPage) return;
+
+        const loadContentData = async () => {
+            const contentData = selectedPage?.contentData;
+            console.log("contentData type/length:", contentData ? (contentData as any).length || (contentData as any).byteLength : "null");
+
+            if (contentData) {
+                try {
+                    // 1. Ubah Uint8Array ke String menggunakan TextDecoder
+                    const decoder = new TextDecoder('utf-8');
+                    const jsonString = decoder.decode(contentData);
+
+                    if (!jsonString) {
+                        console.log("Decoded jsonString is empty");
+                        return;
+                    }
+
+                    // 2. Parse string yang sudah valid menjadi JSON object
+                    const json = JSON.parse(jsonString);
+                    console.log("JSON parsed successfully, elements count:", json);
+
+                    updateTranscript(json);
+                } catch (error) {
+                    console.error("Gagal melakukan parse JSON:", error);
+                }
+            } else {
+                console.log("contentData is empty/falsy, setting empty elements array");
+                updateTranscript('');
+            }
+        }
+
+        loadContentData();
+    }, [selectedPage]);
+
+    const saveTextToDatabase = async (textToSave: string) => {
+        if (!selectedNote || !selectedPage || !textToSave.trim()) return;
+
+        const bufferData = Buffer.from(JSON.stringify(textToSave), 'utf-8');
+        console.log('Saving to database', selectedPage.id);
+
+        try {
+            const updatedPage = await NotesRepository.updatePage(selectedPage.id as number, { contentData: bufferData });
+            console.log('Page saved successfully', updatedPage);
+
+            // Functional Update untuk mengganti object di array tanpa re-render yang tidak perlu
+            setPages((prevPages) =>
+                prevPages.map(p =>
+                    p.id === selectedPage.id ? { ...p, contentData: bufferData } : p
+                )
+            );
+        } catch (error) {
+            console.error('Error saving page:', error);
+        }
+    };
 
     return (
         <IonPage>

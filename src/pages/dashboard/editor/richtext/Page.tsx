@@ -181,7 +181,6 @@ const RichTextEditorPage: React.FC = () => {
     }, [pages]);
 
     // load content data from database
-    // load content data from database
     useEffect(() => {
         console.log("loadContentData useEffect triggered", { selectedPage: selectedPage?.id });
         if (!selectedPage) return;

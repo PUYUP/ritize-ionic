@@ -1,4 +1,4 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonPage, IonText, IonTitle, IonToolbar, useIonViewDidEnter, useIonViewDidLeave } from "@ionic/react";
+import { IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonPage, IonText, IonTitle, IonToolbar, useIonViewDidEnter, useIonViewDidLeave } from "@ionic/react";
 import { cameraOutline, copyOutline, trashOutline } from "ionicons/icons";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -38,6 +38,9 @@ const UploadImagePage: React.FC = () => {
     useEffect(() => { pagesRef.current = pages; }, [pages]);
     useEffect(() => { selectedPageRef.current = selectedPage; }, [selectedPage]);
     useEffect(() => { selectedNoteRef.current = selectedNote; }, [selectedNote]);
+
+    const [showClearAlert, setShowClearAlert] = useState(false);
+    const [showRemoveAlert, setShowRemoveAlert] = useState(false);
 
     useEffect(() => {
         const containerEl = pagesSwiperElRef.current;
@@ -329,7 +332,7 @@ const UploadImagePage: React.FC = () => {
                                 size='small'
                                 shape="round"
                                 color={'light'}
-                                onClick={() => { }}
+                                onClick={() => setShowClearAlert(true)}
                             >
                                 <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
                             </IonButton>
@@ -360,6 +363,7 @@ const UploadImagePage: React.FC = () => {
                                 size='small'
                                 shape="round"
                                 color={'light'}
+                                onClick={() => setShowRemoveAlert(true)}
                             >
                                 <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
                             </IonButton>
@@ -384,6 +388,86 @@ const UploadImagePage: React.FC = () => {
                     </div>
                 </div>
             </IonFooter>
+
+            {/* clear content alert */}
+            <IonAlert
+                isOpen={showClearAlert}
+                onDidDismiss={() => setShowClearAlert(false)}
+                header='Are you sure to clear content?'
+                message={'All your current notes content will be permanently deleted.'}
+                buttons={[
+                    { text: 'Cancel', role: 'cancel' },
+                    {
+                        text: 'Yes',
+                        role: 'destructive',
+                        handler: async () => {
+                            if (selectedPage) {
+                                const emptyBuffer = Buffer.from('{}', 'utf-8');
+
+                                setPages((prevPages) =>
+                                    prevPages.map(p =>
+                                        p.id === selectedPage.id ? { ...p, contentData: emptyBuffer } : p
+                                    )
+                                );
+
+                                // update selected page
+                                await NotesRepository.updatePage(selectedPage.id as number, {
+                                    contentData: emptyBuffer,
+                                });
+                            }
+                        },
+                    },
+                ]}
+            ></IonAlert>
+
+            {/* remove page alert */}
+            <IonAlert
+                isOpen={showRemoveAlert}
+                onDidDismiss={() => setShowRemoveAlert(false)}
+                header='Are you sure to remove this page?'
+                message={'All your current notes on this page will be permanently deleted.'}
+                buttons={[
+                    { text: 'Cancel', role: 'cancel' },
+                    {
+                        text: 'Yes',
+                        role: 'destructive',
+                        handler: async () => {
+                            const activeIndex = pages.findIndex((p) => p.isActive);
+                            if (activeIndex === -1) return;
+
+                            const filtered = pages.filter((_, idx) => idx !== activeIndex);
+
+                            // tidak ada page tersisa -> clear canvas
+                            if (filtered.length === 0) {
+                                setPages([]);
+                                return;
+                            }
+
+                            // pilih page berikutnya kalau ada, atau page sebelumnya kalau yang dihapus adalah terakhir
+                            const nextActiveIndex = Math.min(activeIndex, filtered.length - 1);
+
+                            // delete page from db
+                            await NotesRepository.deletePage(pages[activeIndex].id);
+
+                            // re-index all pages
+                            const reindexed = filtered.map((p, idx) => ({
+                                ...p,
+                                pageNum: idx + 1,
+                                isActive: idx === nextActiveIndex,
+                            }));
+
+                            // set current active page
+                            const newSelected = reindexed.find((p) => p.isActive);
+                            if (newSelected) {
+                                await selectPageHandler(newSelected);
+                            }
+
+                            setPages(reindexed);
+                            await NotesRepository.updatePagesBulk(reindexed);
+                        },
+                    },
+                ]}
+            ></IonAlert>
         </IonPage>
     )
 }

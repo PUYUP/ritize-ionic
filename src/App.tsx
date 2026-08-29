@@ -38,6 +38,8 @@ import '@ionic/react/css/palettes/dark.system.css';
 import './theme/variables.css';
 import { useEffect, useState } from 'react';
 import { dashboardRoutes } from './routes/dashboard.routes';
+import { mainRoutes } from './routes/main.routes';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 
 setupIonicReact({ mode: "md", animated: false });
 
@@ -55,6 +57,16 @@ const App: React.FC = () => {
       .catch((err) => {
         console.error('Font GAGAL di-load:', err);
       });
+
+    // google oauth initializing
+    (async () => {
+      await SocialLogin.initialize({
+        google: {
+          webClientId: '1036154501218-uonc708al3gm9bpr84i58ib3ojfon6sv.apps.googleusercontent.com',
+          mode: 'online',
+        }
+      });
+    })()
   }, []);
 
   return (
@@ -63,13 +75,10 @@ const App: React.FC = () => {
         <IonSplitPane contentId="main" when={false}>
           <Menu />
           <IonRouterOutlet id="main">
-            {/* <Route path="/dashboard" element={<DashboardPage />} /> */}
-            {/* <Route path="/folder/:name" element={<Page />} /> */}
-            {/* <Route path="/editor/canvas" element={<CanvasEditorPage />} />
-            <Route path="/editor/richtext" element={<RichTextEditorPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} /> */}
+            {mainRoutes.map((route) => (
+              <Route key={route.path as string} {...route} />
+            ))}
 
-            <Route path="/" element={<Page />} />
             {dashboardRoutes.map((route) => (
               <Route key={route.path as string} {...route} />
             ))}

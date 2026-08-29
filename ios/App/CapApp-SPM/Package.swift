@@ -19,6 +19,7 @@ let package = Package(
         .package(name: "CapacitorKeyboard", path: "../../../node_modules/@capacitor/keyboard"),
         .package(name: "CapacitorStatusBar", path: "../../../node_modules/@capacitor/status-bar"),
         .package(name: "CapacitorToast", path: "../../../node_modules/@capacitor/toast"),
+        .package(name: "CapgoCapacitorSocialLogin", path: "../../../node_modules/@capgo/capacitor-social-login"),
         .package(name: "CapgoCapacitorSpeechRecognition", path: "../../../node_modules/@capgo/capacitor-speech-recognition")
     ],
     targets: [
@@ -34,6 +35,7 @@ let package = Package(
                 .product(name: "CapacitorKeyboard", package: "CapacitorKeyboard"),
                 .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar"),
                 .product(name: "CapacitorToast", package: "CapacitorToast"),
+                .product(name: "CapgoCapacitorSocialLogin", package: "CapgoCapacitorSocialLogin"),
                 .product(name: "CapgoCapacitorSpeechRecognition", package: "CapgoCapacitorSpeechRecognition")
             ]
         )

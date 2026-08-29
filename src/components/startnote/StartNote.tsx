@@ -75,7 +75,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                 </div>
             </div>
 
-            <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/image${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+            <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/upload-image${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                 <IonCardContent>
                     <div className='flex gap-3 items-center'>
                         <div className='w-8 h-8 flex items-center justify-center bg-[#FFF0D9] rounded-full'>

@@ -125,6 +125,8 @@ const VoiceRecorderPage: React.FC = () => {
                     watchOverflow: true, // Otomatis disable scroll jika item belum penuh
                     observer: true,
                     observeParents: true,
+                    centeredSlides: true,
+                    centeredSlidesBounds: true,
                 });
             } else {
                 // Jika Swiper sudah ada, cukup update state-nya saat ada page baru

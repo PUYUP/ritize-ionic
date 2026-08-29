@@ -9,6 +9,8 @@ import './Page.css';
 import { Note, Page } from "../../../../databases/entities/notes";
 import { FreeMode, Mousewheel, Pagination, Thumbs } from "swiper/modules";
 import NotesRepository from "../../../../databases/datasources/NotesRepository";
+import ImageCapture from "../../../../components/image-capture/ImageCapture";
+import { CameraResultType, Photo } from "@capacitor/camera";
 
 const NOTE_ID = 4;
 
@@ -296,6 +298,17 @@ const UploadImagePage: React.FC = () => {
     }
     // --- END CRUD NOTES ---
 
+    // --- UPLOAD FUNCTION ---
+    const handleImageCaptured = (photo: Photo) => {
+        console.log('Image captured:', photo);
+        // do something with the imageUri, e.g., set it to state
+    };
+
+    const handleError = (error: Error) => {
+        console.error('Image capture error:', error);
+    };
+    // --- END UPLOAD FUNCTION ---
+
     return (
         <IonPage>
             <IonHeader className='ion-no-border'>
@@ -374,14 +387,21 @@ const UploadImagePage: React.FC = () => {
                         <div className='flex-1'>
                             <div className="flex justify-center gap-4">
                                 <div className="flex items-center">
-                                    <IonButton
-                                        shape="round"
-                                        size="large"
-                                        color={'success'}
-                                        onClick={newPageHandler}
+                                    <ImageCapture
+                                        resultType={CameraResultType.Uri}
+                                        onImageCaptured={handleImageCaptured}
+                                        onError={handleError}
+                                        quality={90}               // Optional: default is 90
+                                        allowEditing={true}        // Optional: allows cropping/editing (default false)
                                     >
-                                        <IonIcon icon={cameraOutline} slot="icon-only"></IonIcon>
-                                    </IonButton>
+                                        <IonButton
+                                            shape="round"
+                                            size="large"
+                                            color={'success'}
+                                        >
+                                            <IonIcon icon={cameraOutline} slot="icon-only"></IonIcon>
+                                        </IonButton>
+                                    </ImageCapture>
                                 </div>
                             </div>
                         </div>

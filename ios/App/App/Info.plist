@@ -70,5 +70,11 @@
 	<string>We use speech recognition to convert your voice into text.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We use the microphone to record your voice.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need access to your camera to capture photos and add them to your notes.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to save photos to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to select photos and add them to your notes.</string>
 </dict>
 </plist>

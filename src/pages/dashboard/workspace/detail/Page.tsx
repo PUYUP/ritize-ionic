@@ -25,7 +25,7 @@ const WorkspaceDetailPage: React.FC = () => {
                     <IonButtons slot="start" className="ion-padding-start">
                         <IonBackButton defaultHref="/" />
                     </IonButtons>
-                    <IonTitle className="text-center flex items-center justify-center fixed left-14 right-14 top-0 bottom-0 text-lg line-clamp-1">
+                    <IonTitle className="text-base text-center flex items-center justify-center fixed left-14 right-14 top-0 bottom-0 text-lg line-clamp-1">
                         Workspace
                     </IonTitle>
                     <IonButtons slot="end" className='ion-padding-end'>

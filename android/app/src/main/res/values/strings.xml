@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ritize</string>
+    <string name="title_activity_main">Ritize</string>
+    <string name="package_name">com.ritize.mobile</string>
+    <string name="custom_url_scheme">com.ritize.mobile</string>
+</resources>

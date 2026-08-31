@@ -9,46 +9,11 @@ import WorkspaceStats from '../../../components/workspace-stats/WorkspaceStats';
 import { useEffect, useState } from 'react';
 import { getUser } from '../../../utils/authState';
 import { supabase } from '../../../utils/supabaseClient';
-import { WorkspaceItem } from '../../../models/workspace';
+import { useGetAllOrganizationsQuery } from '../../../services/organization';
 
 const HomePage: React.FC = () => {
     const { name = '' } = useParams<{ name: string; }>();
-
-    const [loading, setLoading] = useState<boolean>(true);
-    const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
-
-    useEffect(() => {
-        const getWorkspaces = async () => {
-            const user = await getUser();
-            const { data, error } = await supabase
-                .from('ba_organizations')
-                .select(`
-                    *,
-                    members:ba_organization_members!inner(*)
-                `)
-                .eq('members.userId', user.id)
-                .limit(10);
-
-            setLoading(false);
-            if (error) return;
-
-            setWorkspaces(data.map((workspace) => {
-                const metadata = workspace.metadata ? JSON.parse(workspace.metadata) : null;
-
-                return {
-                    id: workspace.id,
-                    title: workspace.name,
-                    icon: 'text',
-                    color: '#EEE4FA',
-                    scope: metadata ? metadata.scope : 'personal',
-                    memberCount: workspace.members.length,
-                    todayNoteCount: 0
-                };
-            }));
-        };
-
-        getWorkspaces();
-    }, []);
+    const { data: workspaces, isLoading } = useGetAllOrganizationsQuery();
 
     return (
         <IonPage>
@@ -100,7 +65,7 @@ const HomePage: React.FC = () => {
                         </IonButton>
                     </div>
 
-                    {loading ? (
+                    {isLoading || !workspaces || workspaces.length === 0 ? (
                         <div className='flex flex-col items-center justify-center gap-4'>
                             <IonSpinner name="crescent" />
                             <IonText>Loading data...</IonText>

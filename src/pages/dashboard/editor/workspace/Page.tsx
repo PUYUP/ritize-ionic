@@ -5,11 +5,11 @@ import './Page.css';
 import { authClient } from '../../../../utils/authClient';
 import { useEffect } from 'react';
 import { useParams } from 'react-router';
-import { useGetOrganizationByIdQuery } from '../../../../services/organization';
+import { useCreateOrganizationMutation, useGetOrganizationByIdQuery, useUpdateOrganizationMutation } from '../../../../services/organization';
 
 type Inputs = {
     name: string
-    scope: string
+    scope: 'personal' | 'group'
 }
 
 interface RouteParams {
@@ -20,6 +20,8 @@ interface RouteParams {
 const WorkspaceEditorPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
+    const [updateOrganization, { isLoading: updating }] = useUpdateOrganizationMutation();
+    const [createOrganization, { isLoading: creating }] = useCreateOrganizationMutation();
     const { data: workspace, error, isLoading, isSuccess } = useGetOrganizationByIdQuery(id ?? "", {
         skip: !id,
     });
@@ -37,36 +39,36 @@ const WorkspaceEditorPage: React.FC = () => {
     });
 
     const onSubmit: SubmitHandler<Inputs> = async (values) => {
-        const metadata = { scope: values.scope };
-
         if (workspace) {
             // update workspace
-            const { data, error } = await authClient.organization.update({
+            const { data, error } = await updateOrganization({
+                id: workspace.id,
                 data: {
                     name: values.name,
-                    metadata,
+                    metadata: {
+                        scope: values.scope,
+                    },
                 },
-                organizationId: workspace.id,
             });
 
             if (error) return;
 
-            ionRouter.push(`/dashboard/workspace/${data.id}?name=${data.name}`, 'forward', 'push');
+            ionRouter.goBack();
             return;
         }
 
         // create workspace
-        const { data, error } = await authClient.organization.create({
+        const { data, error } = await createOrganization({
             name: values.name,
-            slug: values.name.toLowerCase(),
-            metadata,
-            keepCurrentActiveOrganization: false,
+            metadata: {
+                scope: values.scope,
+            },
         });
 
         if (error) return;
 
         if (data) {
-            ionRouter.push(`/dashboard/workspace/${data.id}?name=${data.name}`, 'forward', 'push');
+            ionRouter.push(`/dashboard/workspace/${data.id}?name=${data.name}`, 'forward', 'replace');
         }
     }
 
@@ -156,9 +158,9 @@ const WorkspaceEditorPage: React.FC = () => {
                             type="submit"
                             shape='round'
                             mode='ios'
-                            disabled={!isValid || isSubmitting}
+                            disabled={!isValid || updating || creating}
                         >
-                            {isSubmitting ? (
+                            {updating || creating ? (
                                 <>
                                     <IonSpinner name="crescent" slot="start" />
                                     <span className='ion-margin-start'>Processing...</span>

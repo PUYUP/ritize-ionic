@@ -1,4 +1,4 @@
-import { RouteProps } from "react-router-dom";
+import { RouteProps } from "react-router";
 import Page from "../pages/Page";
 import OAuthGooglePage from "../pages/auth/oauth-google/Page";
 

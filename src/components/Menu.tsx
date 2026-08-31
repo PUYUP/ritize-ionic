@@ -10,9 +10,9 @@ import {
   IonNote,
 } from '@ionic/react';
 
-import { useLocation } from 'react-router-dom';
 import { briefcase, briefcaseOutline, home, homeOutline, people, peopleOutline, settingsOutline, settingsSharp } from 'ionicons/icons';
 import './Menu.css';
+import { useLocation } from 'react-router';
 
 interface AppPage {
   url: string;

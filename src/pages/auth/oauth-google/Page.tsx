@@ -1,9 +1,9 @@
-import { IonButton, IonContent, IonPage, IonSpinner, IonText, useIonViewDidEnter } from '@ionic/react';
+import { IonButton, IonContent, IonPage, IonSpinner, IonText, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
 import { useState } from 'react';
 import { SocialLogin } from '@capgo/capacitor-social-login';
-import { useNavigate } from 'react-router';
 import { authClient } from '../../../utils/authClient';
+import { Preferences } from '@capacitor/preferences';
 
 const enum Status {
     INIT = "init",
@@ -33,7 +33,7 @@ const sha256 = async (message: string) => {
 };
 
 const OAuthGooglePage: React.FC = () => {
-    const navigate = useNavigate();
+    const ionRouter = useIonRouter();
     const [status, setStatus] = useState<Status>(Status.LOADING);
 
     useIonViewDidEnter(() => {
@@ -74,6 +74,7 @@ const OAuthGooglePage: React.FC = () => {
 
                 const { data, error } = await authClient.signIn.social({
                     provider: "google",
+                    disableRedirect: true,
                     idToken: {
                         token: res.result.idToken,
                         accessToken: res.result.accessToken?.token,
@@ -84,9 +85,17 @@ const OAuthGooglePage: React.FC = () => {
 
                 console.log("authClient.signIn.social Response", data);
 
+                // save user
+                if ('user' in data) {
+                    await Preferences.set({
+                        key: 'ritize_user',
+                        value: JSON.stringify(data.user)
+                    });
+                }
+
                 // redirect to dashboard
                 setTimeout(() => {
-                    navigate('/dashboard', { replace: true });
+                    ionRouter.push('/dashboard', 'forward', 'push');
                     setStatus(Status.SIGNIN_SUCCESS);
                 }, 2000);
 

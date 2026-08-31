@@ -1,10 +1,6 @@
 import { IonApp, IonRouterOutlet, IonSplitPane, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { Navigate, Route } from 'react-router-dom';
 import Menu from './components/Menu';
-import Page from './pages/Page';
-import CanvasEditorPage from './pages/dashboard/editor/canvas/Page';
-import RichTextEditorPage from './pages/dashboard/editor/richtext/Page';
 
 
 /* Core CSS required for Ionic components to work properly */
@@ -40,6 +36,7 @@ import { useEffect, useState } from 'react';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { mainRoutes } from './routes/main.routes';
 import { SocialLogin } from '@capgo/capacitor-social-login';
+import { Route } from 'react-router';
 
 setupIonicReact({ mode: "md", animated: false });
 

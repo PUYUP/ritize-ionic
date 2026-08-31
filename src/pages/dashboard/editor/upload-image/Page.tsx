@@ -1,7 +1,6 @@
 import { IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonPage, IonText, IonTitle, IonToolbar, useIonViewDidEnter, useIonViewDidLeave } from "@ionic/react";
 import { cameraOutline, copyOutline, trashOutline } from "ionicons/icons";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
 import Swiper from "swiper";
 import 'swiper/css';
 import 'swiper/css/pagination';
@@ -11,6 +10,7 @@ import { FreeMode, Mousewheel, Pagination, Thumbs } from "swiper/modules";
 import NotesRepository from "../../../../databases/datasources/NotesRepository";
 import ImageCapture from "../../../../components/image-capture/ImageCapture";
 import { CameraResultType, Photo } from "@capacitor/camera";
+import { useParams } from "react-router";
 
 const NOTE_ID = 4;
 

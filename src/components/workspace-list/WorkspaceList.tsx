@@ -1,76 +1,12 @@
-import { IonCard, IonCardContent, IonIcon, IonItem, IonLabel, IonList } from "@ionic/react";
-import { albumsOutline, analyticsOutline, cafeOutline, chatbubbleOutline, chatbubblesOutline, ellipseOutline, peopleOutline, personOutline, schoolOutline, textOutline } from "ionicons/icons";
+import { IonIcon, IonItem, IonLabel, IonList } from "@ionic/react";
+import { chatbubblesOutline, ellipseOutline } from "ionicons/icons";
+import type { WorkspaceItem } from "../../models/workspace";
 
-interface WorkspaceListProps { }
-
-interface WorkspaceItemProps {
-    readonly id: number;
-    title: string;
-    icon?: string;
-    color?: string;
-    scope: 'personal' | 'group';
-    memberCount: number;
-    todayNoteCount: number;
+interface WorkspaceListProps {
+    items: WorkspaceItem[];
 }
 
-const workspaces: WorkspaceItemProps[] = [
-    {
-        id: 1,
-        title: 'Fisika Dr. Hermawan',
-        icon: 'text',
-        color: '#EEE4FA',
-        scope: 'group',
-        memberCount: 5,
-        todayNoteCount: 1
-    },
-    {
-        id: 2,
-        title: 'Psikologi Marketing Dra. Ernita',
-        icon: 'analytics',
-        color: '#EEE4FA',
-        scope: 'group',
-        memberCount: 5,
-        todayNoteCount: 2
-    },
-    {
-        id: 3,
-        title: 'Kimia Dasar 2 Dr. Haryanti',
-        icon: 'mic',
-        color: '#EEE4FA',
-        scope: 'personal',
-        memberCount: 1,
-        todayNoteCount: 0
-    },
-    {
-        id: 4,
-        title: 'Fisika Teknik',
-        icon: 'text',
-        color: '#EEE4FA',
-        scope: 'personal',
-        memberCount: 1,
-        todayNoteCount: 3
-    },
-    {
-        id: 5,
-        title: 'Matematika Terapan',
-        icon: 'analytics',
-        color: '#EEE4FA',
-        scope: 'group',
-        memberCount: 5,
-        todayNoteCount: 1
-    },
-    {
-        id: 6,
-        title: 'Bahasa Arab',
-        icon: 'mic',
-        color: '#EEE4FA',
-        scope: 'personal',
-        memberCount: 1,
-        todayNoteCount: 2
-    },
-];
-
-const WorkspaceItem: React.FC<{ item: WorkspaceItemProps }> = ({ item }) => {
+const WorkspaceItem: React.FC<{ item: WorkspaceItem }> = ({ item }) => {
     const { id, title, scope, memberCount, todayNoteCount } = item;
 
     return (
@@ -96,11 +32,12 @@ const WorkspaceItem: React.FC<{ item: WorkspaceItemProps }> = ({ item }) => {
     );
 }
 
-const WorkspaceList: React.FC<WorkspaceListProps> = () => {
+const WorkspaceList: React.FC<WorkspaceListProps> = ({ items }) => {
     return (
         <IonList className="!py-0">
-            {workspaces.map((workspace, index) => (
-                <WorkspaceItem key={index} item={workspace} />
+            {items.length === 0 && <IonItem className="ion-no-padding" lines="none">No workspaces found</IonItem>}
+            {items.map((item, index) => (
+                <WorkspaceItem key={index} item={item} />
             ))}
         </IonList>
     );

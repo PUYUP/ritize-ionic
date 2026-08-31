@@ -1,4 +1,4 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
 import { briefcaseOutline } from 'ionicons/icons';
 import { useForm, Controller, SubmitHandler } from "react-hook-form"
 import './Page.css';
@@ -53,7 +53,11 @@ const WorkspaceEditorPage: React.FC = () => {
 
             if (error) return;
 
-            ionRouter.goBack();
+            if (ionRouter.canGoBack()) {
+                ionRouter.goBack();
+            } else {
+                ionRouter.navigateRoot('/dashboard');
+            }
             return;
         }
 
@@ -68,7 +72,7 @@ const WorkspaceEditorPage: React.FC = () => {
         if (error) return;
 
         if (data) {
-            ionRouter.push(`/dashboard/workspace/${data.id}?name=${data.name}`, 'forward', 'replace');
+            ionRouter.push(`/dashboard/workspace/${data.id}`, 'forward', 'replace');
         }
     }
 
@@ -110,7 +114,8 @@ const WorkspaceEditorPage: React.FC = () => {
                             control={control}
                             rules={{ required: true }}
                             render={({ field: { onChange, onBlur, value, ref } }) => (
-                                <IonInput
+                                <IonTextarea
+                                    autoGrow
                                     ref={ref}
                                     value={value}
                                     onIonInput={(e) => onChange(e.detail.value)}
@@ -122,7 +127,7 @@ const WorkspaceEditorPage: React.FC = () => {
                                     fill="outline"
                                 >
                                     <IonIcon slot="start" icon={briefcaseOutline} aria-hidden="true"></IonIcon>
-                                </IonInput>
+                                </IonTextarea>
                             )}
                         />
                         {errors.name && <IonText color="danger" className='text-xs mt-2'>Name is required</IonText>}

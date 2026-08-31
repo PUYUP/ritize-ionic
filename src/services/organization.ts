@@ -1,4 +1,4 @@
-import { createApi, fakeBaseQuery, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { authClient } from '../utils/authClient';
 import { getUser } from '../utils/authState';
 import { supabase } from '../utils/supabaseClient';

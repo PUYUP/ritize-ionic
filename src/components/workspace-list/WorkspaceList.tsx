@@ -13,7 +13,7 @@ const WorkspaceItem: React.FC<{ item: OrganizationTypes }> = ({ item }) => {
             lines="none"
             detail={true}
             mode="ios"
-            routerLink={`/dashboard/workspace/${item.id}?name=${item.name}`}
+            routerLink={`/dashboard/workspace/${item.id}`}
             routerDirection="forward"
         >
             <div slot="start" className="w-9 h-9 bg-neutral-100 rounded-full flex items-center justify-center">

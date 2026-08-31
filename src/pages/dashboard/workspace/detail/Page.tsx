@@ -1,6 +1,6 @@
 import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
-import { closeOutline, pencilOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
+import { chevronForwardOutline, closeOutline, pencilOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
 import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
@@ -69,13 +69,19 @@ const WorkspaceDetailPage: React.FC = () => {
 
                             {workspace.metadata.scope === 'group' && (
                                 <div className='ml-auto flex items-start'>
-                                    <div className='flex flex-col items-center justify-center bg-[#FFF1F1] rounded-xl p-2 pt-1 shadow-sm'>
-                                        <div className='flex items-center justify-center gap-1'>
-                                            <IonIcon icon={personCircleOutline} className='text-xl text-[#E53935] mt-[1px]' />
-                                            <IonText className='text-lg text-[#D92D2D] font-semibold'>{workspace.members?.length || 0}</IonText>
+                                    <div
+                                        onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}
+                                        className='flex flex-col items-start justify-start bg-[#F1F1F1] rounded-xl p-2 pr-1 pt-1 shadow-sm min-w-20'
+                                    >
+                                        <div className='flex items-center justify-between w-full'>
+                                            <div className='flex items-center gap-1'>
+                                                <IonIcon icon={personCircleOutline} className='text-xl text-[#424242] mt-[1px]' />
+                                                <IonText className='text-lg text-[#383838] font-semibold'>{workspace.members?.length || 0}</IonText>
+                                            </div>
+                                            <IonIcon icon={chevronForwardOutline} className='text-xl text-[#424242] mt-[1px]' />
                                         </div>
 
-                                        <IonText className='text-xs text-[#D92D2D] leading-3'>members</IonText>
+                                        <IonText className='text-xs text-[#383838] leading-3'>members</IonText>
                                     </div>
                                 </div>
                             )}

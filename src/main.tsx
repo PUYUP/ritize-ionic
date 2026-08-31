@@ -7,6 +7,8 @@ import { JeepSqlite } from 'jeep-sqlite/dist/components/jeep-sqlite';
 import { defineCustomElements as pwaElements } from '@ionic/pwa-elements/loader';
 import sqliteParams from './databases/sqliteParams';
 import { initializeDataSources } from './databases/utilities';
+import { store } from './store';
+import { Provider } from 'react-redux';
 
 pwaElements(window);
 customElements.define('jeep-sqlite', JeepSqlite);
@@ -18,7 +20,9 @@ const rootRender = async () => {
   const root = createRoot(container!);
   root.render(
     <React.StrictMode>
-      <App />
+      <Provider store={store}>
+        <App />
+      </Provider>
     </React.StrictMode>
   );
 };

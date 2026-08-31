@@ -3,9 +3,9 @@ import { briefcaseOutline } from 'ionicons/icons';
 import { useForm, Controller, SubmitHandler } from "react-hook-form"
 import './Page.css';
 import { authClient } from '../../../../utils/authClient';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'react-router';
-import { supabase } from '../../../../utils/supabaseClient';
+import { useGetOrganizationByIdQuery } from '../../../../services/organization';
 
 type Inputs = {
     name: string
@@ -20,9 +20,9 @@ interface RouteParams {
 const WorkspaceEditorPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
-
-    const [loading, setLoading] = useState(false);
-    const [workspace, setWorkspace] = useState<any>();
+    const { data: workspace, error, isLoading, isSuccess } = useGetOrganizationByIdQuery(id ?? "", {
+        skip: !id,
+    });
 
     const {
         control,
@@ -78,35 +78,14 @@ const WorkspaceEditorPage: React.FC = () => {
     }, [isSubmitSuccessful, reset]);
 
     useEffect(() => {
-        if (!id) return;
+        if (!workspace || !isSuccess) return;
 
-        const getWorkspace = async () => {
-            setLoading(true);
-
-            const { data, error } = await supabase
-                .from('ba_organizations')
-                .select(`
-                    *,
-                    members:ba_organization_members!inner(*)
-                `)
-                .eq('id', id)
-                .single();
-
-            if (error) return;
-
-            const metadata = data.metadata ? JSON.parse(data.metadata) : null;
-            setWorkspace({ ...data, metadata });
-
-            setValue('name', data.name);
-            setValue('scope', metadata?.scope ?? 'personal');
-
+        (async () => {
+            setValue('name', workspace.name);
+            setValue('scope', workspace.metadata.scope);
             await trigger();
-
-            setLoading(false);
-        };
-
-        getWorkspace();
-    }, [id, setValue]);
+        })();
+    }, [workspace, isSuccess, setValue, trigger]);
 
     return (
         <IonPage>

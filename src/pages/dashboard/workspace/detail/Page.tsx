@@ -5,8 +5,7 @@ import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
 import { useParams } from 'react-router';
-import { supabase } from '../../../../utils/supabaseClient';
-import { useEffect, useState } from 'react';
+import { useGetOrganizationByIdQuery } from '../../../../services/organization';
 
 interface RouteParams {
     id?: string
@@ -17,38 +16,11 @@ interface RouteParams {
 const WorkspaceDetailPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
-    const [loading, setLoading] = useState(false);
-    const [workspace, setWorkspace] = useState<any>();
+    const { data: workspace, error, isLoading } = useGetOrganizationByIdQuery(id ?? "", {
+        skip: !id,
+    });
 
-    useEffect(() => {
-        if (!id) return;
-
-        const getWorkspace = async () => {
-            setLoading(true);
-
-            const { data, error } = await supabase
-                .from('ba_organizations')
-                .select(`
-                    *,
-                    members:ba_organization_members!inner(*)
-                `)
-                .eq('id', id)
-                .single();
-
-            if (error) return;
-
-            setWorkspace({
-                ...data,
-                metadata: data.metadata ? JSON.parse(data.metadata) : null,
-            });
-
-            setLoading(false);
-        };
-
-        getWorkspace();
-    }, [id]);
-
-    if (loading || !workspace) {
+    if (isLoading || !workspace) {
         return (
             <IonPage>
                 <IonContent className='ion-padding'>

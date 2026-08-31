@@ -1,11 +1,12 @@
-import { IonActionSheet, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
+import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
 import { closeOutline, pencilOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
 import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
 import { useParams } from 'react-router';
-import { useGetOrganizationByIdQuery } from '../../../../services/organization';
+import { useDeleteOrganizationMutation, useGetOrganizationByIdQuery } from '../../../../services/organization';
+import { useState } from 'react';
 
 interface RouteParams {
     id?: string
@@ -16,6 +17,8 @@ interface RouteParams {
 const WorkspaceDetailPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
+    const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+    const [deleteOrganization, { isLoading: deleting }] = useDeleteOrganizationMutation();
     const { data: workspace, error, isLoading } = useGetOrganizationByIdQuery(id ?? "", {
         skip: !id,
     });
@@ -109,7 +112,6 @@ const WorkspaceDetailPage: React.FC = () => {
                             action: 'edit',
                         },
                         handler: () => {
-                            console.log("Edit");
                             ionRouter.push(`/dashboard/editor/workspace/${id}`, "forward");
                         }
                     },
@@ -119,6 +121,9 @@ const WorkspaceDetailPage: React.FC = () => {
                         role: 'destructive',
                         data: {
                             action: 'delete',
+                        },
+                        handler: () => {
+                            setShowDeleteAlert(true);
                         },
                     },
                     {
@@ -131,6 +136,26 @@ const WorkspaceDetailPage: React.FC = () => {
                     },
                 ]}
             ></IonActionSheet>
+
+            {/* delete workspace */}
+            <IonAlert
+                isOpen={showDeleteAlert}
+                onDidDismiss={() => setShowDeleteAlert(false)}
+                header='Are you sure to remove this workspace?'
+                message={'All DATA on this workspace will be permanently deleted.'}
+                buttons={[
+                    { text: 'Cancel', role: 'cancel' },
+                    {
+                        text: 'Yes',
+                        role: 'destructive',
+                        handler: async () => {
+                            if (!id) return;
+                            await deleteOrganization({ id });
+                            ionRouter.push("/dashboard", "back", "pop");
+                        },
+                    },
+                ]}
+            ></IonAlert>
         </IonPage>
     );
 };

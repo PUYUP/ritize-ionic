@@ -92,6 +92,24 @@ export const organizationAPI = createApi({
             ],
         }),
 
+        // delete organization
+        deleteOrganization: builder.mutation<void, { id: string }>({
+            queryFn: async ({ id }) => {
+                const { error } = await authClient.organization.delete({
+                    organizationId: id,
+                });
+
+                if (error) {
+                    return { error: { message: error.message ?? 'Failed to delete organization' } };
+                }
+
+                return { data: undefined };
+            },
+            invalidatesTags: (result, error, { id }) => [
+                { type: 'Organization', id: 'LIST' },
+            ],
+        }),
+
         // get all organizations
         getAllOrganizations: builder.query<OrganizationTypes[], void>({
             queryFn: async () => {
@@ -122,11 +140,12 @@ export const organizationAPI = createApi({
             providesTags: [{ type: 'Organization', id: 'LIST' }],
         }),
     }),
-})
+});
 
 export const {
     useGetOrganizationByIdQuery,
     useUpdateOrganizationMutation,
     useCreateOrganizationMutation,
+    useDeleteOrganizationMutation,
     useGetAllOrganizationsQuery,
 } = organizationAPI

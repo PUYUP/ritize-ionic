@@ -1,32 +1,33 @@
 import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonPage, IonSelect, IonSelectOption, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from "@ionic/react";
 import { add, checkmarkOutline, close, closeOutline, logOutOutline, mailOutline, pencilOutline, settingsOutline, shieldOutline, trashOutline } from "ionicons/icons";
 import { useParams } from "react-router";
-import { useAddMembersToOrganizationMutation, useGetMembersByOrganizationIdQuery, useLazyGetSingleMemberByOrganizationIdAndUserIdQuery, useRemoveMemberMutation, useUpdateRoleMutation } from "../../../../services/member";
 import { useEffect, useRef, useState } from "react";
 import type { OverlayEventDetail } from '@ionic/core';
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import './Page.css';
 import { useLazyGetUsersQuery } from "../../../../services/user";
 import { getUser } from "../../../../utils/authState";
-import { useGetMembersByWorkspaceIdQuery, useLazyGetMemberFromWorkspaceQuery } from "../../../../services/workspace.member";
+import {
+    MemberTypes,
+    useAddMembersToWorkspaceMutation,
+    useGetMembersByWorkspaceIdQuery,
+    useLazyGetMemberFromWorkspaceQuery,
+    useRemoveMemberMutation,
+    useUpdateRoleMutation
+} from "../../../../services/workspace.member";
 
 interface RouteParams {
     id?: string;
     [key: string]: string | undefined
 }
 
-type MemberTypes = {
-    readonly id: string;
-    role: "member" | "admin" | "owner";
-    userId: string;
-    user?: any;
+interface MemberTypesExtented extends MemberTypes {
     email: string;
-    organizationId: string;
 }
 
-type FormValues = {
-    members: MemberTypes[];
-};
+interface FormValues {
+    members: MemberTypesExtented[];
+}
 
 const WorkspaceMembersPage: React.FC = () => {
     const ionRouter = useIonRouter();
@@ -37,7 +38,7 @@ const WorkspaceMembersPage: React.FC = () => {
     const { data: memberData, error, isLoading } = useGetMembersByWorkspaceIdQuery(id ?? "", {
         skip: !id,
     });
-    const [addMembersToOrganization, { isLoading: addingMembers }] = useAddMembersToOrganizationMutation();
+    const [addMembersToWorkspace, { isLoading: addingMembers }] = useAddMembersToWorkspaceMutation();
     const [removeMember, { isLoading: removingMember }] = useRemoveMemberMutation();
     const [updateRole, { isLoading: updatingRole }] = useUpdateRoleMutation();
 
@@ -48,7 +49,7 @@ const WorkspaceMembersPage: React.FC = () => {
     // member dialog
     // ...
     const [showAddMembersModal, setShowAddMembersModal] = useState<boolean>(false);
-    const [editMember, setEditMember] = useState<Partial<MemberTypes> | null>(null);
+    const [editMember, setEditMember] = useState<Partial<MemberTypesExtented> | null>(null);
     const [showMemberActionSheet, setShowMemberActionSheet] = useState<boolean>(false);
     const [showRemoveAlert, setShowRemoveAlert] = useState(false);
     const [showLeaveAlert, setShowLeaveAlert] = useState(false);
@@ -74,7 +75,7 @@ const WorkspaceMembersPage: React.FC = () => {
         formState: { errors, isValid }
     } = useForm<FormValues>({
         defaultValues: {
-            members: [{ role: "member", userId: "", email: "", organizationId: id ?? "" }],
+            members: [{ role: "member", user_id: "", email: "", workspace_id: id ?? "" }],
         },
     });
 
@@ -92,8 +93,8 @@ const WorkspaceMembersPage: React.FC = () => {
         // update role
         if (editMember && data.members.length > 0) {
             await updateRole({
-                memberId: editMember.id as string,
-                organizationId: editMember.organizationId as string,
+                member_id: editMember.id as string,
+                workspace_id: editMember.workspace_id as string,
                 role: data.members[0].role,
             });
 
@@ -123,7 +124,7 @@ const WorkspaceMembersPage: React.FC = () => {
 
             const resolved = {
                 ...member,
-                userId: matchedUser?.id ?? "",
+                user_id: matchedUser?.id ?? "",
             };
 
             update(index, resolved); // sinkronkan UI/state form
@@ -145,9 +146,13 @@ const WorkspaceMembersPage: React.FC = () => {
             return; // biarkan user perbaiki email yang salah
         }
 
-        const res = await addMembersToOrganization({
-            organizationId: id as string,
-            members: resolvedMembers, // pakai ini, bukan data.members
+        const res = await addMembersToWorkspace({
+            workspace_id: id as string,
+            members: resolvedMembers.map((m) => ({
+                workspace_id: m.workspace_id,
+                user_id: m.user_id,
+                role: m.role,
+            })),
         });
 
         if (res.error) {
@@ -174,8 +179,9 @@ const WorkspaceMembersPage: React.FC = () => {
                 id: editMember.id as string,
                 email: editMember.user.email ?? "",
                 role: editMember.role ?? "member",
-                userId: editMember.userId ?? "",
-                organizationId: editMember.organizationId ?? ""
+                user_id: editMember.user_id ?? "",
+                user: editMember.user ?? null,
+                workspace_id: editMember.workspace_id ?? ""
             });
         } else {
             reset();
@@ -334,13 +340,13 @@ const WorkspaceMembersPage: React.FC = () => {
                                     />
 
                                     <input
-                                        {...register(`members.${index}.organizationId` as const)}
-                                        placeholder="Org ID"
+                                        {...register(`members.${index}.workspace_id` as const)}
+                                        placeholder="Workspace ID"
                                         type="hidden"
                                     />
 
                                     <input
-                                        {...register(`members.${index}.userId` as const)}
+                                        {...register(`members.${index}.user_id` as const)}
                                         placeholder="User ID"
                                         type="hidden"
                                     />
@@ -374,9 +380,10 @@ const WorkspaceMembersPage: React.FC = () => {
                                     onClick={() => append({
                                         role: "member",
                                         id: "",
-                                        userId: "",
+                                        user_id: "",
+                                        user: null,
                                         email: "",
-                                        organizationId: id ?? ""
+                                        workspace_id: id ?? ""
                                     })}
                                 >
                                     <IonIcon icon={add} slot="start" />
@@ -404,8 +411,8 @@ const WorkspaceMembersPage: React.FC = () => {
                         role: 'destructive',
                         handler: async () => {
                             const { data, error } = await removeMember({
-                                organizationId: editMember?.organizationId ?? '',
-                                memberIdOrEmail: editMember?.id ?? '',
+                                workspace_id: editMember?.workspace_id ?? '',
+                                member_id: editMember?.id ?? '',
                             })
 
                             if (error) {
@@ -435,8 +442,8 @@ const WorkspaceMembersPage: React.FC = () => {
                         role: 'destructive',
                         handler: async () => {
                             const { data, error } = await removeMember({
-                                organizationId: editMember?.organizationId ?? '',
-                                memberIdOrEmail: editMember?.id ?? '',
+                                workspace_id: editMember?.workspace_id ?? '',
+                                member_id: editMember?.id ?? '',
                             })
 
                             if (error) {

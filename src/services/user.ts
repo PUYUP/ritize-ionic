@@ -22,7 +22,7 @@ export const userAPI = createApi({
                     return { error: { message: 'id or email must be provided' } };
                 }
 
-                let query = supabase.from('ritize_users').select('id, email');
+                let query = supabase.from('user').select('id, email');
 
                 if (id && email) {
                     query = query.or(`id.eq.${id},email.eq.${email}`);
@@ -53,7 +53,7 @@ export const userAPI = createApi({
                 const idList = ids?.map((v) => `"${v}"`).join(',');
                 const emailList = emails?.map((v) => `"${v}"`).join(',');
 
-                let query = supabase.from('ritize_users').select('id, email');
+                let query = supabase.from('user').select('id, email');
 
                 if (ids?.length && emails?.length) {
                     query = query.or(`id.in.(${idList}),email.in.(${emailList})`);

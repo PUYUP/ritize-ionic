@@ -1,7 +1,7 @@
 import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonPage, IonSelect, IonSelectOption, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from "@ionic/react";
-import { add, checkmarkOutline, close, closeOutline, logOutOutline, mailOutline, pencilOutline, settingsOutline, trashOutline } from "ionicons/icons";
+import { add, checkmarkOutline, close, closeOutline, logOutOutline, mailOutline, pencilOutline, settingsOutline, shieldOutline, trashOutline } from "ionicons/icons";
 import { useParams } from "react-router";
-import { useAddMembersToOrganizationMutation, useGetMembersByOrganizationIdQuery, useLazyGetSingleMemberByOrganizationIdAndUserIdQuery, useRemoveMemberMutation } from "../../../../services/member";
+import { useAddMembersToOrganizationMutation, useGetMembersByOrganizationIdQuery, useLazyGetSingleMemberByOrganizationIdAndUserIdQuery, useRemoveMemberMutation, useUpdateRoleMutation } from "../../../../services/member";
 import { useEffect, useRef, useState } from "react";
 import type { OverlayEventDetail } from '@ionic/core';
 import { Controller, useFieldArray, useForm } from "react-hook-form";
@@ -38,6 +38,7 @@ const WorkspaceMembersPage: React.FC = () => {
     });
     const [addMembersToOrganization, { isLoading: addingMembers }] = useAddMembersToOrganizationMutation();
     const [removeMember, { isLoading: removingMember }] = useRemoveMemberMutation();
+    const [updateRole, { isLoading: updatingRole }] = useUpdateRoleMutation();
 
     const modal = useRef<HTMLIonModalElement>(null);
     const formRef = useRef<HTMLFormElement>(null);
@@ -79,8 +80,19 @@ const WorkspaceMembersPage: React.FC = () => {
     // send data to server
     // ...
     const onSubmit = async (data: FormValues) => {
-        const emails = data.members.map((m) => m.email.trim().toLowerCase());
+        // update role
+        if (editMember && data.members.length > 0) {
+            await updateRole({
+                memberId: editMember.id as string,
+                organizationId: editMember.organizationId as string,
+                role: data.members[0].role,
+            });
 
+            modal.current?.dismiss({ role: 'submit' });
+            return;
+        }
+
+        const emails = data.members.map((m) => m.email.trim().toLowerCase());
         const { data: usersData, error } = await getUsers({ emails });
 
         if (error) {
@@ -242,9 +254,9 @@ const WorkspaceMembersPage: React.FC = () => {
                                 color="success"
                                 shape="round"
                                 onClick={() => handleSubmit(onSubmit)()}
-                                disabled={addingMembers || gettingUsers}
+                                disabled={addingMembers || gettingUsers || updatingRole}
                             >
-                                {!addingMembers && !gettingUsers ? (
+                                {!addingMembers && !gettingUsers && !updatingRole ? (
                                     <IonIcon icon={checkmarkOutline} />
                                 ) : (
                                     <IonSpinner name="crescent" className="text-xl" />
@@ -275,6 +287,7 @@ const WorkspaceMembersPage: React.FC = () => {
                                                 fill="outline"
                                                 className="ion-margin-bottom small-input"
                                                 type="email"
+                                                disabled={editMember !== null}
                                             >
                                                 <IonIcon slot="start" icon={mailOutline} aria-hidden="true"></IonIcon>
                                             </IonInput>
@@ -427,8 +440,8 @@ const WorkspaceMembersPage: React.FC = () => {
                 header="Member Actions"
                 buttons={[
                     {
-                        text: 'Edit',
-                        icon: pencilOutline,
+                        text: 'Change Role',
+                        icon: shieldOutline,
                         data: {
                             action: 'edit',
                         },

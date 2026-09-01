@@ -134,6 +134,32 @@ export const memberAPI = createApi({
         }),
 
         // ...
+        // Update member role
+        // ...
+        updateRole: builder.mutation<void, { memberId: string, organizationId: string, role: MemberTypes['role'] }>({
+            queryFn: async ({ memberId, organizationId, role }) => {
+                const { data, error } = await authClient.organization.updateMemberRole({
+                    memberId: memberId,
+                    organizationId: organizationId,
+                    role: role,
+                });
+
+                if (error) {
+                    return { error: { message: error.message ?? 'Failed to update member' } };
+                }
+
+                const serialized = JSON.parse(JSON.stringify({ ...data }));
+
+                return { data: serialized };
+            },
+            invalidatesTags: (result, error, { memberId, organizationId }) => [
+                { type: 'Member', id: organizationId },
+                { type: 'Organization', id: 'LIST' },
+                { type: 'Organization', id: organizationId },
+            ],
+        }),
+
+        // ...
         // Get single member
         // ...
         getSingleMemberByOrganizationIdAndUserId: builder.query<MemberTypes, { organizationId: string, userId: string }>({
@@ -182,6 +208,7 @@ export const {
     useGetMembersByOrganizationIdQuery,
     useAddMembersToOrganizationMutation,
     useRemoveMemberMutation,
+    useUpdateRoleMutation,
     useGetSingleMemberByOrganizationIdAndUserIdQuery,
     useLazyGetSingleMemberByOrganizationIdAndUserIdQuery
 } = memberAPI;

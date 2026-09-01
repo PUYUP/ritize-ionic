@@ -57,7 +57,7 @@ const WorkspaceDetailPage: React.FC = () => {
                 <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                     <div className='ion-padding'>
                         <div className='flex items-start mb-4'>
-                            <div className='block'>
+                            <div className='block ion-padding-end'>
                                 <div className='block'>
                                     <IonText className='text-lg font-semibold leading-4'>{workspace.name || 'Workspace Detail'}</IonText>
                                 </div>

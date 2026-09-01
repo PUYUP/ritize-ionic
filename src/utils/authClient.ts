@@ -8,7 +8,7 @@ let cachedToken: string | null = null;
 export const authClient = createAuthClient({
     baseURL: "https://auth.atlanize.com", // The base URL of your auth server
     plugins: [
-        organizationClient()
+        organizationClient(),
     ],
     fetchOptions: {
         credentials: "include",

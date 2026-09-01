@@ -3,7 +3,7 @@ import { useParams } from 'react-router';
 import './Home.css';
 import StartNote from '../../../components/startnote/StartNote';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
-import { addCircleOutline, arrowForwardOutline, chevronForwardCircleOutline, chevronForwardOutline } from 'ionicons/icons';
+import { add, addCircleOutline, arrowForwardOutline, chevronForwardCircleOutline, chevronForwardOutline } from 'ionicons/icons';
 import { getGreeting } from '../../../utils/dayGreeting';
 import WorkspaceStats from '../../../components/workspace-stats/WorkspaceStats';
 import { useEffect, useState } from 'react';
@@ -57,29 +57,39 @@ const HomePage: React.FC = () => {
                     />
                 </div> */}
 
-                <div className='ion-padding !pr-1'>
+                <div className='ion-padding'>
                     <div className='block mb-3 text-lg flex items-center justify-between'>
                         <IonText>My Workspaces</IonText>
-                        <IonButton fill="clear" aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
-                            <IonIcon icon={addCircleOutline} className='text-2xl' />
-                        </IonButton>
+                        <div className='ml-auto'>
+                            <IonButton fill="outline" size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
+                                <IonIcon icon={add} slot='icon-only' className='text-xl' />
+                            </IonButton>
+                        </div>
                     </div>
 
-                    {isLoading || !workspaces || workspaces.length === 0 ? (
+                    {isLoading ? (
                         <div className='flex flex-col items-center justify-center gap-4'>
                             <IonSpinner name="crescent" />
                             <IonText>Loading data...</IonText>
                         </div>
                     ) : (
-                        <WorkspaceList items={workspaces} />
+                        !workspaces || workspaces.length === 0 ? (
+                            <div className='flex flex-col items-center justify-center gap-4 bg-red-100 rounded-lg border border-red-200 ion-padding'>
+                                <IonText className='text-center text-xs'>No workspaces found. Create one to get started.</IonText>
+                            </div>
+                        ) : (
+                            <>
+                                <WorkspaceList items={workspaces} />
+                                <div className='mt-4 text-center'>
+                                    <IonButton fill='clear' mode='ios'>
+                                        <IonText>View all</IonText>
+                                        <IonIcon icon={arrowForwardOutline} size='small' className='ml-2' />
+                                    </IonButton>
+                                </div>
+                            </>
+                        )
                     )}
 
-                    <div className='mt-4 text-center'>
-                        <IonButton fill='clear' mode='ios'>
-                            <IonText>View all</IonText>
-                            <IonIcon icon={arrowForwardOutline} size='small' className='ml-2' />
-                        </IonButton>
-                    </div>
                 </div>
             </IonContent>
         </IonPage>

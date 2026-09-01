@@ -118,9 +118,10 @@ export const organizationAPI = createApi({
                     .from('ba_organizations')
                     .select(`
                         *,
-                        members:ba_organization_members!inner(*)
+                        membersInside:ba_organization_members!inner(*),
+                        memberCount:ba_organization_members(count)
                     `)
-                    .eq('members.userId', user.id)
+                    .eq('membersInside.userId', user.id)
                     .order('createdAt', { ascending: false })
                     .limit(10);
 
@@ -131,7 +132,7 @@ export const organizationAPI = createApi({
                     return JSON.parse(JSON.stringify({
                         ...org,
                         metadata,
-                        memberCount: org.members?.length,
+                        memberCount: org.memberCount?.[0]?.count || 0,
                     }));
                 });
 

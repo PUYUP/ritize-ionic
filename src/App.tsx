@@ -63,7 +63,7 @@ const App: React.FC = () => {
           mode: 'online',
         }
       });
-    })()
+    })();
   }, []);
 
   return (

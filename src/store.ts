@@ -1,16 +1,19 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { organizationAPI } from './services/organization'
 import { memberAPI } from './services/member'
+import { userAPI } from './services/user'
 
 export const store = configureStore({
     reducer: {
         [organizationAPI.reducerPath]: organizationAPI.reducer,
         [memberAPI.reducerPath]: memberAPI.reducer,
+        [userAPI.reducerPath]: userAPI.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(
             organizationAPI.middleware,
-            memberAPI.middleware
+            memberAPI.middleware,
+            userAPI.middleware,
         ),
 })
 

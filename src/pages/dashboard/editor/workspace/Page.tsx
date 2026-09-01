@@ -125,6 +125,7 @@ const WorkspaceEditorPage: React.FC = () => {
                                     placeholder="Enter workspace name"
                                     labelPlacement="floating"
                                     fill="outline"
+                                    rows={1}
                                 >
                                     <IonIcon slot="start" icon={briefcaseOutline} aria-hidden="true"></IonIcon>
                                 </IonTextarea>
@@ -142,7 +143,6 @@ const WorkspaceEditorPage: React.FC = () => {
                                 <IonRadioGroup value={value} onIonChange={(e) => onChange(e.detail.value)}>
                                     <IonList className='ion-no-padding'>
                                         <IonItemDivider>
-                                            {value}
                                             <IonLabel>Select a workspace scope</IonLabel>
                                         </IonItemDivider>
 

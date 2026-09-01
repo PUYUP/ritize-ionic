@@ -7,6 +7,7 @@ import NoteList from '../../../../components/note-list/NoteList';
 import { useParams } from 'react-router';
 import { useDeleteOrganizationMutation, useGetOrganizationByIdQuery } from '../../../../services/organization';
 import { useState } from 'react';
+import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 
 interface RouteParams {
     id?: string
@@ -19,7 +20,7 @@ const WorkspaceDetailPage: React.FC = () => {
     const { id } = useParams<RouteParams>();
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [deleteOrganization, { isLoading: deleting }] = useDeleteOrganizationMutation();
-    const { data: workspace, error, isLoading } = useGetOrganizationByIdQuery(id ?? "", {
+    const { data: workspace, error, isLoading } = useGetWorkspaceByIdQuery(id ?? "", {
         skip: !id,
     });
 
@@ -59,7 +60,7 @@ const WorkspaceDetailPage: React.FC = () => {
                         <div className='flex items-start mb-4'>
                             <div className='block ion-padding-end'>
                                 <div className='block'>
-                                    <IonText className='text-lg font-semibold leading-4'>{workspace.name || 'Workspace Detail'}</IonText>
+                                    <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Workspace Detail'}</IonText>
                                 </div>
 
                                 <div className='text-base text-neutral-700'>
@@ -67,7 +68,7 @@ const WorkspaceDetailPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {workspace.metadata.scope === 'group' && (
+                            {workspace.scope === 'group' && (
                                 <div className='ml-auto flex items-start'>
                                     <div
                                         onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}
@@ -76,7 +77,7 @@ const WorkspaceDetailPage: React.FC = () => {
                                         <div className='flex items-center justify-between w-full'>
                                             <div className='flex items-center gap-1'>
                                                 <IonIcon icon={personCircleOutline} className='text-xl text-[#424242] mt-[1px]' />
-                                                <IonText className='text-lg text-[#383838] font-semibold'>{workspace.members?.length || 0}</IonText>
+                                                <IonText className='text-lg text-[#383838] font-semibold'>{workspace.memberCount || 0}</IonText>
                                             </div>
                                             <IonIcon icon={chevronForwardOutline} className='text-xl text-[#424242] mt-[1px]' />
                                         </div>

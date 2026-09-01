@@ -115,11 +115,11 @@ export const organizationAPI = createApi({
             queryFn: async () => {
                 const user = await getUser();
                 const { data, error } = await supabase
-                    .from('ba_organizations')
+                    .from('ritize_organizations')
                     .select(`
                         *,
-                        membersInside:ba_organization_members!inner(*),
-                        memberCount:ba_organization_members(count)
+                        membersInside:ritize_organization_members!inner(*),
+                        memberCount:ritize_organization_members(count)
                     `)
                     .eq('membersInside.userId', user.id)
                     .order('createdAt', { ascending: false })

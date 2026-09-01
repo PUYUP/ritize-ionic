@@ -28,21 +28,25 @@ const Page: React.FC = () => {
             </h1>
 
             <div className='block text-center mt-8 mb-6'>
-              <IonButton
-                routerLink="/oauth-google"
-                color={'dark'}
-                mode={'ios'}
-                shape='round'
-                className='items-center gap-3'
-              >
-                <IonIcon slot='start' icon={logoGoogle} />
-                <IonText className='ml-2'>Continue with Google</IonText>
-              </IonButton>
+              <div className='block text-center'>
+                <IonButton
+                  routerLink="/oauth-google"
+                  color={'dark'}
+                  mode={'ios'}
+                  shape='round'
+                  className='items-center gap-3'
+                >
+                  <IonIcon slot='start' icon={logoGoogle} />
+                  <IonText className='ml-2'>Continue with Google</IonText>
+                </IonButton>
+              </div>
 
-              <IonButton color={'primary'} fill="clear" mode={'ios'} shape='round' className='items-center gap-3 mt-4'>
-                <IonIcon slot='start' icon={mailOutline} />
-                <IonText className='ml-2'>Use an Email</IonText>
-              </IonButton>
+              <div className='block text-center mt-4'>
+                <IonButton color={'primary'} fill="clear" mode={'ios'} shape='round' className='items-center gap-3'>
+                  <IonIcon slot='start' icon={mailOutline} />
+                  <IonText className='ml-2'>Use an Email</IonText>
+                </IonButton>
+              </div>
             </div>
           </div>
         </div>

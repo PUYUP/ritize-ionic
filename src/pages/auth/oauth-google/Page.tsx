@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { authClient } from '../../../utils/authClient';
 import { Preferences } from '@capacitor/preferences';
+import { supabase } from '../../../utils/supabaseClient';
 
 const enum Status {
     INIT = "init",
@@ -72,25 +73,44 @@ const OAuthGooglePage: React.FC = () => {
             ) {
                 console.log("Google OAuth Response", res);
 
-                const { data, error } = await authClient.signIn.social({
-                    provider: "google",
-                    disableRedirect: true,
-                    idToken: {
-                        token: res.result.idToken,
-                        accessToken: res.result.accessToken?.token,
-                    }
-                });
+                const { data, error } = await supabase.auth.signInWithIdToken({
+                    provider: 'google',
+                    token: res.result.idToken,
+                    nonce: rawNonce,
+                })
 
                 if (error) throw error;
 
-                console.log("authClient.signIn.social Response", data);
+                console.log("supabase.auth.signInWithIdToken Response", data);
 
                 // save user
                 if ('user' in data) {
                     await Preferences.set({
                         key: 'ritize_user',
-                        value: JSON.stringify(data.user)
+                        value: JSON.stringify(data.user?.user_metadata)
                     });
+
+                    await Preferences.set({
+                        key: 'ritize_session',
+                        value: JSON.stringify(data.session),
+                    });
+
+                    // update name inside user table
+                    const { data: userData, error: userError } = await supabase
+                        .from('user')
+                        .upsert({
+                            name: data.user?.user_metadata.full_name,
+                            email: data.user?.user_metadata.email,
+                        }, { onConflict: 'email' })
+                        .select()
+                        .single();
+
+                    if (userData) {
+                        await Preferences.set({
+                            key: 'ritize_user',
+                            value: JSON.stringify(userData)
+                        });
+                    }
                 }
 
                 // redirect to dashboard
@@ -98,7 +118,6 @@ const OAuthGooglePage: React.FC = () => {
                     ionRouter.push('/dashboard', 'forward', 'push');
                     setStatus(Status.SIGNIN_SUCCESS);
                 }, 2000);
-
             }
         } catch (error) {
             console.error(error);

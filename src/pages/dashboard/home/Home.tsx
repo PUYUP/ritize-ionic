@@ -10,10 +10,22 @@ import { useEffect, useState } from 'react';
 import { getUser } from '../../../utils/authState';
 import { supabase } from '../../../utils/supabaseClient';
 import { useGetAllOrganizationsQuery } from '../../../services/organization';
+import { useGetAllWorkspacesQuery } from '../../../services/workspace';
 
 const HomePage: React.FC = () => {
     const { name = '' } = useParams<{ name: string; }>();
-    const { data: workspaces, isLoading } = useGetAllOrganizationsQuery();
+    const { data: workspaces, isLoading } = useGetAllWorkspacesQuery();
+    const [user, setUser] = useState<any>(null);
+
+    useEffect(() => {
+        async function fetchUser() {
+            const currUser = await getUser();
+            if (currUser) {
+                setUser(currUser);
+            }
+        }
+        fetchUser();
+    }, []);
 
     return (
         <IonPage>
@@ -29,7 +41,7 @@ const HomePage: React.FC = () => {
             <IonContent fullscreen>
                 <div className='ion-padding'>
                     <div className='block mb-1 leading-3 text-lg'>
-                        <IonText>{getGreeting({ locale: 'en' })}, <strong>Rahman</strong></IonText>
+                        <IonText>{getGreeting({ locale: 'en' })}, <strong>{user?.name}</strong></IonText>
                     </div>
                     {/* <div className='text-base mb-4 text-neutral-800'>
                         <IonText>Start your notes...</IonText>

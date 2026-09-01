@@ -8,6 +8,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import './Page.css';
 import { useLazyGetUsersQuery } from "../../../../services/user";
 import { getUser } from "../../../../utils/authState";
+import { useGetMembersByWorkspaceIdQuery, useLazyGetMemberFromWorkspaceQuery } from "../../../../services/workspace.member";
 
 interface RouteParams {
     id?: string;
@@ -31,9 +32,9 @@ const WorkspaceMembersPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const [getSingleMember] = useLazyGetSingleMemberByOrganizationIdAndUserIdQuery();
+    const [getSingleMember] = useLazyGetMemberFromWorkspaceQuery();
     const [getUsers, { isLoading: gettingUsers }] = useLazyGetUsersQuery();
-    const { data: memberData, error, isLoading } = useGetMembersByOrganizationIdQuery(id ?? "", {
+    const { data: memberData, error, isLoading } = useGetMembersByWorkspaceIdQuery(id ?? "", {
         skip: !id,
     });
     const [addMembersToOrganization, { isLoading: addingMembers }] = useAddMembersToOrganizationMutation();
@@ -63,7 +64,15 @@ const WorkspaceMembersPage: React.FC = () => {
     // ...
     // members form builder
     // ...
-    const { register, control, handleSubmit, setError, clearErrors, reset, formState: { errors } } = useForm<FormValues>({
+    const {
+        register,
+        control,
+        handleSubmit,
+        setError,
+        clearErrors,
+        reset,
+        formState: { errors, isValid }
+    } = useForm<FormValues>({
         defaultValues: {
             members: [{ role: "member", userId: "", email: "", organizationId: id ?? "" }],
         },
@@ -88,6 +97,7 @@ const WorkspaceMembersPage: React.FC = () => {
                 role: data.members[0].role,
             });
 
+            reset();
             modal.current?.dismiss({ role: 'submit' });
             return;
         }
@@ -122,6 +132,10 @@ const WorkspaceMembersPage: React.FC = () => {
                 clearErrors(`members.${index}.email`);
             } else {
                 hasNotFound = true;
+                setError(`members.${index}.email`, {
+                    type: "error",
+                    message: "Email " + email + " is not registered.",
+                });
             }
 
             return resolved;
@@ -147,6 +161,7 @@ const WorkspaceMembersPage: React.FC = () => {
             return;
         }
 
+        reset();
         modal.current?.dismiss({ role: 'submit' });
     };
 
@@ -171,7 +186,7 @@ const WorkspaceMembersPage: React.FC = () => {
         (async () => {
             const user = await getUser();
 
-            const { data, error } = await getSingleMember({ organizationId: id as string, userId: user.id });
+            const { data, error } = await getSingleMember({ workspace_id: id as string, user_id: user.id });
             if (data) setCurrentUser(data);
         })();
     }, []);
@@ -201,7 +216,7 @@ const WorkspaceMembersPage: React.FC = () => {
                     </div>
                 ) : (
                     <IonList lines="none">
-                        {memberData?.members?.map((member) => (
+                        {memberData?.results?.map((member) => (
                             <IonItem key={member?.id} className="ion-no-padding" style={{ '--inner-padding-end': '0px', '--min-height': '68px' }}>
                                 <IonLabel>
                                     {member?.user?.name}
@@ -210,7 +225,7 @@ const WorkspaceMembersPage: React.FC = () => {
                                 </IonLabel>
                                 <div slot="end" className="flex items-center gap-2">
                                     <IonButtons className="gap-2">
-                                        {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.userId === member.userId && (
+                                        {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.userId === member.user_id && (
                                             <IonButton fill="clear" onClick={() => {
                                                 setEditMember(member);
                                                 setShowLeaveAlert(true);
@@ -254,7 +269,7 @@ const WorkspaceMembersPage: React.FC = () => {
                                 color="success"
                                 shape="round"
                                 onClick={() => handleSubmit(onSubmit)()}
-                                disabled={addingMembers || gettingUsers || updatingRole}
+                                disabled={addingMembers || gettingUsers || updatingRole || !isValid}
                             >
                                 {!addingMembers && !gettingUsers && !updatingRole ? (
                                     <IonIcon icon={checkmarkOutline} />
@@ -331,9 +346,11 @@ const WorkspaceMembersPage: React.FC = () => {
                                     />
 
                                     {errors.members?.[index]?.email?.type === "error" && (
-                                        <IonText color="danger" className="ion-text-sm">
-                                            {errors.members[index]?.email?.message}
-                                        </IonText>
+                                        <div className="mt-2">
+                                            <IonText color="danger" className="ion-text-sm">
+                                                {errors.members[index]?.email?.message}
+                                            </IonText>
+                                        </div>
                                     )}
 
                                     {!editMember && (

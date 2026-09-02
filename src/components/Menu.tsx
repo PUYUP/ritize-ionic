@@ -29,7 +29,7 @@ const appPages: AppPage[] = [
     mdIcon: homeOutline
   },
   {
-    title: 'Workspaces',
+    title: 'My Workspaces',
     url: '/dashboard/workspace',
     iosIcon: briefcaseOutline,
     mdIcon: briefcaseOutline

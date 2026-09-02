@@ -90,7 +90,7 @@ const HomePage: React.FC = () => {
                             <>
                                 <WorkspaceList items={workspaces} />
                                 <div className='mt-4 text-center'>
-                                    <IonButton fill='clear' mode='ios'>
+                                    <IonButton fill='clear' mode='ios' routerLink='/dashboard/workspace'>
                                         <IonText>View all</IonText>
                                         <IonIcon icon={arrowForwardOutline} size='small' className='ml-2' />
                                     </IonButton>

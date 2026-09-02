@@ -155,7 +155,12 @@ const WorkspaceDetailPage: React.FC = () => {
                         handler: async () => {
                             if (!id) return;
                             await deleteWorkspace({ id });
-                            ionRouter.push("/dashboard", "back", "pop");
+
+                            if (ionRouter.canGoBack()) {
+                                ionRouter.goBack();
+                            } else {
+                                ionRouter.push("/dashboard", "back", "pop");
+                            }
                         },
                     },
                 ]}

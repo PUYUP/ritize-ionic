@@ -32,6 +32,18 @@ import { useSearchParams } from 'react-router-dom';
 
 const AUTOSAVE_DELAY_MS = 1500;
 
+function isDeltaEmpty(delta: Delta | null | undefined): boolean {
+    if (!delta || !Array.isArray(delta.ops) || delta.ops.length === 0) {
+        return true;
+    }
+
+    const text = delta.ops
+        .map(op => (typeof op.insert === "string" ? op.insert : ""))
+        .join("");
+
+    return text.trim().length === 0;
+}
+
 const RichTextEditorPage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
@@ -57,7 +69,7 @@ const RichTextEditorPage: React.FC = () => {
     const prevPagesLengthRef = useRef(pages.length);
 
     // TODO: load real content (API call, Capacitor Preferences, IndexedDB…)
-    const [initialContent, setInitialContent] = useState<Delta | undefined>(undefined);
+    const [initialContent, setInitialContent] = useState<Delta | null>(null);
 
     const persist = useCallback(async () => {
         const quill = quillRef.current;
@@ -65,11 +77,11 @@ const RichTextEditorPage: React.FC = () => {
         setIsSaving(true);
         try {
             const delta = quill.getContents();
+            const contentEmpty = isDeltaEmpty(delta);
             const bufferData = Buffer.from(JSON.stringify(delta), 'utf-8');
-            console.log('saved!');
 
             if (selectedPage) {
-                await NotesRepository.updatePage(selectedPage.id as string, { contentData: bufferData });
+                await NotesRepository.updatePage(selectedPage.id as string, { contentData: contentEmpty ? null : bufferData });
                 console.log('selected page id: ', selectedPage.id, ' is updated');
 
                 // GUNAKAN CARA INI (Functional Update)
@@ -477,7 +489,7 @@ const RichTextEditorPage: React.FC = () => {
                             const nextActiveIndex = Math.min(activeIndex, filtered.length - 1);
 
                             // delete page from db
-                            await NotesRepository.deletePage(pages[activeIndex].id);
+                            await NotesRepository.deletePage(pages[activeIndex].id, pages[activeIndex].syncedId);
 
                             // re-index all pages
                             const reindexed = filtered.map((p, idx) => ({

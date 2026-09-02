@@ -149,7 +149,7 @@ export const notesAPI = createApi({
                 if (!body.workspace_id) return { error: { message: "Workspace ID is required" } };
                 if (!body.workspace_note_id) return { error: { message: "Workspace Note ID is required" } };
                 if (body.page_num === undefined || body.page_num === null) return { error: { message: "Page number is required" } };
-                if (!body.content_data) return { error: { message: "Content data is required" } };
+                // if (!body.content_data) return { error: { message: "Content data is required" } };
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")
@@ -183,7 +183,7 @@ export const notesAPI = createApi({
                 if (!body.workspace_id) return { error: { message: "Workspace ID is required" } };
                 if (!body.workspace_note_id) return { error: { message: "Workspace Note ID is required" } };
                 if (body.page_num === undefined || body.page_num === null) return { error: { message: "Page number is required" } };
-                if (!body.content_data) return { error: { message: "Content data is required" } };
+                // if (!body.content_data) return { error: { message: "Content data is required" } };
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")
@@ -224,7 +224,7 @@ export const notesAPI = createApi({
                     if (!page.workspace_id) return { error: { message: `Workspace ID is required (page id: ${page.id})` } };
                     if (!page.workspace_note_id) return { error: { message: `Workspace Note ID is required (page id: ${page.id})` } };
                     if (page.page_num === undefined || page.page_num === null) return { error: { message: `Page number is required (page id: ${page.id})` } };
-                    if (!page.content_data) return { error: { message: `Content data is required (page id: ${page.id})` } };
+                    // if (!page.content_data) return { error: { message: `Content data is required (page id: ${page.id})` } };
                 }
 
                 const payload = pages.map((page) => ({
@@ -249,6 +249,22 @@ export const notesAPI = createApi({
             },
             invalidatesTags: [{ type: 'NotePages', id: 'LIST' }],
         }),
+
+        // ...
+        // Delete note page
+        // ...
+        deleteNotePage: builder.mutation<void, { synced_id: string }>({
+            queryFn: async ({ synced_id }) => {
+                const { error } = await supabase
+                    .from("workspace_notes_pages")
+                    .delete()
+                    .eq("synced_id", synced_id);
+
+                if (error) return { error: { message: error.message } };
+                return { data: undefined };
+            },
+            invalidatesTags: [{ type: 'NotePages', id: 'LIST' }],
+        })
     })
 });
 

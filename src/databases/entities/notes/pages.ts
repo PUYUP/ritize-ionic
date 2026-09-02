@@ -38,7 +38,7 @@ export class Page {
                 value ? Buffer.from(value, 'base64') : null,
         },
     })
-    contentData!: Buffer;
+    contentData!: Buffer | null;
 
     @ManyToOne(() => Note, note => note.pages, {
         eager: false,

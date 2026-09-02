@@ -133,8 +133,12 @@ class NotesRepository {
         await this.saveWebStore();
 
         if (savedPage) {
-            const decoder = new TextDecoder('utf-8');
-            const jsonString = decoder.decode(savedPage.contentData);
+            let objString = null;
+            if (savedPage.contentData) {
+                const decoder = new TextDecoder('utf-8');
+                const jsonString = decoder.decode(savedPage.contentData);
+                objString = jsonString ? JSON.parse(jsonString) : {};
+            }
 
             store
                 .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
@@ -145,7 +149,7 @@ class NotesRepository {
                         workspace_note_id: savedPage.workspaceNoteId,
                         synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
                         synced_id: savedPage.syncedId,
-                        content_data: new Blob([jsonString], { type: 'application/octet-stream' }),
+                        content_data: objString,
                         page_num: savedPage.pageNum,
                     }
                 }))
@@ -181,9 +185,12 @@ class NotesRepository {
         const savedPage = await this.getPageById(pageId);
 
         if (savedPage) {
-            const decoder = new TextDecoder('utf-8');
-            const jsonString = decoder.decode(savedPage.contentData);
-            const objString = jsonString ? JSON.parse(jsonString) : {};
+            let objString = null;
+            if (savedPage.contentData) {
+                const decoder = new TextDecoder('utf-8');
+                const jsonString = decoder.decode(savedPage.contentData);
+                objString = jsonString ? JSON.parse(jsonString) : {};
+            }
 
             store
                 .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
@@ -227,9 +234,18 @@ class NotesRepository {
     }
 
     /** Hapus 1 halaman Page */
-    async deletePage(pageId: string): Promise<boolean> {
+    async deletePage(pageId: string, syncedId: string | null = null): Promise<boolean> {
         const result = await this.pageRepo.delete(pageId);
         await this.saveWebStore();
+
+        if (syncedId) {
+            store
+                .dispatch(notesAPI.endpoints.deleteNotePage.initiate({
+                    synced_id: syncedId,
+                }))
+                .unwrap();
+        }
+
         return (result.affected ?? 0) > 0;
     }
 }

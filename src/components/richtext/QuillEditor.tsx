@@ -7,7 +7,7 @@ export type ImageUploadHandler = (file: File) => Promise<string>;
 
 export interface QuillEditorProps {
     readOnly?: boolean;
-    defaultValue?: Delta;
+    defaultValue?: Delta | null;
     placeholder?: string;
     toolbarOptions?: unknown[];
     onTextChange?: (delta: Delta, oldDelta: Delta, source: EmitterSource, quill: Quill) => void;

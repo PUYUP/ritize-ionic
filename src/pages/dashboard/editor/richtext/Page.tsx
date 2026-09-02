@@ -315,7 +315,7 @@ const RichTextEditorPage: React.FC = () => {
         return entity;
     }
 
-    const createPage = async (note: Partial<Note>, pageNum: number) => {
+    const createPage = async (note: Partial<Note>, pageNum: number): Promise<Page> => {
         const entity = await NotesRepository.addPage({ id: note.id }, {
             pageNum: pageNum,
             isActive: true,

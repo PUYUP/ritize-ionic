@@ -5,9 +5,8 @@ import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
 import { useParams } from 'react-router';
-import { useDeleteOrganizationMutation, useGetOrganizationByIdQuery } from '../../../../services/organization';
 import { useState } from 'react';
-import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
+import { useDeleteWorkspaceMutation, useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 
 interface RouteParams {
     id?: string
@@ -19,10 +18,8 @@ const WorkspaceDetailPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-    const [deleteOrganization, { isLoading: deleting }] = useDeleteOrganizationMutation();
-    const { data: workspace, error, isLoading } = useGetWorkspaceByIdQuery(id ?? "", {
-        skip: !id,
-    });
+    const [deleteWorkspace, { isLoading: deleting }] = useDeleteWorkspaceMutation();
+    const { data: workspace, error, isLoading } = useGetWorkspaceByIdQuery(id ?? "", { skip: !id });
 
     if (isLoading || !workspace) {
         return (
@@ -157,7 +154,7 @@ const WorkspaceDetailPage: React.FC = () => {
                         role: 'destructive',
                         handler: async () => {
                             if (!id) return;
-                            await deleteOrganization({ id });
+                            await deleteWorkspace({ id });
                             ionRouter.push("/dashboard", "back", "pop");
                         },
                     },

@@ -6,9 +6,10 @@ import { authClient } from '../../../../utils/authClient';
 import { useEffect } from 'react';
 import { useParams } from 'react-router';
 import { useCreateOrganizationMutation, useGetOrganizationByIdQuery, useUpdateOrganizationMutation } from '../../../../services/organization';
+import { useCreateWorkspaceMutation, useGetWorkspaceByIdQuery, useUpdateWorkspaceMutation } from '../../../../services/workspace';
 
 type Inputs = {
-    name: string
+    title: string
     scope: 'personal' | 'group'
 }
 
@@ -20,11 +21,9 @@ interface RouteParams {
 const WorkspaceEditorPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
-    const [updateOrganization, { isLoading: updating }] = useUpdateOrganizationMutation();
-    const [createOrganization, { isLoading: creating }] = useCreateOrganizationMutation();
-    const { data: workspace, error, isLoading, isSuccess } = useGetOrganizationByIdQuery(id ?? "", {
-        skip: !id,
-    });
+    const [updateWorkspace, { isLoading: updating }] = useUpdateWorkspaceMutation();
+    const [createWorkspace, { isLoading: creating }] = useCreateWorkspaceMutation();
+    const { data: workspace, error, isLoading, isSuccess } = useGetWorkspaceByIdQuery(id ?? "", { skip: !id });
 
     const {
         control,
@@ -35,19 +34,17 @@ const WorkspaceEditorPage: React.FC = () => {
         reset,
     } = useForm<Inputs>({
         mode: 'onChange',
-        defaultValues: { name: '', scope: 'personal' },
+        defaultValues: { title: '', scope: 'personal' },
     });
 
     const onSubmit: SubmitHandler<Inputs> = async (values) => {
         if (workspace) {
             // update workspace
-            const { data, error } = await updateOrganization({
+            const { data, error } = await updateWorkspace({
                 id: workspace.id,
                 data: {
-                    name: values.name,
-                    metadata: {
-                        scope: values.scope,
-                    },
+                    title: values.title,
+                    scope: values.scope,
                 },
             });
 
@@ -62,11 +59,9 @@ const WorkspaceEditorPage: React.FC = () => {
         }
 
         // create workspace
-        const { data, error } = await createOrganization({
-            name: values.name,
-            metadata: {
-                scope: values.scope,
-            },
+        const { data, error } = await createWorkspace({
+            title: values.title,
+            scope: values.scope,
         });
 
         if (error) return;
@@ -87,8 +82,8 @@ const WorkspaceEditorPage: React.FC = () => {
         if (!workspace || !isSuccess) return;
 
         (async () => {
-            setValue('name', workspace.name);
-            setValue('scope', workspace.metadata.scope);
+            setValue('title', workspace.title);
+            setValue('scope', workspace.scope);
             await trigger();
         })();
     }, [workspace, isSuccess, setValue, trigger]);
@@ -110,7 +105,7 @@ const WorkspaceEditorPage: React.FC = () => {
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <div className='block ion-margin-bottom'>
                         <Controller
-                            name="name"
+                            name="title"
                             control={control}
                             rules={{ required: true }}
                             render={({ field: { onChange, onBlur, value, ref } }) => (
@@ -131,7 +126,7 @@ const WorkspaceEditorPage: React.FC = () => {
                                 </IonTextarea>
                             )}
                         />
-                        {errors.name && <IonText color="danger" className='text-xs mt-2'>Name is required</IonText>}
+                        {errors.title && <IonText color="danger" className='text-xs mt-2'>Name is required</IonText>}
                     </div>
 
                     <div className='block'>

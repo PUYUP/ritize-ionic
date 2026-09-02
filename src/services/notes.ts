@@ -54,9 +54,9 @@ export const notesAPI = createApi({
         insertNote: builder.mutation<NoteTypes, { body: Partial<NoteTypes> }>({
             queryFn: async ({ body }) => {
                 const user = await getUser();
-                if (!user?.id) return { error: { message: "User not found" } };
-                if (!body.workspace_id) return { error: { message: "Workspace ID is required" } };
-                if (!body.content_type) return { error: { message: "Content type is required" } };
+                if (!user?.id) return { error: { message: "[Insert Note] User not found" } };
+                if (!body.workspace_id) return { error: { message: "[Insert Note] Workspace ID is required" } };
+                if (!body.content_type) return { error: { message: "[Insert Note] Content type is required" } };
 
                 const { data, error } = await supabase
                     .from("workspace_notes")
@@ -85,10 +85,10 @@ export const notesAPI = createApi({
         upsertNote: builder.mutation<NoteTypes, { body: Partial<NoteTypes> }>({
             queryFn: async ({ body }) => {
                 const user = await getUser();
-                if (!user?.id) return { error: { message: "User not found" } };
-                if (!body.id) return { error: { message: "Note ID is required for upsert" } };
-                if (!body.workspace_id) return { error: { message: "Workspace ID is required" } };
-                if (!body.content_type) return { error: { message: "Content type is required" } };
+                if (!user?.id) return { error: { message: "[Upsert Note] User not found" } };
+                if (!body.id) return { error: { message: "[Upsert Note] Note ID is required for upsert" } };
+                if (!body.workspace_id) return { error: { message: "[Upsert Note] Workspace ID is required" } };
+                if (!body.content_type) return { error: { message: "[Upsert Note] Content type is required" } };
 
                 const { data, error } = await supabase
                     .from("workspace_notes")
@@ -104,7 +104,7 @@ export const notesAPI = createApi({
                             synced_id: body.synced_id,
                             synced_at: body.synced_at,
                         },
-                        { onConflict: "synced_id" }
+                        { onConflict: "id" }
                     )
                     .select()
                     .single();
@@ -144,7 +144,7 @@ export const notesAPI = createApi({
 
                 const { data, error } = await supabase
                     .from("workspace_notes")
-                    .upsert(payload, { onConflict: "synced_id" })
+                    .upsert(payload, { onConflict: "id" })
                     .select();
 
                 if (error) return { error: { message: error.message } };
@@ -180,8 +180,8 @@ export const notesAPI = createApi({
         getNotesByWorkspaceId: builder.query<PaginatedNotesResponse, GetNotesByWorkspaceIdParams>({
             queryFn: async ({ workspace_id, page = 1, pageSize = 20 }) => {
                 const user = await getUser();
-                if (!user?.id) return { error: { message: "User not found" } };
-                if (!workspace_id) return { error: { message: "Workspace ID is required" } };
+                if (!user?.id) return { error: { message: "[Get Notes] User not found" } };
+                if (!workspace_id) return { error: { message: "[Get Notes] Workspace ID is required" } };
 
                 const from = (page - 1) * pageSize;
                 const to = from + pageSize - 1;
@@ -211,10 +211,10 @@ export const notesAPI = createApi({
         insertNotePage: builder.mutation<NotePageTypes, { body: Partial<NotePageTypes> }>({
             queryFn: async ({ body }) => {
                 const user = await getUser();
-                if (!user?.id) return { error: { message: "User not found" } };
-                if (!body.workspace_id) return { error: { message: "Workspace ID is required" } };
-                if (!body.workspace_note_id) return { error: { message: "Workspace Note ID is required" } };
-                if (body.page_num === undefined || body.page_num === null) return { error: { message: "Page number is required" } };
+                if (!user?.id) return { error: { message: "[Insert Note Page] User not found" } };
+                if (!body.workspace_id) return { error: { message: "[Insert Note Page] Workspace ID is required" } };
+                if (!body.workspace_note_id) return { error: { message: "[Insert Note Page] Workspace Note ID is required" } };
+                if (body.page_num === undefined || body.page_num === null) return { error: { message: "[Insert Note Page] Page number is required" } };
                 // if (!body.content_data) return { error: { message: "Content data is required" } };
 
                 const { data, error } = await supabase
@@ -244,11 +244,11 @@ export const notesAPI = createApi({
         upsertNotePage: builder.mutation<NotePageTypes, { body: Partial<NotePageTypes> }>({
             queryFn: async ({ body }) => {
                 const user = await getUser();
-                if (!user?.id) return { error: { message: "User not found" } };
-                if (!body.id) return { error: { message: "Page ID is required for upsert" } };
-                if (!body.workspace_id) return { error: { message: "Workspace ID is required" } };
-                if (!body.workspace_note_id) return { error: { message: "Workspace Note ID is required" } };
-                if (body.page_num === undefined || body.page_num === null) return { error: { message: "Page number is required" } };
+                if (!user?.id) return { error: { message: "[Upsert Note Page] User not found" } };
+                if (!body.id) return { error: { message: "[Upsert Note Page] Page ID is required for upsert" } };
+                if (!body.workspace_id) return { error: { message: "[Upsert Note Page] Workspace ID is required" } };
+                if (!body.workspace_note_id) return { error: { message: "[Upsert Note Page] Workspace Note ID is required" } };
+                if (body.page_num === undefined || body.page_num === null) return { error: { message: "[Upsert Note Page] Page number is required" } };
                 // if (!body.content_data) return { error: { message: "Content data is required" } };
 
                 const { data, error } = await supabase
@@ -265,7 +265,7 @@ export const notesAPI = createApi({
                             synced_id: body.synced_id,
                             synced_at: body.synced_at,
                         },
-                        { onConflict: "synced_id" }
+                        { onConflict: "id" }
                     )
                     .select()
                     .single();
@@ -282,14 +282,14 @@ export const notesAPI = createApi({
         upsertNotePages: builder.mutation<NotePageTypes[], { pages: Partial<NotePageTypes>[] }>({
             queryFn: async ({ pages }) => {
                 const user = await getUser();
-                if (!user?.id) return { error: { message: "User not found" } };
-                if (!pages?.length) return { error: { message: "No pages to sync" } };
+                if (!user?.id) return { error: { message: "[Upsert Note Pages] User not found" } };
+                if (!pages?.length) return { error: { message: "[Upsert Note Pages] No pages to sync" } };
 
                 for (const page of pages) {
-                    if (!page.id) return { error: { message: "Every page must have an id for upsert" } };
-                    if (!page.workspace_id) return { error: { message: `Workspace ID is required (page id: ${page.id})` } };
-                    if (!page.workspace_note_id) return { error: { message: `Workspace Note ID is required (page id: ${page.id})` } };
-                    if (page.page_num === undefined || page.page_num === null) return { error: { message: `Page number is required (page id: ${page.id})` } };
+                    if (!page.id) return { error: { message: "[Upsert Note Pages] Every page must have an id for upsert" } };
+                    if (!page.workspace_id) return { error: { message: `[Upsert Note Pages] Workspace ID is required (page id: ${page.id})` } };
+                    if (!page.workspace_note_id) return { error: { message: `[Upsert Note Pages] Workspace Note ID is required (page id: ${page.id})` } };
+                    if (page.page_num === undefined || page.page_num === null) return { error: { message: `[Upsert Note Pages] Page number is required (page id: ${page.id})` } };
                     // if (!page.content_data) return { error: { message: `Content data is required (page id: ${page.id})` } };
                 }
 
@@ -307,7 +307,7 @@ export const notesAPI = createApi({
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")
-                    .upsert(payload, { onConflict: "synced_id" })
+                    .upsert(payload, { onConflict: "id" })
                     .select();
 
                 if (error) return { error: { message: error.message } };

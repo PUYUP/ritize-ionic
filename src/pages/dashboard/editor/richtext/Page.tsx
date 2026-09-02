@@ -30,7 +30,7 @@ import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
-import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery } from '../../../../services/notes';
+import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -75,6 +75,7 @@ const RichTextEditorPage: React.FC = () => {
 
     // RTK Query
     const { data: noteData, isLoading: gettingNote, isSuccess: gettingNoteSuccess } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
+    const [upsertNote] = useUpsertNoteMutation();
 
     const persist = useCallback(async () => {
         const quill = quillRef.current;
@@ -253,8 +254,6 @@ const RichTextEditorPage: React.FC = () => {
 
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));
-
-
     });
 
     useIonViewDidLeave(() => {
@@ -403,7 +402,7 @@ const RichTextEditorPage: React.FC = () => {
 
     useEffect(() => {
         // jika noteId ada maka load dari server
-        if (!workspaceId) return;
+        if (!workspaceId || !gettingNoteSuccess) return;
 
         // init note — run async logic without returning its promise
         (async () => {
@@ -415,20 +414,39 @@ const RichTextEditorPage: React.FC = () => {
 
             // check if note is null, then create a new note
             if (note === null) {
-                if (!noteData && gettingNoteSuccess) {
+                if (noteData) {
                     // isi local database dari server
                     console.log("store server data to local db");
                     const nd = noteData as NoteTypes;
-                    note = await NotesRepository.insertNote({
+                    const newSyncedId = crypto.randomUUID();
+                    const nData = {
+                        id: nd.id,
                         workspaceId: workspaceId,
                         title: nd.title || "Untitled Note",
                         content: nd.content,
                         noteDatetime: nd.note_datetime ? new Date(nd.note_datetime) : new Date(),
                         contentType: nd.content_type as NoteFormatTypes,
-                        syncedId: nd.synced_id,
+                        syncedId: nd.synced_id ? nd.synced_id : newSyncedId,
                         syncedAt: nd.synced_at ? new Date(nd.synced_at) : new Date(),
-                    });
+                    }
+
+                    note = await NotesRepository.insertNote(nData);
                     setSelectedNote(note);
+
+                    // add synced id if empty for current note in the database
+                    if (!nd.synced_id) {
+                        console.log('adding synced id to existing note');
+                        await upsertNote({
+                            body: {
+                                id: nd.id,
+                                synced_id: newSyncedId,
+                                synced_at: new Date().toISOString(),
+                                workspace_id: workspaceId,
+                                content: nd.content ? nd.content : '',
+                                content_type: nd.content_type as NoteFormatTypes,
+                            }
+                        }).unwrap();
+                    }
 
                     const currentPages: Page[] = nd?.pages
                         ? nd.pages
@@ -443,15 +461,29 @@ const RichTextEditorPage: React.FC = () => {
                                     userId: p.user_id,
                                     pageNum: p.page_num,
                                     isActive: p.is_active,
-                                    syncedId: p.synced_id ? p.synced_id : null,
+                                    syncedId: p.synced_id ? p.synced_id : crypto.randomUUID(),
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
                                     note: { id: nd.id }
                                 }
                             })
                         : [];
 
-                    const savedPages = await NotesRepository.addPagesBulk({ id: note.id }, currentPages);
-                    console.log("savedPages", savedPages);
+                    if (currentPages.length > 0) {
+                        const savedPages = await NotesRepository.addPagesBulk({ id: nd.id }, currentPages);
+                        console.log("savedPages", savedPages);
+                    }
+                    else {
+                        const page = await createPage({ id: note.id }, {
+                            pageNum: 1,
+                            workspaceId: workspaceId,
+                            workspaceNoteId: note.id,
+                            isActive: true,
+                            syncedAt: new Date(),
+                            syncedId: crypto.randomUUID(),
+                        });
+                        setSelectedPage(page);
+                        console.log('create page', page);
+                    }
                 }
                 else {
                     note = await initNote(workspaceId);
@@ -460,7 +492,7 @@ const RichTextEditorPage: React.FC = () => {
 
                     const page = await createPage({ id: note.id }, {
                         pageNum: 1,
-                        workspaceId: note.workspaceId,
+                        workspaceId: workspaceId,
                         workspaceNoteId: note.id,
                         isActive: true,
                         syncedAt: new Date(),

@@ -8,7 +8,22 @@ export class Note {
     id!: number;
 
     @Column()
+    userId!: string;
+
+    @Column()
     workspaceId!: string;
+
+    @Column()
+    title!: string;
+
+    @Column()
+    content!: string;
+
+    @Column()
+    noteDatetime!: Date;
+
+    @Column()
+    contentType!: string;
 
     @OneToMany(() => Page, page => page.note)
     pages!: Page[];

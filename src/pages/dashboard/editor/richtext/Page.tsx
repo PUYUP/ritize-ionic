@@ -28,6 +28,7 @@ import { FreeMode, Mousewheel } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
+import { getUser } from '../../../../utils/authState';
 
 const AUTOSAVE_DELAY_MS = 1500;
 const NOTE_ID = 2;
@@ -237,30 +238,30 @@ const RichTextEditorPage: React.FC = () => {
                 setSelectedNote(note);
             }
 
-            // check if note is null, then create a new note
-            if (note === null) {
-                console.log('create new note');
-                note = await initNote("123456");
-                setSelectedNote(note);
+            // // check if note is null, then create a new note
+            // if (note === null) {
+            //     console.log('create new note');
+            //     note = await initNote("123456");
+            //     setSelectedNote(note);
 
-                const page = await createPage({ id: note.id }, 1);
-                console.log('create page', page);
-                setSelectedPage(page);
-            }
+            //     const page = await createPage({ id: note.id }, 1);
+            //     console.log('create page', page);
+            //     setSelectedPage(page);
+            // }
 
-            // get all pages
-            if (note) {
-                const currentPages = await NotesRepository.getPagesByNoteId(note.id);
-                console.log('get pages');
-                setPages([...currentPages]);
+            // // get all pages
+            // if (note) {
+            //     const currentPages = await NotesRepository.getPagesByNoteId(note.id);
+            //     console.log('get pages');
+            //     setPages([...currentPages]);
 
-                // get active page
-                const activePage = currentPages.find((p: Page) => p.isActive === true);
-                if (activePage) {
-                    setSelectedPage(activePage);
-                    console.log('active page', activePage);
-                }
-            }
+            //     // get active page
+            //     const activePage = currentPages.find((p: Page) => p.isActive === true);
+            //     if (activePage) {
+            //         setSelectedPage(activePage);
+            //         console.log('active page', activePage);
+            //     }
+            // }
         })();
     });
 
@@ -311,7 +312,15 @@ const RichTextEditorPage: React.FC = () => {
 
     // --- CRUD NOTES ---  
     const initNote = async (workspaceId: string) => {
-        const entity = await NotesRepository.insertNote({ workspaceId: workspaceId });
+        const user = await getUser();
+        const entity = await NotesRepository.insertNote({
+            userId: user.id,
+            workspaceId: workspaceId,
+            title: "Untitled Note",
+            content: "",
+            noteDatetime: new Date(),
+            contentType: "text",
+        });
         return entity;
     }
 

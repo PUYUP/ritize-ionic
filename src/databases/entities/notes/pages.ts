@@ -8,6 +8,15 @@ export class Page {
     id!: number;
 
     @Column()
+    userId!: string;
+
+    @Column()
+    workspaceId!: string;
+
+    @Column()
+    workspaceNoteId!: string;
+
+    @Column()
     pageNum!: number;
 
     @Column()

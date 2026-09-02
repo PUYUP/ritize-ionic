@@ -27,6 +27,14 @@ Buka file entitas Anda (misal `notes.ts`) lalu tambahkan kolomnya, misalnya:
 title: string;
 ```
 
+Apabila database sudah memiliki data dan tidak ingin menghapus databasenya gunakan:
+
+```typescript
+@Column({ default: '' })
+title: string;
+```
+
+
 **Langkah 3: Generate Migrasi Baru**
 Jalankan perintah generate migrasi dengan memasukkan nama migrasinya (contoh: `AddTitleToNotes`). Jangan pakai script `...:initialNotes` lagi jika itu bukan migrasi awal. Gunakan script baru yang saya tambahkan:
 ```bash

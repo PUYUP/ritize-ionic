@@ -2,6 +2,7 @@ import React, { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
 import Quill, { Delta, Range as QuillRange, type QuillOptions, type EmitterSource } from 'quill';
 import 'quill/dist/quill.snow.css';
 import './QuillEditor.css';
+import { useSearchParams } from 'react-router-dom';
 
 export type ImageUploadHandler = (file: File) => Promise<string>;
 
@@ -47,6 +48,10 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
         ref
     ) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
+        const [searchParams] = useSearchParams();
+        const workspaceId = searchParams.get('workspaceId');
+
+        console.log(workspaceId);
 
         // Config captured once at init time (changing these mid-session would
         // require tearing the editor down, which we deliberately avoid).

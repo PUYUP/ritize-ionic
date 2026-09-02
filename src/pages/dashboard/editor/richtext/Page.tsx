@@ -56,7 +56,6 @@ const RichTextEditorPage: React.FC = () => {
     const [initialContent, setInitialContent] = useState<Delta | undefined>(undefined);
 
     const persist = useCallback(async () => {
-        console.log(selectedPage)
         const quill = quillRef.current;
         if (!quill || !selectedPage) return;
         setIsSaving(true);

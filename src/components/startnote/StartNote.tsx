@@ -4,7 +4,7 @@ import { IonCard, IonCardContent, IonIcon, IonText } from '@ionic/react';
 
 interface StartNoteProps {
     workspace?: {
-        id?: number;
+        id?: string;
     }
 }
 

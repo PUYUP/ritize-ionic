@@ -160,6 +160,55 @@ class NotesRepository {
         return savedPage;
     }
 
+    /** Bulk insert beberapa Page baru sekaligus ke dalam satu Note */
+    async addPagesBulk(note: Partial<Note>, dataList: Partial<Page>[]): Promise<Page[]> {
+        const user = await getUser();
+
+        const pages = dataList.map((data) =>
+            this.pageRepo.create({
+                ...data,
+                userId: user.id,
+                note: note,
+            })
+        );
+
+        const savedPages = await this.pageRepo.save(pages);
+        await this.saveWebStore();
+
+        // Sync semua page baru ke server secara paralel
+        await Promise.all(
+            savedPages.map((savedPage) => {
+                let objString = null;
+                if (savedPage.contentData) {
+                    const decoder = new TextDecoder('utf-8');
+                    const jsonString = decoder.decode(savedPage.contentData);
+                    objString = jsonString ? JSON.parse(jsonString) : {};
+                }
+
+                return store
+                    .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
+                        body: {
+                            id: savedPage.id,
+                            user_id: savedPage.userId,
+                            workspace_id: savedPage.workspaceId,
+                            workspace_note_id: savedPage.workspaceNoteId,
+                            synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
+                            synced_id: savedPage.syncedId,
+                            content_data: objString,
+                            page_num: savedPage.pageNum,
+                            is_active: savedPage.isActive,
+                        }
+                    }))
+                    .unwrap()
+                    .catch((err) => {
+                        console.error('Gagal sync page ke server:', savedPage.id, err);
+                    });
+            })
+        );
+
+        return savedPages;
+    }
+
     /** Ambil semua Page berdasarkan Note ID */
     async getPagesByNoteId(noteId: string): Promise<Page[]> {
         return this.pageRepo.find({

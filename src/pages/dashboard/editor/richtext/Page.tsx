@@ -30,7 +30,7 @@ import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
-import { NoteFormatTypes, NotePageTypes, useGetNoteByIdQuery } from '../../../../services/notes';
+import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery } from '../../../../services/notes';
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -74,7 +74,7 @@ const RichTextEditorPage: React.FC = () => {
     const [initialContent, setInitialContent] = useState<Delta | null>(null);
 
     // RTK Query
-    const { data: noteData, isLoading: gettingNote } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
+    const { data: noteData, isLoading: gettingNote, isSuccess: gettingNoteSuccess } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
 
     const persist = useCallback(async () => {
         const quill = quillRef.current;
@@ -415,20 +415,60 @@ const RichTextEditorPage: React.FC = () => {
 
             // check if note is null, then create a new note
             if (note === null) {
-                note = await initNote(workspaceId);
-                setSelectedNote(note);
-                console.log('create new note', note);
+                if (!noteData && gettingNoteSuccess) {
+                    // isi local database dari server
+                    console.log("store server data to local db");
+                    const nd = noteData as NoteTypes;
+                    note = await NotesRepository.insertNote({
+                        workspaceId: workspaceId,
+                        title: nd.title || "Untitled Note",
+                        content: nd.content,
+                        noteDatetime: nd.note_datetime ? new Date(nd.note_datetime) : new Date(),
+                        contentType: nd.content_type as NoteFormatTypes,
+                        syncedId: nd.synced_id,
+                        syncedAt: nd.synced_at ? new Date(nd.synced_at) : new Date(),
+                    });
+                    setSelectedNote(note);
 
-                const page = await createPage({ id: note.id }, {
-                    pageNum: 1,
-                    workspaceId: note.workspaceId,
-                    workspaceNoteId: note.id,
-                    isActive: true,
-                    syncedAt: new Date(),
-                    syncedId: crypto.randomUUID(),
-                });
-                setSelectedPage(page);
-                console.log('create page', page);
+                    const currentPages: Page[] = nd?.pages
+                        ? nd.pages
+                            .slice()
+                            .sort((a: NotePageTypes, b: NotePageTypes) => a.page_num - b.page_num)
+                            .map((p: NotePageTypes) => {
+                                return {
+                                    id: p.id,
+                                    workspaceId: p.workspace_id,
+                                    workspaceNoteId: p.workspace_note_id,
+                                    contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
+                                    userId: p.user_id,
+                                    pageNum: p.page_num,
+                                    isActive: p.is_active,
+                                    syncedId: p.synced_id ? p.synced_id : null,
+                                    syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
+                                    note: { id: nd.id }
+                                }
+                            })
+                        : [];
+
+                    const savedPages = await NotesRepository.addPagesBulk({ id: note.id }, currentPages);
+                    console.log("savedPages", savedPages);
+                }
+                else {
+                    note = await initNote(workspaceId);
+                    setSelectedNote(note);
+                    console.log('create new note', note);
+
+                    const page = await createPage({ id: note.id }, {
+                        pageNum: 1,
+                        workspaceId: note.workspaceId,
+                        workspaceNoteId: note.id,
+                        isActive: true,
+                        syncedAt: new Date(),
+                        syncedId: crypto.randomUUID(),
+                    });
+                    setSelectedPage(page);
+                    console.log('create page', page);
+                }
             }
 
             // get all pages
@@ -445,7 +485,7 @@ const RichTextEditorPage: React.FC = () => {
                 }
             }
         })();
-    }, [workspaceId, noteData]);
+    }, [workspaceId, noteData, gettingNoteSuccess]);
 
     return (
         <IonPage>

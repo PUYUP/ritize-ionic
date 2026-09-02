@@ -1,11 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Page } from './pages';
 
 @Entity('notes')
 export class Note {
 
-    @PrimaryGeneratedColumn()
-    id!: number;
+    @PrimaryGeneratedColumn('uuid')
+    id!: string;
 
     @Column()
     userId!: string;
@@ -30,5 +30,8 @@ export class Note {
 
     @Column('datetime', { nullable: true })
     syncedAt!: Date | null;
+
+    @Column('uuid', { nullable: true })
+    syncedId!: string | null;
 
 }

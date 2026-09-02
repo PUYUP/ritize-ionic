@@ -4,8 +4,8 @@ import { Note } from './notes';
 @Entity('pages')
 export class Page {
 
-    @PrimaryGeneratedColumn()
-    id!: number;
+    @PrimaryGeneratedColumn('uuid')
+    id!: string;
 
     @Column()
     userId!: string;
@@ -24,6 +24,9 @@ export class Page {
 
     @Column('datetime', { nullable: true })
     syncedAt!: Date | null;
+
+    @Column('uuid', { nullable: true })
+    syncedId!: string | null;
 
     @Column({
         type: 'blob', // Gunakan 'bytea' jika menggunakan PostgreSQL

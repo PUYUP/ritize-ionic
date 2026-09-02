@@ -28,12 +28,15 @@ import { FreeMode, Mousewheel } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
-import { getUser } from '../../../../utils/authState';
+import { useSearchParams } from 'react-router-dom';
 
 const AUTOSAVE_DELAY_MS = 1500;
-const NOTE_ID = 2;
 
 const RichTextEditorPage: React.FC = () => {
+    const [searchParams] = useSearchParams();
+    const workspaceId = searchParams.get('workspaceId');
+    const noteId = searchParams.get('noteId');
+
     const ionContentRef = useRef<HTMLIonContentElement>(null);
     const quillRef = useRef<Quill | null>(null);
     const autosaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -66,7 +69,7 @@ const RichTextEditorPage: React.FC = () => {
             console.log('saved!');
 
             if (selectedPage) {
-                await NotesRepository.updatePage(selectedPage.id as number, { contentData: bufferData });
+                await NotesRepository.updatePage(selectedPage.id as string, { contentData: bufferData });
                 console.log('selected page id: ', selectedPage.id, ' is updated');
 
                 // GUNAKAN CARA INI (Functional Update)
@@ -229,39 +232,50 @@ const RichTextEditorPage: React.FC = () => {
     // component lifecycles
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));
+        if (!workspaceId) return;
+
+        console.log('workspaceId', workspaceId);
+        console.log('noteId', noteId);
 
         // init note — run async logic without returning its promise
         (async () => {
-            let note = await NotesRepository.getNoteById(NOTE_ID);
+            let note = noteId ? await NotesRepository.getNoteById(noteId) : null;
             if (note) {
-                console.log('load note from database');
+                console.log('load note from database', note);
                 setSelectedNote(note);
             }
 
-            // // check if note is null, then create a new note
-            // if (note === null) {
-            //     console.log('create new note');
-            //     note = await initNote("123456");
-            //     setSelectedNote(note);
+            // check if note is null, then create a new note
+            if (note === null) {
+                note = await initNote(workspaceId);
+                setSelectedNote(note);
+                console.log('create new note', note);
 
-            //     const page = await createPage({ id: note.id }, 1);
-            //     console.log('create page', page);
-            //     setSelectedPage(page);
-            // }
+                const page = await createPage({ id: note.id }, {
+                    pageNum: 1,
+                    workspaceId: note.workspaceId,
+                    workspaceNoteId: note.id,
+                    isActive: true,
+                    syncedAt: new Date(),
+                    syncedId: crypto.randomUUID(),
+                });
+                setSelectedPage(page);
+                console.log('create page', page);
+            }
 
-            // // get all pages
-            // if (note) {
-            //     const currentPages = await NotesRepository.getPagesByNoteId(note.id);
-            //     console.log('get pages');
-            //     setPages([...currentPages]);
+            // get all pages
+            if (note) {
+                const currentPages = await NotesRepository.getPagesByNoteId(note.id);
+                console.log('get pages');
+                setPages([...currentPages]);
 
-            //     // get active page
-            //     const activePage = currentPages.find((p: Page) => p.isActive === true);
-            //     if (activePage) {
-            //         setSelectedPage(activePage);
-            //         console.log('active page', activePage);
-            //     }
-            // }
+                // get active page
+                const activePage = currentPages.find((p: Page) => p.isActive === true);
+                if (activePage) {
+                    setSelectedPage(activePage);
+                    console.log('active page', activePage);
+                }
+            }
         })();
     });
 
@@ -298,7 +312,14 @@ const RichTextEditorPage: React.FC = () => {
         await NotesRepository.updatePagesBulk(prevPages);
 
         // Buat halaman baru
-        await createPage(selectedNote, pages.length + 1);
+        await createPage(selectedNote, {
+            pageNum: pages.length + 1,
+            workspaceId: selectedNote.workspaceId,
+            workspaceNoteId: selectedNote.id,
+            isActive: true,
+            syncedAt: new Date(),
+            syncedId: crypto.randomUUID(),
+        });
 
         // RE-FETCH dari database untuk memastikan kita mendapatkan ID yang benar
         const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
@@ -312,24 +333,20 @@ const RichTextEditorPage: React.FC = () => {
 
     // --- CRUD NOTES ---  
     const initNote = async (workspaceId: string) => {
-        const user = await getUser();
         const entity = await NotesRepository.insertNote({
-            userId: user.id,
             workspaceId: workspaceId,
             title: "Untitled Note",
             content: "",
             noteDatetime: new Date(),
             contentType: "text",
+            syncedId: crypto.randomUUID(),
+            syncedAt: new Date(),
         });
         return entity;
     }
 
-    const createPage = async (note: Partial<Note>, pageNum: number): Promise<Page> => {
-        const entity = await NotesRepository.addPage({ id: note.id }, {
-            pageNum: pageNum,
-            isActive: true,
-        });
-
+    const createPage = async (note: Partial<Note>, data: Partial<Page>): Promise<Page> => {
+        const entity = await NotesRepository.addPage({ id: note.id }, data);
         return entity;
     }
     // --- END CRUD NOTES ---

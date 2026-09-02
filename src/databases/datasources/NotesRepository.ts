@@ -3,6 +3,9 @@ import notesDataSource from '../datasources/NotesDataSource';
 import { Note } from '../entities/notes/notes';
 import { Page } from '../entities/notes/pages'; // Sesuaikan path dengan lokasi file Page kamu
 import sqliteParams from '../sqliteParams';
+import { getUser } from '../../utils/authState';
+import { NoteFormatTypes, notesAPI } from '../../services/notes';
+import { store } from '../../store';
 
 class NotesRepository {
     // --------------------------------------------------
@@ -36,9 +39,9 @@ class NotesRepository {
     // CRUD UNTUK NOTE
     // --------------------------------------------------
 
-    async getNoteById(id: number): Promise<Note | null> {
+    async getNoteById(id: string): Promise<Note | null> {
         return this.noteRepo.findOne({
-            where: { id } as any,
+            where: { id: id } as any,
             relations: ['pages'], // Akan otomatis mengambil data child pages
         });
     }
@@ -50,10 +53,32 @@ class NotesRepository {
     }
 
     async insertNote(data: Partial<Note>): Promise<Note> {
-        const entity = this.noteRepo.create(data);
-        const result = await this.noteRepo.save(entity);
+        const user = await getUser();
+        const entity = this.noteRepo.create({
+            ...data,
+            userId: user.id,
+        });
+        const note = await this.noteRepo.save(entity);
         await this.saveWebStore();
-        return result;
+
+        if (note) {
+            store
+                .dispatch(notesAPI.endpoints.upsertNote.initiate({
+                    body: {
+                        id: note.id,
+                        workspace_id: note.workspaceId,
+                        synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
+                        synced_id: note.syncedId,
+                        content_type: note.contentType as NoteFormatTypes,
+                        content: note.content,
+                        note_datetime: note.noteDatetime.toDateString(),
+                        title: note.title,
+                    }
+                }))
+                .unwrap();
+        }
+
+        return note;
     }
 
     async upsertNote(data: Partial<Note>, conflictPaths: string[] = ['id']): Promise<Note | null> {
@@ -61,10 +86,30 @@ class NotesRepository {
         await this.saveWebStore();
         const insertedId = result.identifiers?.[0]?.id;
         if (insertedId === undefined) return null;
-        return this.getNoteById(insertedId);
+
+        const note = await this.getNoteById(insertedId);
+
+        if (note) {
+            store
+                .dispatch(notesAPI.endpoints.upsertNote.initiate({
+                    body: {
+                        id: note.id,
+                        workspace_id: note.workspaceId,
+                        synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
+                        synced_id: note.syncedId,
+                        content_type: note.contentType as NoteFormatTypes,
+                        content: note.content,
+                        note_datetime: note.noteDatetime.toDateString(),
+                        title: note.title,
+                    }
+                }))
+                .unwrap();
+        }
+
+        return note;
     }
 
-    async deleteNote(id: number): Promise<boolean> {
+    async deleteNote(id: string): Promise<boolean> {
         const result = await this.noteRepo.delete(id);
         await this.saveWebStore();
         return (result.affected ?? 0) > 0;
@@ -76,19 +121,42 @@ class NotesRepository {
 
     /** Tambah Page baru ke sebuah Note */
     async addPage(note: Partial<Note>, data: Partial<Page>): Promise<Page> {
+        const user = await getUser();
         // Karena relasinya ada pada Note, kita pasangkan id-nya
         const page = this.pageRepo.create({
             ...data,
+            userId: user.id,
             note: note
         });
 
-        const result = await this.pageRepo.save(page);
+        const savedPage = await this.pageRepo.save(page);
         await this.saveWebStore();
-        return result;
+
+        if (savedPage) {
+            const decoder = new TextDecoder('utf-8');
+            const jsonString = decoder.decode(savedPage.contentData);
+
+            store
+                .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
+                    body: {
+                        id: savedPage.id,
+                        user_id: savedPage.userId,
+                        workspace_id: savedPage.workspaceId,
+                        workspace_note_id: savedPage.workspaceNoteId,
+                        synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
+                        synced_id: savedPage.syncedId,
+                        content_data: new Blob([jsonString], { type: 'application/octet-stream' }),
+                        page_num: savedPage.pageNum,
+                    }
+                }))
+                .unwrap();
+        }
+
+        return savedPage;
     }
 
     /** Ambil semua Page berdasarkan Note ID */
-    async getPagesByNoteId(noteId: number): Promise<Page[]> {
+    async getPagesByNoteId(noteId: string): Promise<Page[]> {
         return this.pageRepo.find({
             // Syntax ini secara otomatis mencari berdasarkan foreign key
             where: {
@@ -101,15 +169,39 @@ class NotesRepository {
     }
 
     /** Ambil 1 Page berdasarkan ID (Jika butuh spesifik 1 page saja) */
-    async getPageById(id: number): Promise<Page | null> {
+    async getPageById(id: string): Promise<Page | null> {
         return this.pageRepo.findOneBy({ id } as any);
     }
 
     /** Update properti Page (misal update isActive / JSON Canvas) */
-    async updatePage(pageId: number, data: Partial<Page>): Promise<Page | null> {
+    async updatePage(pageId: string, data: Partial<Page>): Promise<Page | null> {
         await this.pageRepo.update(pageId, data as any);
         await this.saveWebStore();
-        return this.getPageById(pageId);
+
+        const savedPage = await this.getPageById(pageId);
+
+        if (savedPage) {
+            const decoder = new TextDecoder('utf-8');
+            const jsonString = decoder.decode(savedPage.contentData);
+            const objString = jsonString ? JSON.parse(jsonString) : {};
+
+            store
+                .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
+                    body: {
+                        id: savedPage.id,
+                        user_id: savedPage.userId,
+                        workspace_id: savedPage.workspaceId,
+                        workspace_note_id: savedPage.workspaceNoteId,
+                        synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
+                        synced_id: savedPage.syncedId,
+                        content_data: objString,
+                        page_num: savedPage.pageNum,
+                    }
+                }))
+                .unwrap();
+        }
+
+        return savedPage;
     }
 
     /**
@@ -135,7 +227,7 @@ class NotesRepository {
     }
 
     /** Hapus 1 halaman Page */
-    async deletePage(pageId: number): Promise<boolean> {
+    async deletePage(pageId: string): Promise<boolean> {
         const result = await this.pageRepo.delete(pageId);
         await this.saveWebStore();
         return (result.affected ?? 0) > 0;

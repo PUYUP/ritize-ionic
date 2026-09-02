@@ -6,6 +6,7 @@ export type NoteFormatTypes = 'text' | 'canvas' | 'image' | 'audio';
 
 export type NoteTypes = {
     readonly id: string;
+    readonly created_at: string;
     user_id: string;
     workspace_id: string;
     title: string;
@@ -14,6 +15,8 @@ export type NoteTypes = {
     note_datetime: string;
     synced_id?: string | null;
     synced_at?: string | null;
+    user?: any;
+    pages?: NotePageTypes[];
 }
 
 export type NotePageTypes = {
@@ -26,6 +29,17 @@ export type NotePageTypes = {
     synced_id?: string | null;
     is_active: boolean;
     content_data: Blob;
+}
+
+export type PaginatedNotesResponse = {
+    notes: NoteTypes[];
+    count: number;
+}
+
+export type GetNotesByWorkspaceIdParams = {
+    workspace_id: string;
+    page?: number;      // default 1
+    pageSize?: number;  // default 20
 }
 
 
@@ -137,6 +151,58 @@ export const notesAPI = createApi({
                 return { data };
             },
             invalidatesTags: [{ type: 'Notes', id: 'LIST' }],
+        }),
+
+        // ...
+        // Get single note by id
+        // ...
+        getNoteById: builder.query<NoteTypes, { id: string }>({
+            queryFn: async ({ id }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "User not found" } };
+                if (!id) return { error: { message: "Note ID is required" } };
+
+                const { data, error } = await supabase
+                    .from("workspace_notes")
+                    .select("*, pages:workspace_notes_pages(*)")
+                    .eq("id", id)
+                    .single();
+
+                if (error) return { error: { message: error.message } };
+                return { data };
+            },
+            providesTags: (result, error, { id }) => [{ type: 'Notes', id }],
+        }),
+
+        // ...
+        // Get notes by workspace id (paginated)
+        // ...
+        getNotesByWorkspaceId: builder.query<PaginatedNotesResponse, GetNotesByWorkspaceIdParams>({
+            queryFn: async ({ workspace_id, page = 1, pageSize = 20 }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "User not found" } };
+                if (!workspace_id) return { error: { message: "Workspace ID is required" } };
+
+                const from = (page - 1) * pageSize;
+                const to = from + pageSize - 1;
+
+                const { data, error, count } = await supabase
+                    .from("workspace_notes")
+                    .select("*, pages:workspace_notes_pages(count), user!inner(id, name)", { count: "exact" })
+                    .eq("workspace_id", workspace_id)
+                    .order("created_at", { ascending: false })
+                    .range(from, to);
+
+                if (error) return { error: { message: error.message } };
+                return { data: { notes: data ?? [], count: count ?? 0 } };
+            },
+            providesTags: (result) =>
+                result
+                    ? [
+                        ...result.notes.map(({ id }) => ({ type: 'Notes' as const, id })),
+                        { type: 'Notes', id: 'LIST' },
+                    ]
+                    : [{ type: 'Notes', id: 'LIST' }],
         }),
 
         // ...
@@ -275,4 +341,6 @@ export const {
     useInsertNotePageMutation,
     useUpsertNotePageMutation,
     useUpsertNotePagesMutation,
+    useGetNotesByWorkspaceIdQuery,
+    useGetNoteByIdQuery,
 } = notesAPI;

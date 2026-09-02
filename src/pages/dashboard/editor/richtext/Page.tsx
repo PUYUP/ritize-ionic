@@ -15,6 +15,7 @@ import {
     useIonToast,
     useIonViewDidEnter,
     useIonViewDidLeave,
+    useIonViewWillEnter,
     useIonViewWillLeave,
 } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,6 +30,7 @@ import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
+import { NoteFormatTypes, NotePageTypes, useGetNoteByIdQuery } from '../../../../services/notes';
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -70,6 +72,9 @@ const RichTextEditorPage: React.FC = () => {
 
     // TODO: load real content (API call, Capacitor Preferences, IndexedDB…)
     const [initialContent, setInitialContent] = useState<Delta | null>(null);
+
+    // RTK Query
+    const { data: noteData, isLoading: gettingNote } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
 
     const persist = useCallback(async () => {
         const quill = quillRef.current;
@@ -242,58 +247,21 @@ const RichTextEditorPage: React.FC = () => {
     }, [selectedPage]);
 
     // component lifecycles
+    useIonViewWillEnter(() => {
+
+    });
+
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));
-        if (!workspaceId) return;
 
-        console.log('workspaceId', workspaceId);
-        console.log('noteId', noteId);
 
-        // init note — run async logic without returning its promise
-        (async () => {
-            let note = noteId ? await NotesRepository.getNoteById(noteId) : null;
-            if (note) {
-                console.log('load note from database', note);
-                setSelectedNote(note);
-            }
-
-            // check if note is null, then create a new note
-            if (note === null) {
-                note = await initNote(workspaceId);
-                setSelectedNote(note);
-                console.log('create new note', note);
-
-                const page = await createPage({ id: note.id }, {
-                    pageNum: 1,
-                    workspaceId: note.workspaceId,
-                    workspaceNoteId: note.id,
-                    isActive: true,
-                    syncedAt: new Date(),
-                    syncedId: crypto.randomUUID(),
-                });
-                setSelectedPage(page);
-                console.log('create page', page);
-            }
-
-            // get all pages
-            if (note) {
-                const currentPages = await NotesRepository.getPagesByNoteId(note.id);
-                console.log('get pages');
-                setPages([...currentPages]);
-
-                // get active page
-                const activePage = currentPages.find((p: Page) => p.isActive === true);
-                if (activePage) {
-                    setSelectedPage(activePage);
-                    console.log('active page', activePage);
-                }
-            }
-        })();
     });
 
     useIonViewDidLeave(() => {
         // reset the pages
         setPages([]);
+        setSelectedPage(null);
+        setSelectedNote(null);
     });
 
     // select page
@@ -362,6 +330,122 @@ const RichTextEditorPage: React.FC = () => {
         return entity;
     }
     // --- END CRUD NOTES ---
+
+    // ...
+    // Load content from server
+    // ...
+    // useEffect(() => {
+    //     if (!noteData) return;
+
+    //     console.log("noteData", noteData);
+
+    //     (async () => {
+    //         const currentPages: Page[] = noteData?.pages
+    //             ? noteData?.pages
+    //                 ?.slice()
+    //                 .sort((a: NotePageTypes, b: NotePageTypes) => a.page_num - b.page_num)
+    //                 .map((p: NotePageTypes) => {
+    //                     return {
+    //                         id: p.id,
+    //                         workspaceId: p.workspace_id,
+    //                         workspaceNoteId: p.workspace_note_id,
+    //                         contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
+    //                         userId: p.user_id,
+    //                         pageNum: p.page_num,
+    //                         isActive: p.is_active,
+    //                         syncedId: p.synced_id ? p.synced_id : null,
+    //                         syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
+    //                         note: { id: noteData.id }
+    //                     }
+    //                 })
+    //             : [];
+
+    //         // set selected note
+    //         setSelectedNote({
+    //             id: noteData.id,
+    //             workspaceId: noteData.workspace_id,
+    //             syncedAt: noteData.synced_at ? new Date(noteData.synced_at) : null,
+    //             syncedId: noteData.synced_id ? noteData.synced_id : null,
+    //             content: noteData.content,
+    //             noteDatetime: noteData.note_datetime ? new Date(noteData.note_datetime) : new Date(),
+    //             title: noteData.title,
+    //             pages: currentPages,
+    //             contentType: noteData.content_type as NoteFormatTypes,
+    //             userId: noteData.user_id,
+    //         });
+
+    //         let activePage: Page | null = null;
+
+    //         if (currentPages?.length > 0) {
+    //             setPages(currentPages);
+    //             const curActivePage = currentPages.find((p: Page) => p.isActive);
+    //             if (curActivePage) {
+    //                 activePage = curActivePage;
+    //             }
+    //         }
+    //         else {
+    //             const newPage = await createPage({ id: noteData.id }, {
+    //                 pageNum: 1,
+    //                 workspaceId: noteData.workspace_id,
+    //                 workspaceNoteId: noteData.id,
+    //                 isActive: true,
+    //                 syncedAt: new Date(),
+    //                 syncedId: crypto.randomUUID(),
+    //             });
+
+    //             activePage = newPage;
+    //             setPages([newPage]);
+    //         }
+
+    //         setSelectedPage(activePage);
+    //     })();
+    // }, [noteData]);
+
+    useEffect(() => {
+        // jika noteId ada maka load dari server
+        if (!workspaceId) return;
+
+        // init note — run async logic without returning its promise
+        (async () => {
+            let note = noteId ? await NotesRepository.getNoteById(noteId) : null;
+            if (note) {
+                console.log('load note from database', note);
+                setSelectedNote(note);
+            }
+
+            // check if note is null, then create a new note
+            if (note === null) {
+                note = await initNote(workspaceId);
+                setSelectedNote(note);
+                console.log('create new note', note);
+
+                const page = await createPage({ id: note.id }, {
+                    pageNum: 1,
+                    workspaceId: note.workspaceId,
+                    workspaceNoteId: note.id,
+                    isActive: true,
+                    syncedAt: new Date(),
+                    syncedId: crypto.randomUUID(),
+                });
+                setSelectedPage(page);
+                console.log('create page', page);
+            }
+
+            // get all pages
+            if (note) {
+                const currentPages = await NotesRepository.getPagesByNoteId(note.id);
+                console.log('get pages');
+                setPages([...currentPages]);
+
+                // get active page
+                const activePage = currentPages.find((p: Page) => p.isActive === true);
+                if (activePage) {
+                    setSelectedPage(activePage);
+                    console.log('active page', activePage);
+                }
+            }
+        })();
+    }, [workspaceId, noteData]);
 
     return (
         <IonPage>

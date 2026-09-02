@@ -151,6 +151,7 @@ class NotesRepository {
                         synced_id: savedPage.syncedId,
                         content_data: objString,
                         page_num: savedPage.pageNum,
+                        is_active: savedPage.isActive,
                     }
                 }))
                 .unwrap();
@@ -203,6 +204,7 @@ class NotesRepository {
                         synced_id: savedPage.syncedId,
                         content_data: objString,
                         page_num: savedPage.pageNum,
+                        is_active: savedPage.isActive,
                     }
                 }))
                 .unwrap();

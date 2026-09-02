@@ -2,10 +2,8 @@ import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, I
 import { briefcaseOutline } from 'ionicons/icons';
 import { useForm, Controller, SubmitHandler } from "react-hook-form"
 import './Page.css';
-import { authClient } from '../../../../utils/authClient';
 import { useEffect } from 'react';
 import { useParams } from 'react-router';
-import { useCreateOrganizationMutation, useGetOrganizationByIdQuery, useUpdateOrganizationMutation } from '../../../../services/organization';
 import { useCreateWorkspaceMutation, useGetWorkspaceByIdQuery, useUpdateWorkspaceMutation } from '../../../../services/workspace';
 
 type Inputs = {

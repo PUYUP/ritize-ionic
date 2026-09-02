@@ -1,5 +1,6 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { supabase } from '../utils/supabaseClient';
+import { workspaceAPI } from './workspace';
 
 export type MemberTypes = {
     readonly id: string;
@@ -24,14 +25,14 @@ export const workspaceMemberAPI = createApi({
                 const { data, error } = await supabase
                     .from("workspace_members")
                     .select("*, user(*)")
-                    .eq("workspace_id", workspace_id);
+                    .eq("workspace_id", workspace_id)
+                    .order("created_at", { ascending: false });
 
                 if (error) {
                     return { error: { message: error.message ?? 'Failed to fetch members' } };
                 }
 
-                const serialized = JSON.parse(JSON.stringify({ results: data }));
-                return { data: serialized };
+                return { data: { results: data } };
             },
             providesTags: (result, error, id) => [{ type: 'WorkspaceMember', id }],
         }),
@@ -49,20 +50,30 @@ export const workspaceMemberAPI = createApi({
             queryFn: async ({ workspace_id, members }) => {
                 const { data, error } = await supabase
                     .from("workspace_members")
-                    .insert([...members])
+                    .upsert([...members])
                     .select('*');
 
                 if (error) {
-                    return { error: { message: error.message ?? 'Failed to add members' } };
+                    return { error: error };
                 }
 
-                const serialized = JSON.parse(JSON.stringify({ ...data }));
-                return { data: serialized };
+                return { data: data };
+            },
+            async onQueryStarted({ workspace_id }, { dispatch, queryFulfilled }) {
+                try {
+                    await queryFulfilled; // tunggu delete-nya sukses dulu
+                    dispatch(
+                        workspaceAPI.util.invalidateTags([
+                            { type: 'Workspace', id: workspace_id }, // refresh detail workspace
+                            { type: 'Workspace', id: 'LIST' },       // refresh memberCount di list
+                        ])
+                    );
+                } catch {
+                    // mutation gagal, tidak perlu invalidate apa pun
+                }
             },
             invalidatesTags: (result, error, { workspace_id, members }) => [
                 { type: 'WorkspaceMember', id: workspace_id },
-                { type: 'Workspace', id: 'LIST' },
-                { type: 'Workspace', id: workspace_id },
             ],
         }),
 
@@ -89,37 +100,45 @@ export const workspaceMemberAPI = createApi({
 
                 return { data: undefined };
             },
+            async onQueryStarted({ workspace_id }, { dispatch, queryFulfilled }) {
+                try {
+                    await queryFulfilled; // tunggu delete-nya sukses dulu
+                    dispatch(
+                        workspaceAPI.util.invalidateTags([
+                            { type: 'Workspace', id: workspace_id }, // refresh detail workspace
+                            { type: 'Workspace', id: 'LIST' },       // refresh memberCount di list
+                        ])
+                    );
+                } catch {
+                    // mutation gagal, tidak perlu invalidate apa pun
+                }
+            },
             invalidatesTags: (result, error, { workspace_id }) => [
                 { type: 'WorkspaceMember', id: workspace_id },
-                { type: 'Workspace', id: 'LIST' },
-                { type: 'Workspace', id: workspace_id },
             ],
         }),
 
         // ...
         // Update member role
         // ...
-        updateRole: builder.mutation<void, { member_id: string, workspace_id: string, role: MemberTypes['role'] }>({
+        updateRole: builder.mutation<MemberTypes, { member_id: string, workspace_id: string, role: MemberTypes['role'] }>({
             queryFn: async ({ member_id, workspace_id, role }) => {
                 const { data, error } = await supabase
                     .from("workspace_members")
                     .update({ role: role })
                     .eq("id", member_id)
                     .eq("workspace_id", workspace_id)
-                    .select();
+                    .select()
+                    .single();
 
                 if (error) {
                     return { error: { message: error.message ?? 'Failed to update member' } };
                 }
 
-                const serialized = JSON.parse(JSON.stringify({ ...data }));
-
-                return { data: serialized };
+                return { data: data };
             },
             invalidatesTags: (result, error, { member_id, workspace_id }) => [
                 { type: 'WorkspaceMember', id: workspace_id },
-                { type: 'Workspace', id: 'LIST' },
-                { type: 'Workspace', id: workspace_id },
             ],
         }),
 
@@ -139,15 +158,29 @@ export const workspaceMemberAPI = createApi({
                     return { error: { message: error.message ?? 'Failed to fetch member' } };
                 }
 
-                const serialized = JSON.parse(JSON.stringify({ ...data }));
-
-                return { data: serialized };
+                return { data: data };
             },
-            providesTags: (result, error, { workspace_id, user_id }) => [
-                { type: 'WorkspaceMember', id: workspace_id },
-                { type: 'Workspace', id: 'LIST' },
-                { type: 'Workspace', id: workspace_id },
-            ],
+            providesTags: (result, error, { workspace_id, user_id }) => [{ type: 'WorkspaceMember', workspace_id }],
+        }),
+
+        // ...
+        // Get members by user ids
+        // ...
+        getMembersByWorkspaceIdAndUserIds: builder.query<MemberTypes[], { workspace_id: string, user_ids: string[] }>({
+            queryFn: async ({ workspace_id, user_ids }) => {
+                const { data, error } = await supabase
+                    .from("workspace_members")
+                    .select("*")
+                    .eq("workspace_id", workspace_id)
+                    .in("user_id", user_ids);
+
+                if (error) {
+                    return { error: { message: error.message ?? 'Failed to fetch members' } };
+                }
+
+                return { data: data };
+            },
+            providesTags: (result, error, { workspace_id }) => [{ type: 'WorkspaceMember', workspace_id }],
         })
     })
 });
@@ -158,5 +191,7 @@ export const {
     useRemoveMemberMutation,
     useUpdateRoleMutation,
     useGetMemberFromWorkspaceQuery,
-    useLazyGetMemberFromWorkspaceQuery
+    useLazyGetMemberFromWorkspaceQuery,
+    useGetMembersByWorkspaceIdAndUserIdsQuery,
+    useLazyGetMembersByWorkspaceIdAndUserIdsQuery,
 } = workspaceMemberAPI;

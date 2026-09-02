@@ -47,12 +47,7 @@ export const workspaceAPI = createApi({
                     return { error: { message: error.message ?? 'Failed to fetch workspace' } };
                 }
 
-                const serialized = JSON.parse(JSON.stringify({
-                    ...data,
-                    memberCount: data.memberCount?.[0]?.count || 0,
-                }));
-
-                return { data: serialized as WorkspaceTypes };
+                return { data: { ...data, memberCount: data.memberCount?.[0]?.count || 0 } };
             },
             providesTags: (result, error, id) => [{ type: 'Workspace', id }],
         }),
@@ -94,8 +89,7 @@ export const workspaceAPI = createApi({
                     return { error: { message: memberError.message ?? 'Failed to create workspace member' } };
                 }
 
-                const serialized = JSON.parse(JSON.stringify({ ...insertedData, memberCount: insertedData.memberCount?.[0]?.count || 0 }));
-                return { data: serialized as WorkspaceTypes };
+                return { data: { ...insertedData, memberCount: insertedData.memberCount?.[0]?.count || 0 } };
             },
             invalidatesTags: (result, error) => [{ type: 'Workspace', id: 'LIST' }],
         }),
@@ -122,10 +116,7 @@ export const workspaceAPI = createApi({
                     return { error: { message: error.message ?? 'Failed to update workspace' } };
                 }
 
-                const metadata = typeof updatedData.metadata === 'string' ? JSON.parse(updatedData.metadata) : (updatedData.metadata || {});
-                const serialized = JSON.parse(JSON.stringify({ ...updatedData, metadata }));
-
-                return { data: serialized as WorkspaceTypes };
+                return { data: { ...updatedData, memberCount: updatedData.memberCount?.[0]?.count || 0 } };
             },
             invalidatesTags: (result, error, { id }) => [
                 { type: 'Workspace', id },
@@ -170,10 +161,10 @@ export const workspaceAPI = createApi({
                 if (error) return { error: { message: error.message ?? 'Failed to fetch workspaces' } };
 
                 const serialized = data.map((org) => {
-                    return JSON.parse(JSON.stringify({
+                    return {
                         ...org,
                         memberCount: org.memberCount?.[0]?.count || 0,
-                    }));
+                    };
                 });
 
                 return { data: serialized as WorkspaceTypes[] };

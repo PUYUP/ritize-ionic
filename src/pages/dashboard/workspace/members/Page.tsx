@@ -12,6 +12,7 @@ import {
     useAddMembersToWorkspaceMutation,
     useGetMembersByWorkspaceIdQuery,
     useLazyGetMemberFromWorkspaceQuery,
+    useLazyGetMembersByWorkspaceIdAndUserIdsQuery,
     useRemoveMemberMutation,
     useUpdateRoleMutation
 } from "../../../../services/workspace.member";
@@ -35,9 +36,8 @@ const WorkspaceMembersPage: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [getSingleMember] = useLazyGetMemberFromWorkspaceQuery();
     const [getUsers, { isLoading: gettingUsers }] = useLazyGetUsersQuery();
-    const { data: memberData, error, isLoading } = useGetMembersByWorkspaceIdQuery(id ?? "", {
-        skip: !id,
-    });
+    const { data: memberData, error, isLoading } = useGetMembersByWorkspaceIdQuery(id ?? "", { skip: !id });
+    const [getExistingMembers, { isLoading: existingMembersLoading }] = useLazyGetMembersByWorkspaceIdAndUserIdsQuery();
     const [addMembersToWorkspace, { isLoading: addingMembers }] = useAddMembersToWorkspaceMutation();
     const [removeMember, { isLoading: removingMember }] = useRemoveMemberMutation();
     const [updateRole, { isLoading: updatingRole }] = useUpdateRoleMutation();
@@ -142,11 +142,37 @@ const WorkspaceMembersPage: React.FC = () => {
             return resolved;
         });
 
+        // check member in this workspace
+        const userIds = resolvedMembers.filter((m) => m.user_id).map((m) => m.user_id);
+        const { data: existingMembers, error: existingMembersError } = await getExistingMembers({
+            workspace_id: id as string,
+            user_ids: userIds,
+        });
+
+        if (existingMembers && existingMembers.length > 0) {
+            const userById = new Map(
+                (existingMembers ?? []).map((u) => [u.user_id, u])
+            );
+
+            for (let [index, r] of resolvedMembers.entries()) {
+                const u = userById.get(r.user_id);
+
+                if (u) {
+                    setError(`members.${index}.email`, {
+                        type: "error",
+                        message: "Email " + r.email + " is already a member.",
+                    });
+                }
+            }
+
+            hasNotFound = true;
+        }
+
         if (hasNotFound) {
             return; // biarkan user perbaiki email yang salah
         }
 
-        const res = await addMembersToWorkspace({
+        const { data: response, error: membersError } = await addMembersToWorkspace({
             workspace_id: id as string,
             members: resolvedMembers.map((m) => ({
                 workspace_id: m.workspace_id,
@@ -155,14 +181,18 @@ const WorkspaceMembersPage: React.FC = () => {
             })),
         });
 
-        if (res.error) {
-            const results = (res.error as any).details?.results ?? [];
-            results.forEach((result: any, index: number) => {
-                setError(`members.${index}.email`, {
-                    type: "error",
-                    message: result.error,
-                });
-            });
+        console.log({ response, membersError });
+
+        if (membersError) {
+            // const results = (membersError as any).details?.results ?? [];
+            // results.forEach((result: any, index: number) => {
+            //     setError(`members.${index}.email`, {
+            //         type: "error",
+            //         message: result.error,
+            //     });
+            // });
+
+            //const errorDetails = membersError.details;
             return;
         }
 
@@ -191,7 +221,6 @@ const WorkspaceMembersPage: React.FC = () => {
     useEffect(() => {
         (async () => {
             const user = await getUser();
-
             const { data, error } = await getSingleMember({ workspace_id: id as string, user_id: user.id });
             if (data) setCurrentUser(data);
         })();
@@ -231,7 +260,7 @@ const WorkspaceMembersPage: React.FC = () => {
                                 </IonLabel>
                                 <div slot="end" className="flex items-center gap-2">
                                     <IonButtons className="gap-2">
-                                        {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.userId === member.user_id && (
+                                        {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.user_id === member.user_id && (
                                             <IonButton fill="clear" onClick={() => {
                                                 setEditMember(member);
                                                 setShowLeaveAlert(true);
@@ -240,7 +269,7 @@ const WorkspaceMembersPage: React.FC = () => {
                                             </IonButton>
                                         )}
 
-                                        {(currentUser.role === 'owner' || currentUser.role === 'admin') && member.role !== 'owner' && (
+                                        {(currentUser.role === 'owner' || currentUser.role === 'admin') && currentUser.user_id !== member.user_id && member.role !== 'owner' && (
                                             <IonButton fill="clear" onClick={() => {
                                                 setEditMember(member);
                                                 setShowMemberActionSheet(true);

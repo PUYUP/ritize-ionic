@@ -180,4 +180,5 @@ export const {
     useCreateWorkspaceMutation,
     useDeleteWorkspaceMutation,
     useGetAllWorkspacesQuery,
+    useLazyGetAllWorkspacesQuery,
 } = workspaceAPI

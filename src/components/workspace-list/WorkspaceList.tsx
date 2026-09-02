@@ -1,6 +1,7 @@
 import { IonIcon, IonItem, IonLabel, IonList } from "@ionic/react";
-import { chatbubblesOutline, chatbubblesSharp, ellipseOutline } from "ionicons/icons";
+import { chatbubblesOutline, ellipseOutline } from "ionicons/icons";
 import { WorkspaceTypes } from "../../services/workspace";
+import './WorkspaceList.css';
 
 interface WorkspaceListProps {
     items: WorkspaceTypes[];
@@ -9,7 +10,7 @@ interface WorkspaceListProps {
 const WorkspaceItem: React.FC<{ item: WorkspaceTypes }> = ({ item }) => {
     return (
         <IonItem
-            className="ion-no-padding"
+            className="ion-no-padding workspace-item"
             lines="none"
             detail={true}
             mode="ios"

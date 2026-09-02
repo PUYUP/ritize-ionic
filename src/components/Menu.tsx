@@ -26,25 +26,25 @@ const appPages: AppPage[] = [
     title: 'Dashboard',
     url: '/dashboard',
     iosIcon: homeOutline,
-    mdIcon: home
+    mdIcon: homeOutline
   },
   {
     title: 'Workspaces',
-    url: '/workspaces',
+    url: '/dashboard/workspace',
     iosIcon: briefcaseOutline,
-    mdIcon: briefcase
+    mdIcon: briefcaseOutline
   },
   {
     title: 'Profile',
-    url: '/profile',
+    url: '/dashboard/profile',
     iosIcon: peopleOutline,
-    mdIcon: people
+    mdIcon: peopleOutline
   },
   {
     title: 'Settings',
-    url: '/settings',
+    url: '/dashboard/settings',
     iosIcon: settingsOutline,
-    mdIcon: settingsSharp
+    mdIcon: settingsOutline
   },
 ];
 

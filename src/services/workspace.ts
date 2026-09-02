@@ -144,8 +144,8 @@ export const workspaceAPI = createApi({
         }),
 
         // get all workspaces
-        getAllWorkspaces: builder.query<WorkspaceTypes[], void>({
-            queryFn: async () => {
+        getAllWorkspaces: builder.query<WorkspaceTypes[], { from: number, to: number }>({
+            queryFn: async ({ from = 0, to = 10 }) => {
                 const user = await getUser();
                 const { data, error } = await supabase
                     .from('workspaces')
@@ -156,7 +156,7 @@ export const workspaceAPI = createApi({
                     `)
                     .in('membersInside.user_id', [user.id])
                     .order('created_at', { ascending: false })
-                    .limit(10);
+                    .range(from, to);
 
                 if (error) return { error: { message: error.message ?? 'Failed to fetch workspaces' } };
 

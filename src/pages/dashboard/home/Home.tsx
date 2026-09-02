@@ -1,20 +1,17 @@
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonMenuButton, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Home.css';
-import StartNote from '../../../components/startnote/StartNote';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
-import { add, addCircleOutline, arrowForwardOutline, chevronForwardCircleOutline, chevronForwardOutline } from 'ionicons/icons';
+import { add, arrowForwardOutline } from 'ionicons/icons';
 import { getGreeting } from '../../../utils/dayGreeting';
 import WorkspaceStats from '../../../components/workspace-stats/WorkspaceStats';
 import { useEffect, useState } from 'react';
 import { getUser } from '../../../utils/authState';
-import { supabase } from '../../../utils/supabaseClient';
-import { useGetAllOrganizationsQuery } from '../../../services/organization';
 import { useGetAllWorkspacesQuery } from '../../../services/workspace';
 
 const HomePage: React.FC = () => {
     const { name = '' } = useParams<{ name: string; }>();
-    const { data: workspaces, isLoading } = useGetAllWorkspacesQuery();
+    const { data: workspaces, isLoading } = useGetAllWorkspacesQuery({ from: 0, to: 10 });
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {

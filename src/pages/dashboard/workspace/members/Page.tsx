@@ -261,20 +261,20 @@ const WorkspaceMembersPage: React.FC = () => {
                                 <div slot="end" className="flex items-center gap-2">
                                     <IonButtons className="gap-2">
                                         {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.user_id === member.user_id && (
-                                            <IonButton fill="clear" onClick={() => {
+                                            <IonButton fill="clear" shape="round" onClick={() => {
                                                 setEditMember(member);
                                                 setShowLeaveAlert(true);
                                             }}>
-                                                <IonIcon icon={logOutOutline} color="danger" />
+                                                <IonIcon icon={logOutOutline} color="danger" slot="icon-only" />
                                             </IonButton>
                                         )}
 
                                         {(currentUser.role === 'owner' || currentUser.role === 'admin') && currentUser.user_id !== member.user_id && member.role !== 'owner' && (
-                                            <IonButton fill="clear" onClick={() => {
+                                            <IonButton fill="clear" shape="round" onClick={() => {
                                                 setEditMember(member);
                                                 setShowMemberActionSheet(true);
                                             }}>
-                                                <IonIcon icon={settingsOutline} />
+                                                <IonIcon icon={settingsOutline} slot="icon-only" />
                                             </IonButton>
                                         )}
                                     </IonButtons>
@@ -525,7 +525,7 @@ const WorkspaceMembersPage: React.FC = () => {
                     },
                 ]}
             ></IonActionSheet>
-        </IonPage>
+        </IonPage >
     );
 };
 

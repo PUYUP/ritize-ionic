@@ -17,6 +17,7 @@ export type NoteTypes = {
     synced_at?: string | null;
     user?: any;
     pages?: NotePageTypes[];
+    [key: string]: any;
 }
 
 export type NotePageTypes = {
@@ -187,8 +188,8 @@ export const notesAPI = createApi({
                 const to = from + pageSize - 1;
 
                 const { data, error, count } = await supabase
-                    .from("workspace_notes")
-                    .select("*, pages:workspace_notes_pages(count), user!inner(id, name)", { count: "exact" })
+                    .from("workspace_notes_list")
+                    .select("*, pageCount:workspace_notes_pages(count), user!inner(id, name)", { count: "exact" })
                     .eq("workspace_id", workspace_id)
                     .order("created_at", { ascending: false })
                     .range(from, to);

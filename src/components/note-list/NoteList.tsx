@@ -1,7 +1,7 @@
 import { IonButton, IonIcon, IonText } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { ellipsisVertical } from 'ionicons/icons';
+import { documents, documentsOutline, ellipsisVertical } from 'ionicons/icons';
 import { useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -10,18 +10,8 @@ interface Props {
     workspaceId: string;
 }
 
-interface Note {
-    readonly id: number;
-    contentData: any;
-    createdAt: string;
-    user: {
-        id: number;
-        name: string;
-    }
-}
-
 const NoteItem: React.FC<{ item: NoteTypes }> = ({ item }) => {
-    const { content, created_at } = item;
+    const { content_preview, created_at } = item;
 
     return (
         <Link to={`/dashboard/editor/richtext?workspaceId=${item.workspace_id}&noteId=${item.id}`}>
@@ -33,20 +23,31 @@ const NoteItem: React.FC<{ item: NoteTypes }> = ({ item }) => {
                             <IonText className='text-xs text-neutral-400'>&bull;</IonText>
                             <IonText className='text-xs text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
                         </div>
-                        <IonText className='text-base text-neutral-800'>{item.user.name}</IonText>
+                        <IonText className='text-base text-neutral-700 font-semibold'>{item.user.name}</IonText>
                     </div>
 
                     <div className='ml-auto'>
                         <IonButton shape='round' size='small' color={'medium'} fill='clear'>
                             <IonIcon icon={ellipsisVertical} slot='icon-only' />
                         </IonButton>
-
                     </div>
                 </div>
-                <div
-                    dangerouslySetInnerHTML={{ __html: content }}
-                    className='text-neutral-700 text-base leading-6'
-                />
+
+                <div className='block'>
+                    <div className='flex gap-2'>
+                        <div className='flex items-center gap-1 text-green-600 text-base'>
+                            <IonIcon icon={documentsOutline} color='success' className='text-lg' />
+                            <IonText>{item.pageCount?.[0]?.count || 0} pages</IonText>
+                        </div>
+                    </div>
+
+                    {content_preview && (
+                        <div
+                            dangerouslySetInnerHTML={{ __html: content_preview }}
+                            className='text-neutral-700 text-base leading-6 mt-2 line-clamp-5'
+                        />
+                    )}
+                </div>
             </div>
         </Link>
     )

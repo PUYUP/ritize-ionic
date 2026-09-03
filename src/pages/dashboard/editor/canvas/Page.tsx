@@ -16,7 +16,7 @@ import {
 	useIonViewWillEnter,
 	useIonViewWillLeave,
 } from '@ionic/react';
-import { Excalidraw, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
+import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import './Page.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -145,6 +145,17 @@ const CanvasEditorPage: React.FC = () => {
 			setPages((prevPages) =>
 				prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
 			);
+
+			// extract as image
+			const blob = await exportToBlob({
+				elements: elements,
+				appState: { exportBackground: true },
+				mimeType: "image/png",
+			});
+
+			const file = new File([blob], 'canvas.png', { type: 'image/png' });
+
+			console.log(file);
 		} catch (err) {
 			console.error('Failed to save canvas', err);
 			presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
@@ -268,28 +279,6 @@ const CanvasEditorPage: React.FC = () => {
 			}
 		}, 100);
 	}, [isLoaded]);
-
-	// Lapis 2: kalau tetap ada perubahan scroll/zoom yang lolos, langsung dikembalikan
-	const handleScrollChange = useCallback(
-		(scrollX: number, scrollY: number, zoom: { value: number }) => {
-			if (
-				scrollX !== LOCKED_VIEW.scrollX ||
-				scrollY !== LOCKED_VIEW.scrollY ||
-				zoom.value !== LOCKED_VIEW.zoomValue
-			) {
-				excalidrawAPI?.updateScene({
-					appState: {
-						...excalidrawAPI.getAppState(),
-						...excalidrawAppProps.appState,
-						scrollX: LOCKED_VIEW.scrollX,
-						scrollY: LOCKED_VIEW.scrollY,
-						zoom: { value: LOCKED_VIEW.zoomValue as any },
-					},
-				});
-			}
-		},
-		[excalidrawAPI]
-	);
 
 	// Initialize the pages Swiper once and clean it up on unmount.
 	useEffect(() => {

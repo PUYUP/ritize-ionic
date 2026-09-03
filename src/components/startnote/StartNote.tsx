@@ -1,4 +1,4 @@
-import { analyticsOutline, cloudUploadOutline, fileTrayOutline, imageOutline, imagesOutline, micOutline, textOutline } from 'ionicons/icons';
+import { analyticsOutline, cloudUploadOutline, fileTrayOutline, imageOutline, imagesOutline, micOutline, shapesOutline, textOutline } from 'ionicons/icons';
 import './StartNote.css';
 import { IonCard, IonCardContent, IonIcon, IonText } from '@ionic/react';
 
@@ -38,7 +38,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                     <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/canvas${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
                             <div className='w-8 h-8 flex items-center justify-center bg-[#E9F4E5] rounded-full mb-3'>
-                                <IonIcon icon={analyticsOutline} className='text-xl text-[#32A315]' />
+                                <IonIcon icon={shapesOutline} className='text-xl text-[#32A315]' />
                             </div>
 
                             <div className='block mt-0 mb-0'>

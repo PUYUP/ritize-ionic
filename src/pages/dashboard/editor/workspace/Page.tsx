@@ -1,7 +1,8 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSelect, IonSelectOption, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
 import { briefcaseOutline } from 'ionicons/icons';
 import { useForm, Controller, SubmitHandler } from "react-hook-form"
 import './Page.css';
+import languages from '../../../../utils/ISO-639-1-language.json';
 import { useEffect } from 'react';
 import { useParams } from 'react-router';
 import { useCreateWorkspaceMutation, useGetWorkspaceByIdQuery, useUpdateWorkspaceMutation } from '../../../../services/workspace';
@@ -9,6 +10,7 @@ import { useCreateWorkspaceMutation, useGetWorkspaceByIdQuery, useUpdateWorkspac
 type Inputs = {
     title: string
     scope: 'personal' | 'group'
+    language_code: string
 }
 
 interface RouteParams {
@@ -32,7 +34,7 @@ const WorkspaceEditorPage: React.FC = () => {
         reset,
     } = useForm<Inputs>({
         mode: 'onChange',
-        defaultValues: { title: '', scope: 'personal' },
+        defaultValues: { title: '', scope: 'personal', language_code: 'en' },
     });
 
     const onSubmit: SubmitHandler<Inputs> = async (values) => {
@@ -43,6 +45,7 @@ const WorkspaceEditorPage: React.FC = () => {
                 data: {
                     title: values.title,
                     scope: values.scope,
+                    language_code: values.language_code,
                 },
             });
 
@@ -60,6 +63,7 @@ const WorkspaceEditorPage: React.FC = () => {
         const { data, error } = await createWorkspace({
             title: values.title,
             scope: values.scope,
+            language_code: values.language_code,
         });
 
         if (error) return;
@@ -82,6 +86,7 @@ const WorkspaceEditorPage: React.FC = () => {
         (async () => {
             setValue('title', workspace.title);
             setValue('scope', workspace.scope);
+            setValue('language_code', workspace.language_code);
             await trigger();
         })();
     }, [workspace, isSuccess, setValue, trigger]);
@@ -147,6 +152,36 @@ const WorkspaceEditorPage: React.FC = () => {
                                         </IonItem>
                                     </IonList>
                                 </IonRadioGroup>
+                            )}
+                        />
+                    </div>
+
+                    <div className='block ion-margin-top'>
+                        <Controller
+                            name="language_code"
+                            control={control}
+                            rules={{ required: true }}
+                            render={({ field: { onChange, value } }) => (
+                                <div className='block'>
+                                    <IonItemDivider>
+                                        <IonLabel>Main language for workspace content</IonLabel>
+                                    </IonItemDivider>
+                                    <IonSelect
+                                        labelPlacement="floating"
+                                        fill="outline"
+                                        mode="ios"
+                                        placeholder='Select a language'
+                                        onIonChange={(e) => onChange(e.detail.value)}
+                                        value={value}
+                                        interface="popover"
+                                    >
+                                        {languages.sort((a, b) => a.name.localeCompare(b.name)).map((lang) => (
+                                            <IonSelectOption key={lang.code} value={lang.code}>
+                                                {lang.name}
+                                            </IonSelectOption>
+                                        ))}
+                                    </IonSelect>
+                                </div>
                             )}
                         />
                     </div>

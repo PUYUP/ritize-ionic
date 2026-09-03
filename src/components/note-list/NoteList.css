@@ -1,0 +1,5 @@
+ion-item.note-item {
+    padding-bottom: 10px;
+    padding-top: 10px;
+    --inner-padding-end: 0;
+}

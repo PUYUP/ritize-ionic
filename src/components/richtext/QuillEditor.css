@@ -71,6 +71,10 @@
     gap: 10px;
 }
 
+.quill-editor-container .ql-editor {
+    min-height: calc(100vh - 150px);
+}
+
 .quill-editor-container .ql-editor ol {
     padding-left: 0;
 }

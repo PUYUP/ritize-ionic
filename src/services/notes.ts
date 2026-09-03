@@ -189,7 +189,12 @@ export const notesAPI = createApi({
 
                 const { data, error, count } = await supabase
                     .from("workspace_notes_list")
-                    .select("*, pageCount:workspace_notes_pages(count), user!inner(id, name)", { count: "exact" })
+                    .select(`
+                        *
+                        , pageCount:workspace_notes_pages(count)
+                        , user!inner(id, name)
+                        , attachments(*, file:file_id(*))
+                    `, { count: "exact" })
                     .eq("workspace_id", workspace_id)
                     .order("created_at", { ascending: false })
                     .range(from, to);

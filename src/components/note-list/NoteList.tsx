@@ -12,9 +12,14 @@ interface Props {
 
 const NoteItem: React.FC<{ item: NoteTypes }> = ({ item }) => {
     const { content_preview, created_at } = item;
+    let editor: string = 'richtext';
+
+    if (item.content_type == 'canvas') {
+        editor = 'canvas';
+    }
 
     return (
-        <Link to={`/dashboard/editor/richtext?workspaceId=${item.workspace_id}&noteId=${item.id}`}>
+        <Link to={`/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`}>
             <div className='block'>
                 <div className='flex'>
                     <div className='flex flex-col'>

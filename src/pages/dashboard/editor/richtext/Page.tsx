@@ -31,6 +31,7 @@ import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
 import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
+import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -86,6 +87,7 @@ const RichTextEditorPage: React.FC = () => {
         isError: gettingNoteError,
     } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
     const [upsertNote] = useUpsertNoteMutation();
+    const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
 
     const handleUpdateUrlWithNoteId = (newNoteId: string) => {
         const newParams = new URLSearchParams(searchParams);
@@ -546,7 +548,7 @@ const RichTextEditorPage: React.FC = () => {
                     </IonButtons>
 
                     <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>
-                        {selectedNote?.title ?? 'Untitled Note'}
+                        {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
 
                     {/* pages tools */}

@@ -277,6 +277,8 @@ const RichTextEditorPage: React.FC = () => {
                     if (quillRef.current) {
                         quillRef.current.setContents(new Delta(json));
                     }
+
+                    setHasContent(true);
                 } catch (error) {
                     console.error('Failed to parse saved content', error);
                 }

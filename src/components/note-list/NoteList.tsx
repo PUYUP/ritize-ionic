@@ -1,7 +1,7 @@
 import { IonButton, IonButtons, IonIcon, IonItem, IonLabel, IonList, IonText } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { documents, documentsOutline, ellipsisVertical, shapesOutline, textOutline } from 'ionicons/icons';
+import { documentOutline, documents, documentsOutline, ellipsisVertical, shapesOutline, textOutline } from 'ionicons/icons';
 import { useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -61,16 +61,15 @@ const NoteItem: React.FC<{ item: NoteTypes }> = ({ item }) => {
             <IonLabel>
                 <div className='flex'>
                     <Link to={`/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`} className='block w-full flex-1'>
-                        <p className='flex gap-1 !m-0'>
-                            <IonText className='text-xs text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
-                            <IonText className='text-xs text-neutral-400'>&bull;</IonText>
-                            <IonText className='text-xs text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
+                        <p className='flex gap-1 !m-0 items-center'>
+                            <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
+                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                            <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
+                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                            <IonIcon icon={documentOutline} className='text-sm text-neutral-500' />
+                            <IonText className='text-sm text-neutral-500'>{item.pageCount?.[0]?.count || 0} page</IonText>
                         </p>
-                        <IonText color="dark">{item.user.name}</IonText>
-                        <p className='flex items-center gap-1 text-green-600 text-base !font-semibold'>
-                            <IonIcon icon={documentsOutline} color='success' className='text-sm' />
-                            <IonText color='success'>{item.pageCount?.[0]?.count || 0} pages</IonText>
-                        </p>
+                        <IonText color="dark font-semibold">{item.user.name}</IonText>
                     </Link>
 
                     <div className='ml-auto'>
@@ -84,7 +83,7 @@ const NoteItem: React.FC<{ item: NoteTypes }> = ({ item }) => {
                     {content_preview && (
                         <div
                             dangerouslySetInnerHTML={{ __html: content_preview }}
-                            className='text-neutral-800 text-base leading-6 mt-2 line-clamp-4'
+                            className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
                         />
                     )}
                 </Link>

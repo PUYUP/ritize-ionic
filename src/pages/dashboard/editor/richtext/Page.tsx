@@ -34,26 +34,35 @@ import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useUpse
 
 const AUTOSAVE_DELAY_MS = 1500;
 
+/**
+ * A delta is "empty" only if it has no text AND no embeds (images, formulas,
+ * videos, etc). The previous implementation only looked at string inserts,
+ * so a page containing nothing but an image was treated as empty and its
+ * content was discarded (contentData: null) on every save.
+ */
 function isDeltaEmpty(delta: Delta | null | undefined): boolean {
     if (!delta || !Array.isArray(delta.ops) || delta.ops.length === 0) {
         return true;
     }
 
-    const text = delta.ops
-        .map(op => (typeof op.insert === "string" ? op.insert : ""))
-        .join("");
-
-    return text.trim().length === 0;
+    return !delta.ops.some((op) => {
+        if (typeof op.insert === 'string') {
+            return op.insert.trim().length > 0;
+        }
+        // Non-string insert = an embed (image/video/formula/etc) — real content.
+        return op.insert !== undefined && op.insert !== null;
+    });
 }
 
 const RichTextEditorPage: React.FC = () => {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
     const noteId = searchParams.get('noteId');
 
     const ionContentRef = useRef<HTMLIonContentElement>(null);
     const quillRef = useRef<Quill | null>(null);
     const autosaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const noteInitStarted = useRef(false);
     const [isDirty, setIsDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [hasContent, setHasContent] = useState(false);
@@ -70,43 +79,67 @@ const RichTextEditorPage: React.FC = () => {
     const pagesSwiperRef = useRef<Swiper | null>(null);
     const prevPagesLengthRef = useRef(pages.length);
 
-    // TODO: load real content (API call, Capacitor Preferences, IndexedDB…)
-    const [initialContent, setInitialContent] = useState<Delta | null>(null);
-
     // RTK Query
-    const { data: noteData, isLoading: gettingNote, isSuccess: gettingNoteSuccess } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
+    const {
+        data: noteData,
+        isLoading: gettingNote,
+        isError: gettingNoteError,
+    } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
     const [upsertNote] = useUpsertNoteMutation();
 
-    const persist = useCallback(async () => {
-        const quill = quillRef.current;
-        if (!quill || !selectedPage) return;
+    const handleUpdateUrlWithNoteId = (newNoteId: string) => {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('noteId', newNoteId);
+        setSearchParams(newParams, { replace: true });
+    };
+
+    // Saves an explicit (page, delta) pair. Takes both as arguments rather
+    // than reading them from refs/state at call time, so callers control
+    // exactly what gets written where — this is what makes it safe to call
+    // right before switching pages (see flushPendingSave / persistCurrentPage).
+    const persistPageContent = useCallback(async (page: Partial<Page>, delta: Delta) => {
         setIsSaving(true);
         try {
-            const delta = quill.getContents();
             const contentEmpty = isDeltaEmpty(delta);
-            const bufferData = Buffer.from(JSON.stringify(delta), 'utf-8');
+            const bufferData = contentEmpty ? null : Buffer.from(JSON.stringify(delta), 'utf-8');
 
-            if (selectedPage) {
-                await NotesRepository.updatePage(selectedPage.id as string, { contentData: contentEmpty ? null : bufferData });
-                console.log('selected page id: ', selectedPage.id, ' is updated');
+            await NotesRepository.updatePage(page.id as string, { contentData: bufferData });
+            console.log('selected page id: ', page.id, ' is updated');
 
-                // GUNAKAN CARA INI (Functional Update)
-                // Cara ini paling aman karena tidak membutuhkan variabel 'pages' dari luar closure
-                setPages((prevPages) =>
-                    prevPages.map(p =>
-                        p.id === selectedPage.id ? { ...p, contentData: bufferData } : p
-                    )
-                );
-            }
-
-            setIsDirty(false);
+            setPages((prevPages) =>
+                prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
+            );
         } catch (err) {
             console.error('Failed to save document', err);
             presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
         } finally {
             setIsSaving(false);
         }
-    }, [presentToast, selectedPage]);
+    }, [presentToast]);
+
+    // Persists whatever is currently in the editor for the currently selected page.
+    const persistCurrentPage = useCallback(async () => {
+        const quill = quillRef.current;
+        if (!quill || !selectedPage) return;
+        await persistPageContent(selectedPage, quill.getContents());
+        setIsDirty(false);
+    }, [selectedPage, persistPageContent]);
+
+    // Cancels any pending debounced autosave and, if there are unsaved
+    // changes, saves them immediately for the CURRENT page.
+    //
+    // This must be awaited before switching pages, adding a page, or leaving
+    // the editor. Without it, a pending autosave (scheduled while page A was
+    // active) can fire after page B's content has already been swapped into
+    // the editor, saving page B's content under page A's id.
+    const flushPendingSave = useCallback(async () => {
+        if (autosaveTimer.current) {
+            clearTimeout(autosaveTimer.current);
+            autosaveTimer.current = undefined;
+        }
+        if (!isDirty) return;
+        await persistCurrentPage();
+    }, [isDirty, persistCurrentPage]);
 
     const handleTextChange = useCallback((
         delta: Delta,
@@ -114,29 +147,36 @@ const RichTextEditorPage: React.FC = () => {
         source: EmitterSource,
         quill: Quill
     ) => {
+        // Ignore programmatic changes — e.g. quill.setContents(...) fired by
+        // the page-load effect below whenever `selectedPage` changes. Only
+        // real user edits should mark the document dirty / trigger a save.
+        if (source !== 'user') return;
+
         setIsDirty(true);
-
-        if (!hasContent && delta.ops.length > 0) {
-            setHasContent(true);
-        }
-
-        if (delta.ops.length <= 1) {
-            setHasContent(false);
-        }
+        // Base "has content" on the full document, not the incremental
+        // delta diff — a diff of a deletion can have >1 ops and a diff of
+        // an insertion can look "non-empty" while the document as a whole
+        // is empty (or vice versa).
+        setHasContent(!isDeltaEmpty(quill.getContents()));
 
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-        autosaveTimer.current = setTimeout(persist, AUTOSAVE_DELAY_MS);
-    }, [persist]);
+        autosaveTimer.current = setTimeout(() => {
+            void persistCurrentPage();
+        }, AUTOSAVE_DELAY_MS);
+    }, [persistCurrentPage]);
 
     const handleEnter = useCallback((quill: Quill) => {
         ionContentRef.current?.scrollToBottom(0);
     }, []);
 
+    useIonViewWillEnter(() => {
+        // pass
+    });
+
     // Ionic's router outlet keeps pages mounted in its history stack, so plain
     // unmount isn't a reliable "user is leaving" signal — flush explicitly.
     useIonViewWillLeave(() => {
-        if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-        if (isDirty) void persist();
+        void flushPendingSave();
     });
 
     useEffect(() => () => {
@@ -155,162 +195,160 @@ const RichTextEditorPage: React.FC = () => {
         });
     }, []);
 
+    // Initialize the pages Swiper once and clean it up on unmount.
     useEffect(() => {
         const containerEl = pagesSwiperElRef.current;
         if (!containerEl) return;
 
+        pagesSwiperRef.current = new Swiper(containerEl, {
+            modules: [FreeMode, Mousewheel],
+            direction: 'horizontal',
+            slidesPerView: 'auto',
+            spaceBetween: 8,
+            freeMode: {
+                enabled: true,
+                momentum: true,
+                momentumBounce: false,
+                sticky: false,
+            },
+            mousewheel: {
+                forceToAxis: true,
+                releaseOnEdges: true,
+            },
+            resistanceRatio: 0,
+            watchOverflow: true,
+            observer: true,
+            observeParents: true,
+        });
+
+        return () => {
+            pagesSwiperRef.current?.destroy(true, true);
+            pagesSwiperRef.current = null;
+        };
+    }, []);
+
+    // Update/scroll the swiper whenever the page list changes.
+    useEffect(() => {
+        const swiper = pagesSwiperRef.current;
+        if (!swiper) return;
+
         const isNewPageAdded = pages.length > prevPagesLengthRef.current;
         prevPagesLengthRef.current = pages.length;
 
-        // Tunggu 1 frame agar DOM selesai me-render item baru
-        const raf = requestAnimationFrame(async () => {
-            if (!pagesSwiperRef.current) {
-                // Langsung inisialisasi Swiper tanpa syarat overflow
-                pagesSwiperRef.current = new Swiper(containerEl, {
-                    modules: [FreeMode, Mousewheel],
-                    direction: 'horizontal',
-                    slidesPerView: 'auto',
-                    spaceBetween: 8, // Jarak antar item (pengganti gap-4)
-                    freeMode: {
-                        enabled: true,
-                        momentum: true,
-                        momentumBounce: false,
-                        sticky: false,
-                    },
-                    mousewheel: {
-                        forceToAxis: true,
-                        releaseOnEdges: true,
-                    },
-                    resistanceRatio: 0,
-                    watchOverflow: true, // Otomatis disable scroll jika item belum penuh
-                    observer: true,
-                    observeParents: true,
-                });
-            } else {
-                // Jika Swiper sudah ada, cukup update state-nya saat ada page baru
-                pagesSwiperRef.current.update();
-
-                // Scroll ke item paling bawah (indeks terakhir)
-                // Parameter kedua (300) adalah durasi animasi dalam milidetik (opsional)
-                // Cuma auto-scroll ke bawah kalau memang ada page baru
-                if (isNewPageAdded) {
-                    pagesSwiperRef.current.slideTo(pages.length - 1, 300);
-                }
+        const raf = requestAnimationFrame(() => {
+            swiper.update();
+            if (isNewPageAdded) {
+                swiper.slideTo(pages.length - 1, 300);
             }
         });
 
         return () => cancelAnimationFrame(raf);
     }, [pages]);
 
-    // load content data from database
+    // Load content data for the active page into the editor.
     useEffect(() => {
-        console.log("loadContentData useEffect triggered", { selectedPage: selectedPage?.id });
         if (!selectedPage) return;
 
         const loadContentData = async () => {
             const contentData = selectedPage?.contentData;
-            console.log("contentData type/length:", contentData ? (contentData as any).length || (contentData as any).byteLength : "null");
 
             if (contentData) {
                 try {
-                    // 1. Ubah Uint8Array ke String menggunakan TextDecoder
                     const decoder = new TextDecoder('utf-8');
                     const jsonString = decoder.decode(contentData);
 
-                    if (!jsonString) {
-                        console.log("Decoded jsonString is empty");
-                        return;
-                    }
+                    if (!jsonString) return;
 
-                    // 2. Parse string yang sudah valid menjadi JSON object
                     const json = JSON.parse(jsonString);
-                    console.log("JSON parsed successfully, elements count:", json);
 
-                    // SET LANGSUNG KE INSTANCE QUILL
                     if (quillRef.current) {
-                        // Gunakan setContents, BUKAN setInitialContent
                         quillRef.current.setContents(new Delta(json));
                     }
-
                 } catch (error) {
-                    console.error("Gagal melakukan parse JSON:", error);
+                    console.error('Failed to parse saved content', error);
                 }
             } else {
-                console.log("contentData is empty/falsy, setting empty elements array");
-                // PENTING: Kosongkan editor jika halaman ini belum ada kontennya
                 if (quillRef.current) {
                     quillRef.current.setContents(new Delta());
                 }
             }
-        }
+        };
 
         loadContentData();
     }, [selectedPage]);
-
-    // component lifecycles
-    useIonViewWillEnter(() => {
-
-    });
 
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));
     });
 
     useIonViewDidLeave(() => {
-        // reset the pages
         setPages([]);
         setSelectedPage(null);
         setSelectedNote(null);
+        noteInitStarted.current = false;
     });
 
     // select page
     const selectPageHandler = async (page: Page) => {
-        const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
-        await NotesRepository.updatePagesBulk(updatedPages);
-        setPages(updatedPages);
+        if (selectedPage?.id === page.id) return;
 
-        // getting page from database agar kita mendapatkan contentData yang TERBARU
-        if (selectedNote) {
-            const currentPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
-            setPages(currentPages);
+        try {
+            // Flush any unsaved edits on the OUTGOING page before touching
+            // selectedPage / swapping the editor's content.
+            await flushPendingSave();
 
-            // CARI halaman yang dituju dari data yang FRESH ini
-            const freshSelectedPage = currentPages.find(p => p.id === page.id);
-            if (freshSelectedPage) {
-                // Update state selectedPage dengan data TERBARU (termasuk coretan terakhir)
-                setSelectedPage(freshSelectedPage);
+            const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
+            await NotesRepository.updatePagesBulk(updatedPages);
+            setPages(updatedPages);
+
+            if (selectedNote) {
+                const currentPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
+                setPages(currentPages);
+
+                const freshSelectedPage = currentPages.find((p) => p.id === page.id);
+                if (freshSelectedPage) {
+                    setSelectedPage(freshSelectedPage);
+                }
             }
+        } catch (err) {
+            console.error('Failed to switch page', err);
+            presentToast({ message: 'Could not switch pages.', duration: 2500, color: 'danger' });
         }
-    }
+    };
 
     // add new page
     const newPageHandler = async () => {
         if (!selectedNote) return;
 
-        const prevPages = [...pages.map((p: Page) => ({ ...p, isActive: false }))];
-        await NotesRepository.updatePagesBulk(prevPages);
+        try {
+            await flushPendingSave();
 
-        // Buat halaman baru
-        await createPage(selectedNote, {
-            pageNum: pages.length + 1,
-            workspaceId: selectedNote.workspaceId,
-            workspaceNoteId: selectedNote.id,
-            isActive: true,
-            syncedAt: new Date(),
-            syncedId: crypto.randomUUID(),
-        });
+            const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
+            await NotesRepository.updatePagesBulk(prevPages);
 
-        // RE-FETCH dari database untuk memastikan kita mendapatkan ID yang benar
-        const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
-        setPages(updatedPages);
+            await createPage(selectedNote, {
+                pageNum: pages.length + 1,
+                workspaceId: selectedNote.workspaceId,
+                workspaceNoteId: selectedNote.id,
+                isActive: true,
+                syncedAt: new Date(),
+                syncedId: crypto.randomUUID(),
+            });
 
-        const activePage = updatedPages.find((p) => p.isActive);
-        if (activePage) {
-            setSelectedPage(activePage);
+            const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
+            setPages(updatedPages);
+
+            const activePage = updatedPages.find((p) => p.isActive);
+            if (activePage) {
+                setSelectedPage(activePage);
+            }
+        } catch (err) {
+            console.error('Failed to create a new page', err);
+            presentToast({ message: 'Could not create a new page.', duration: 2500, color: 'danger' });
         }
     };
 
-    // --- CRUD NOTES ---  
+    // --- CRUD NOTES ---
     const initNote = async (workspaceId: string) => {
         const entity = await NotesRepository.insertNote({
             workspaceId: workspaceId,
@@ -330,92 +368,29 @@ const RichTextEditorPage: React.FC = () => {
     }
     // --- END CRUD NOTES ---
 
-    // ...
-    // Load content from server
-    // ...
-    // useEffect(() => {
-    //     if (!noteData) return;
-
-    //     console.log("noteData", noteData);
-
-    //     (async () => {
-    //         const currentPages: Page[] = noteData?.pages
-    //             ? noteData?.pages
-    //                 ?.slice()
-    //                 .sort((a: NotePageTypes, b: NotePageTypes) => a.page_num - b.page_num)
-    //                 .map((p: NotePageTypes) => {
-    //                     return {
-    //                         id: p.id,
-    //                         workspaceId: p.workspace_id,
-    //                         workspaceNoteId: p.workspace_note_id,
-    //                         contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
-    //                         userId: p.user_id,
-    //                         pageNum: p.page_num,
-    //                         isActive: p.is_active,
-    //                         syncedId: p.synced_id ? p.synced_id : null,
-    //                         syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
-    //                         note: { id: noteData.id }
-    //                     }
-    //                 })
-    //             : [];
-
-    //         // set selected note
-    //         setSelectedNote({
-    //             id: noteData.id,
-    //             workspaceId: noteData.workspace_id,
-    //             syncedAt: noteData.synced_at ? new Date(noteData.synced_at) : null,
-    //             syncedId: noteData.synced_id ? noteData.synced_id : null,
-    //             content: noteData.content,
-    //             noteDatetime: noteData.note_datetime ? new Date(noteData.note_datetime) : new Date(),
-    //             title: noteData.title,
-    //             pages: currentPages,
-    //             contentType: noteData.content_type as NoteFormatTypes,
-    //             userId: noteData.user_id,
-    //         });
-
-    //         let activePage: Page | null = null;
-
-    //         if (currentPages?.length > 0) {
-    //             setPages(currentPages);
-    //             const curActivePage = currentPages.find((p: Page) => p.isActive);
-    //             if (curActivePage) {
-    //                 activePage = curActivePage;
-    //             }
-    //         }
-    //         else {
-    //             const newPage = await createPage({ id: noteData.id }, {
-    //                 pageNum: 1,
-    //                 workspaceId: noteData.workspace_id,
-    //                 workspaceNoteId: noteData.id,
-    //                 isActive: true,
-    //                 syncedAt: new Date(),
-    //                 syncedId: crypto.randomUUID(),
-    //             });
-
-    //             activePage = newPage;
-    //             setPages([newPage]);
-    //         }
-
-    //         setSelectedPage(activePage);
-    //     })();
-    // }, [noteData]);
-
+    // Load / create the note and its pages.
     useEffect(() => {
-        // jika noteId ada maka load dari server
-        if (!workspaceId || !gettingNoteSuccess) return;
+        if (!workspaceId) return;
 
-        // init note — run async logic without returning its promise
+        // We only need to wait on the server fetch when there IS a noteId to
+        // fetch. When noteId is absent, the query is skipped and isLoading
+        // never resolves, so gating on it unconditionally (as before) made
+        // "create a brand-new note" unreachable — this effect would bail out
+        // on every run and no note would ever get created.
+        if (noteId && gettingNote) return;
+
+        let cancelled = false;
+
         (async () => {
             let note = noteId ? await NotesRepository.getNoteById(noteId) : null;
-            if (note) {
+            if (note && !cancelled) {
                 console.log('load note from database', note);
                 setSelectedNote(note);
             }
 
-            // check if note is null, then create a new note
-            if (note === null) {
+            if (note === null && !noteInitStarted.current) {
                 if (noteData) {
-                    // isi local database dari server
+                    noteInitStarted.current = true;
                     console.log("store server data to local db");
                     const nd = noteData as NoteTypes;
                     const newSyncedId = crypto.randomUUID();
@@ -431,9 +406,12 @@ const RichTextEditorPage: React.FC = () => {
                     }
 
                     note = await NotesRepository.insertNote(nData);
-                    setSelectedNote(note);
+                    // Same reasoning as the brand-new-note branch below:
+                    // insertNote() already committed to the DB, so we let the
+                    // rest of this block (sync + page creation) finish
+                    // regardless of `cancelled`, and only guard setState.
+                    if (!cancelled) setSelectedNote(note);
 
-                    // add synced id if empty for current note in the database
                     if (!nd.synced_id) {
                         console.log('adding synced id to existing note');
                         await upsertNote({
@@ -481,14 +459,29 @@ const RichTextEditorPage: React.FC = () => {
                             syncedAt: new Date(),
                             syncedId: crypto.randomUUID(),
                         });
-                        setSelectedPage(page);
+                        if (!cancelled) setSelectedPage(page);
                         console.log('create page', page);
                     }
                 }
-                else {
+                else if (!noteId) {
+                    // Brand-new note: there was never a server record to fetch.
+                    noteInitStarted.current = true;
                     note = await initNote(workspaceId);
-                    setSelectedNote(note);
+                    // Don't bail out here even if `cancelled` — initNote()
+                    // already wrote the note to the DB. A note with zero
+                    // pages is an orphaned/inconsistent record, so we still
+                    // finish creating its first page regardless. `cancelled`
+                    // only needs to gate the setState calls (avoid reflecting
+                    // stale data in the UI), not the DB writes themselves.
+                    if (!cancelled) setSelectedNote(note);
                     console.log('create new note', note);
+
+                    // update url with note id
+                    // setTimeout(() => {
+                    //     if (note && note.id) {
+                    //         handleUpdateUrlWithNoteId(note.id);
+                    //     }
+                    // }, 500);
 
                     const page = await createPage({ id: note.id }, {
                         pageNum: 1,
@@ -498,15 +491,21 @@ const RichTextEditorPage: React.FC = () => {
                         syncedAt: new Date(),
                         syncedId: crypto.randomUUID(),
                     });
-                    setSelectedPage(page);
-                    console.log('create page', page);
+                    if (!cancelled) setSelectedPage(page);
+                    console.log('create page note didn\'t exist', page);
+                }
+                else if (gettingNoteError) {
+                    // noteId was provided, nothing local, and the server
+                    // fetch failed — surface this instead of a silently
+                    // blank editor.
+                    presentToast({ message: 'Could not load this note.', duration: 2500, color: 'danger' });
                 }
             }
 
             // get all pages
-            if (note) {
+            if (note && !cancelled) {
                 const currentPages = await NotesRepository.getPagesByNoteId(note.id);
-                console.log('get pages');
+                console.log('getting pages');
                 setPages([...currentPages]);
 
                 // get active page
@@ -517,7 +516,13 @@ const RichTextEditorPage: React.FC = () => {
                 }
             }
         })();
-    }, [workspaceId, noteData, gettingNoteSuccess]);
+
+        return () => {
+            cancelled = false;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- upsertNote/presentToast are stable-ish;
+        // including them risks re-running this effect (and re-creating a note) on unrelated identity changes.
+    }, [workspaceId, noteId, noteData, gettingNote, gettingNoteError]);
 
     return (
         <IonPage>
@@ -527,7 +532,9 @@ const RichTextEditorPage: React.FC = () => {
                         <IonBackButton defaultHref="/" />
                     </IonButtons>
 
-                    <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>Kimia Jaya Analisis Teknik Dasar Terapan Dr. Fitri</IonTitle>
+                    <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>
+                        {selectedNote?.title ?? 'Untitled Note'}
+                    </IonTitle>
 
                     {/* pages tools */}
                     <div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
@@ -545,7 +552,7 @@ const RichTextEditorPage: React.FC = () => {
                             size='small'
                             shape="round"
                             color={'light'}
-                            disabled={pages.length <= 1}
+                            disabled={pages.length <= 1 || !selectedPage}
                             onClick={() => setShowRemoveAlert(true)}
                         >
                             <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
@@ -557,7 +564,7 @@ const RichTextEditorPage: React.FC = () => {
             <IonContent ref={ionContentRef} className='relative'>
                 <QuillEditor
                     ref={quillRef}
-                    defaultValue={initialContent}
+                    defaultValue={null}
                     placeholder="Tap here to start…"
                     onTextChange={handleTextChange}
                     onImageUpload={handleImageUpload}
@@ -611,7 +618,24 @@ const RichTextEditorPage: React.FC = () => {
                         text: 'Yes',
                         role: 'destructive',
                         handler: async () => {
+                            // Cancel any pending autosave for the OLD content —
+                            // we're about to explicitly persist the cleared state.
+                            if (autosaveTimer.current) {
+                                clearTimeout(autosaveTimer.current);
+                                autosaveTimer.current = undefined;
+                            }
+
                             setClearSignal((c) => c + 1);
+                            setHasContent(false);
+
+                            // Persist explicitly instead of relying on the
+                            // text-change event: the clear is a programmatic
+                            // edit (source !== 'user'), which handleTextChange
+                            // now intentionally ignores.
+                            if (selectedPage) {
+                                await persistPageContent(selectedPage, new Delta());
+                                setIsDirty(false);
+                            }
                         },
                     },
                 ]}
@@ -629,39 +653,53 @@ const RichTextEditorPage: React.FC = () => {
                         text: 'Yes',
                         role: 'destructive',
                         handler: async () => {
-                            const activeIndex = pages.findIndex((p) => p.isActive);
+                            if (!selectedPage) return;
+                            const activeIndex = pages.findIndex((p) => p.id === selectedPage.id);
                             if (activeIndex === -1) return;
 
-                            const filtered = pages.filter((_, idx) => idx !== activeIndex);
-
-                            // tidak ada page tersisa -> clear canvas
-                            if (filtered.length === 0) {
-                                setPages([]);
-                                setClearSignal((c) => c + 1);
-                                return;
+                            // Don't let a pending autosave resurrect the page
+                            // we're about to delete.
+                            if (autosaveTimer.current) {
+                                clearTimeout(autosaveTimer.current);
+                                autosaveTimer.current = undefined;
                             }
 
-                            // pilih page berikutnya kalau ada, atau page sebelumnya kalau yang dihapus adalah terakhir
-                            const nextActiveIndex = Math.min(activeIndex, filtered.length - 1);
+                            try {
+                                await NotesRepository.deletePage(pages[activeIndex].id, pages[activeIndex].syncedId);
 
-                            // delete page from db
-                            await NotesRepository.deletePage(pages[activeIndex].id, pages[activeIndex].syncedId);
+                                const remaining = pages.filter((_, idx) => idx !== activeIndex);
 
-                            // re-index all pages
-                            const reindexed = filtered.map((p, idx) => ({
-                                ...p,
-                                pageNum: idx + 1,
-                                isActive: idx === nextActiveIndex,
-                            }));
+                                if (remaining.length === 0) {
+                                    setPages([]);
+                                    setSelectedPage(null);
+                                    setIsDirty(false);
+                                    setClearSignal((c) => c + 1);
+                                    return;
+                                }
 
-                            // set current active page
-                            const newSelected = reindexed.find((p) => p.isActive);
-                            if (newSelected) {
-                                await selectPageHandler(newSelected);
+                                // pilih page berikutnya kalau ada, atau page sebelumnya kalau yang dihapus adalah terakhir
+                                const nextActiveIndex = Math.min(activeIndex, remaining.length - 1);
+
+                                const reindexed = remaining.map((p, idx) => ({
+                                    ...p,
+                                    pageNum: idx + 1,
+                                    isActive: idx === nextActiveIndex,
+                                }));
+
+                                await NotesRepository.updatePagesBulk(reindexed);
+                                setPages(reindexed);
+                                setIsDirty(false);
+
+                                // Set directly from the data we already have —
+                                // routing this through selectPageHandler here would
+                                // read a stale `pages` closure (state hasn't
+                                // re-rendered with `reindexed` yet) and write
+                                // incomplete data back to the DB.
+                                setSelectedPage(reindexed[nextActiveIndex]);
+                            } catch (err) {
+                                console.error('Failed to remove page', err);
+                                presentToast({ message: 'Could not remove this page.', duration: 2500, color: 'danger' });
                             }
-
-                            setPages(reindexed);
-                            await NotesRepository.updatePagesBulk(reindexed);
                         },
                     },
                 ]}

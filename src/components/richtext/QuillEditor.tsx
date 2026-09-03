@@ -138,7 +138,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
                 quill.setContents(defaultValueRef.current, 'silent');
             }
 
-            const handleTextChange = (delta: Delta, oldDelta: Delta, source: EmitterSource, quill: Quill) => {
+            const handleTextChange = (delta: Delta, oldDelta: Delta, source: EmitterSource) => {
                 onTextChangeRef.current?.(delta, oldDelta, source, quill);
             };
             const handleSelectionChange = (

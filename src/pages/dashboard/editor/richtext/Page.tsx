@@ -478,11 +478,11 @@ const RichTextEditorPage: React.FC = () => {
                     console.log('create new note', note);
 
                     // update url with note id
-                    // setTimeout(() => {
-                    //     if (note && note.id) {
-                    //         handleUpdateUrlWithNoteId(note.id);
-                    //     }
-                    // }, 500);
+                    setTimeout(() => {
+                        if (note && note.id) {
+                            handleUpdateUrlWithNoteId(note.id);
+                        }
+                    }, 500);
 
                     const page = await createPage({ id: note.id }, {
                         pageNum: 1,

@@ -160,66 +160,61 @@ const CanvasEditorPage: React.FC = () => {
 			const file = new File([blob], 'canvas.png', { type: 'image/png' });
 			let progress = 0;
 
-			try {
-				const user = await getUser();
-				const result = await uploadFileToGCS(
-					file,
-					{ onProgress: (p: UploadProgress) => { progress = p.percentage; } },
-					{
-						pageId: page.id,
-						workspaceId: workspaceId,
-					}
-				);
 
-				// save the file
-				const filePayload = {
-					user_id: user.id,
-					disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
-					file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
-					mime_type: result.contentType,
-					original_filename: file.name,
-					size_bytes: result.size,
-					created_at: result.timeCreated,
-					updated_at: result.updated,
-					checksum_sha256: result.md5Hash,
-					path: result.name,
-					media_link: result.mediaLink
-				};
-
-				// save file metadata
-				const { data: fileData, error: fileError } = await supabase.from("files")
-					.insert(filePayload)
-					.select('*')
-					.single();
-
-				// create attachment
-				const attachmentPayload = {
-					file_id: fileData.id,
-					user_id: user.id,
-					entity_type: 'workspace_notes_pages',
-					entity_id: page.id,
-					purpose: 'canvas_image',
+			const user = await getUser();
+			const result = await uploadFileToGCS(
+				file,
+				{ onProgress: (p: UploadProgress) => { progress = p.percentage; } },
+				{
+					pageId: page.id,
+					workspaceId: workspaceId,
 				}
+			);
 
-				// delete attachment sebelumnya
-				await supabase.from("attachments")
-					.delete()
-					.eq('user_id', user.id)
-					.eq('entity_type', 'workspace_notes_pages')
-					.eq('entity_id', page.id)
-					.eq('purpose', 'canvas_image')
+			// save the file
+			const filePayload = {
+				user_id: user.id,
+				disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
+				file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
+				mime_type: result.contentType,
+				original_filename: file.name,
+				size_bytes: result.size,
+				created_at: result.timeCreated,
+				updated_at: result.updated,
+				checksum_sha256: result.md5Hash,
+				path: result.name,
+				media_link: result.mediaLink
+			};
 
-				const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
-					.insert(attachmentPayload)
-					.select('*')
-					.single();
+			// save file metadata
+			const { data: fileData, error: fileError } = await supabase.from("files")
+				.insert(filePayload)
+				.select('*')
+				.single();
 
-				console.log(attachmentData);
-				status = 'done';
-			} catch (err) {
-				status = 'error';
-				errorMsg = err instanceof Error ? err.message : 'Upload gagal';
+			// create attachment
+			const attachmentPayload = {
+				file_id: fileData.id,
+				user_id: user.id,
+				entity_type: 'workspace_notes_pages',
+				entity_id: page.id,
+				purpose: 'canvas_image',
 			}
+
+			// delete attachment sebelumnya
+			await supabase.from("attachments")
+				.delete()
+				.eq('user_id', user.id)
+				.eq('entity_type', 'workspace_notes_pages')
+				.eq('entity_id', page.id)
+				.eq('purpose', 'canvas_image')
+
+			const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
+				.insert(attachmentPayload)
+				.select('*')
+				.single();
+
+			console.log(attachmentData);
 		} catch (err) {
 			console.error('Failed to save canvas', err);
 			presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });

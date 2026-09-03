@@ -44,7 +44,7 @@ const NoteItem: React.FC<{ item: NoteTypes }> = ({ item }) => {
                     {content_preview && (
                         <div
                             dangerouslySetInnerHTML={{ __html: content_preview }}
-                            className='text-neutral-700 text-base leading-6 mt-2 line-clamp-5'
+                            className='text-neutral-700 text-base leading-6 mt-2 line-clamp-4'
                         />
                     )}
                 </div>

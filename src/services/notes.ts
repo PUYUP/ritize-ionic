@@ -236,7 +236,10 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data };
             },
-            invalidatesTags: (result, error) => [{ type: 'NotePages', id: 'LIST' }],
+            invalidatesTags: (result, error) => [
+                { type: 'NotePages', id: 'LIST' },
+                { type: 'Notes', id: 'LIST' }
+            ],
         }),
 
         // ...
@@ -274,7 +277,10 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data };
             },
-            invalidatesTags: (result, error) => [{ type: 'NotePages', id: 'LIST' }],
+            invalidatesTags: (result, error) => [
+                { type: 'NotePages', id: 'LIST' },
+                { type: 'Notes', id: 'LIST' }
+            ],
         }),
 
         // ...
@@ -314,7 +320,10 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data };
             },
-            invalidatesTags: [{ type: 'NotePages', id: 'LIST' }],
+            invalidatesTags: [
+                { type: 'NotePages', id: 'LIST' },
+                { type: 'Notes', id: 'LIST' }
+            ],
         }),
 
         // ...
@@ -330,7 +339,10 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data: undefined };
             },
-            invalidatesTags: [{ type: 'NotePages', id: 'LIST' }],
+            invalidatesTags: [
+                { type: 'NotePages', id: 'LIST' },
+                { type: 'Notes', id: 'LIST' }
+            ],
         })
     })
 });

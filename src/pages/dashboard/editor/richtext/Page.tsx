@@ -179,6 +179,17 @@ const RichTextEditorPage: React.FC = () => {
         void flushPendingSave();
     });
 
+    useIonViewDidEnter(() => {
+        window.dispatchEvent(new Event('resize'));
+    });
+
+    useIonViewDidLeave(() => {
+        setPages([]);
+        setSelectedPage(null);
+        setSelectedNote(null);
+        noteInitStarted.current = false;
+    });
+
     useEffect(() => () => {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     }, []);
@@ -276,17 +287,6 @@ const RichTextEditorPage: React.FC = () => {
 
         loadContentData();
     }, [selectedPage]);
-
-    useIonViewDidEnter(() => {
-        window.dispatchEvent(new Event('resize'));
-    });
-
-    useIonViewDidLeave(() => {
-        setPages([]);
-        setSelectedPage(null);
-        setSelectedNote(null);
-        noteInitStarted.current = false;
-    });
 
     // select page
     const selectPageHandler = async (page: Page) => {
@@ -389,7 +389,8 @@ const RichTextEditorPage: React.FC = () => {
             }
 
             if (note === null && !noteInitStarted.current) {
-                if (noteData) {
+                // Validasi: pastikan noteData yang ada di cache RTK Query adalah milik noteId saat ini
+                if (noteData && (noteData as NoteTypes).id === noteId) {
                     noteInitStarted.current = true;
                     console.log("store server data to local db");
                     const nd = noteData as NoteTypes;
@@ -523,6 +524,18 @@ const RichTextEditorPage: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- upsertNote/presentToast are stable-ish;
         // including them risks re-running this effect (and re-creating a note) on unrelated identity changes.
     }, [workspaceId, noteId, noteData, gettingNote, gettingNoteError]);
+
+    // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
+    useEffect(() => {
+        setPages([]);
+        setSelectedPage(null);
+        setSelectedNote(null);
+        noteInitStarted.current = false;
+
+        if (quillRef.current) {
+            quillRef.current.setContents(new Delta());
+        }
+    }, [noteId]);
 
     return (
         <IonPage>

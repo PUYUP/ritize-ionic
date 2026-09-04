@@ -85,7 +85,7 @@ const WorkspaceDetailPage: React.FC = () => {
                             )}
                         </div>
 
-                        <StartNote workspace={{ id: id }} />
+                        <StartNote workspace={{ id: id, languageCode: workspace.language_code || 'en' }} />
                     </div>
 
                     <div className='ion-padding'>

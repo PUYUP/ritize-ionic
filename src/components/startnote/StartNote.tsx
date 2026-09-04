@@ -5,17 +5,19 @@ import { IonCard, IonCardContent, IonIcon, IonText } from '@ionic/react';
 interface StartNoteProps {
     workspace?: {
         id?: string;
+        languageCode?: string;
     }
 }
 
 const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
     const workspaceId = workspace?.id
+    const languageCode = workspace?.languageCode
 
     return (
         <div id="startnote">
             <div className='grid grid-cols-3 gap-4'>
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/richtext${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/richtext?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
                             <div className='w-8 h-8 flex items-center justify-center bg-[#E1F2F1] rounded-full mb-3'>
                                 <IonIcon icon={textOutline} className='text-xl text-[#008C88]' />
@@ -35,7 +37,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                 </div>
 
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/canvas${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/canvas?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
                             <div className='w-8 h-8 flex items-center justify-center bg-[#E9F4E5] rounded-full mb-3'>
                                 <IonIcon icon={shapesOutline} className='text-xl text-[#32A315]' />
@@ -55,7 +57,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                 </div>
 
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/voice${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/voice?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
                             <div className='w-8 h-8 flex items-center justify-center bg-[#EEE4FA] rounded-full mb-3'>
                                 <IonIcon icon={micOutline} className='text-xl text-[#5B00C9]' />
@@ -75,7 +77,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                 </div>
             </div>
 
-            <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/upload-image${workspaceId ? `?workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+            <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/upload-image?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                 <IonCardContent>
                     <div className='flex gap-3 items-center'>
                         <div className='w-8 h-8 flex items-center justify-center bg-[#FFF0D9] rounded-full'>

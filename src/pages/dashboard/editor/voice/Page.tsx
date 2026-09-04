@@ -20,7 +20,7 @@ import {
 } from '@ionic/react';
 import './Page.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { duplicateOutline, languageOutline, micOutline, pauseOutline, stopOutline, trashOutline, warningOutline } from 'ionicons/icons';
+import { copyOutline, duplicateOutline, languageOutline, micOutline, pauseOutline, stopOutline, trashOutline, warningOutline } from 'ionicons/icons';
 import type { PluginListenerHandle } from '@capacitor/core';
 import {
     SpeechRecognition,
@@ -32,7 +32,7 @@ import { Note, Page } from '../../../../databases/entities/notes';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import Swiper from 'swiper';
 import { FreeMode, Mousewheel } from 'swiper/modules';
-import codes, { by639_1, by639_2T, by639_2B } from 'iso-language-codes';
+import codes, { by639_1 } from 'iso-language-codes';
 import { useSearchParams } from 'react-router-dom';
 import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
@@ -46,12 +46,16 @@ const VoiceRecorderPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
     const noteId = searchParams.get('noteId');
+    const languageCode = searchParams.get('languageCode') || RECOGNITION_LANGUAGE;
 
     const ionContentRef = useRef<HTMLIonContentElement>(null);
 
     const [isSupported, setIsSupported] = useState<boolean | null>(null);
     const [status, setStatus] = useState<RecorderStatus>('idle');
-    const [language, setLanguage] = useState<{ code: string; name: string }>({ code: RECOGNITION_LANGUAGE, name: by639_1[RECOGNITION_LANGUAGE].name });
+    const [language, setLanguage] = useState<{ code: string; name: string }>({
+        code: languageCode,
+        name: by639_1[languageCode as keyof typeof by639_1].name
+    });
 
     const [transcript, setTranscript] = useState('');
     const [interimText, setInterimText] = useState('');
@@ -62,7 +66,9 @@ const VoiceRecorderPage: React.FC = () => {
     const statusRef = useRef<RecorderStatus>('idle');
     const transcriptRef = useRef<string>('');
     const interimTextRef = useRef<string>('');
-    const isRestartingRef = useRef(false);
+    const isAttachingRef = useRef(false);
+    const restartLockRef = useRef(false);
+    const lastCommittedTextRef = useRef('');
 
     // The native listeners below (see attachListeners) are attached ONCE and
     // are never re-created — guarded by `if (!ref.current)`. Anything they
@@ -79,6 +85,7 @@ const VoiceRecorderPage: React.FC = () => {
     const stateListenerRef = useRef<PluginListenerHandle | null>(null);
 
     const [showRemoveAlert, setShowRemoveAlert] = useState(false);
+    const [showClearAlert, setShowClearAlert] = useState(false);
     const [pages, setPages] = useState<Page[]>([]);
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
     const [selectedPage, setSelectedPage] = useState<Partial<Page> | null>(null);
@@ -88,6 +95,7 @@ const VoiceRecorderPage: React.FC = () => {
     const pagesSwiperRef = useRef<Swiper | null>(null);
     const prevPagesLengthRef = useRef(pages.length);
     const selectLanguageRef = useRef<HTMLIonSelectElement>(null);
+    const lastSavedTextRef = useRef('');
 
     // RTK Query — same note/workspace loading pattern as the rich-text editor page.
     const {
@@ -154,6 +162,36 @@ const VoiceRecorderPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        const page = selectedPageRef.current;
+        const currentFullText = joinText(transcript, interimText);
+
+        // Jangan simpan jika halaman belum ada, atau teksnya belum berubah
+        if (!page || currentFullText === lastSavedTextRef.current) return;
+
+        // Tunggu jeda 1 detik (1000ms) tanpa ada kata baru sebelum menyimpan ke DB
+        const autoSaveTimer = setTimeout(() => {
+            // Karena ini berjalan di background, kita tidak perlu await yang memblokir UI
+            persistPageContent(page, currentFullText).then(() => {
+                lastSavedTextRef.current = currentFullText;
+            }).catch(err => console.error("Auto-save failed", err));
+        }, 1000);
+
+        // Jika pengguna berbicara lagi sebelum 1 detik, timer dibatalkan dan dibuat ulang
+        return () => clearTimeout(autoSaveTimer);
+
+        // Efek ini hanya terpicu jika transcript atau interimText berubah
+    }, [transcript, interimText, persistPageContent]);
+
+    useEffect(() => {
+        if (languageCode) {
+            const langData = by639_1[languageCode as keyof typeof by639_1];
+            if (langData) {
+                setLanguage({ code: languageCode, name: langData.name });
+            }
+        }
+    }, [languageCode]);
+
+    useEffect(() => {
         const containerEl = pagesSwiperElRef.current;
         if (!containerEl) return;
 
@@ -167,7 +205,7 @@ const VoiceRecorderPage: React.FC = () => {
                     modules: [FreeMode, Mousewheel],
                     direction: 'horizontal',
                     slidesPerView: 'auto',
-                    centerInsufficientSlides: false,
+                    centerInsufficientSlides: true,
                     spaceBetween: 8,
                     freeMode: {
                         enabled: true,
@@ -183,8 +221,8 @@ const VoiceRecorderPage: React.FC = () => {
                     watchOverflow: true,
                     observer: true,
                     observeParents: true,
-                    centeredSlides: false,
-                    centeredSlidesBounds: false,
+                    centeredSlides: true,
+                    centeredSlidesBounds: true,
                 });
             } else {
                 pagesSwiperRef.current.update();
@@ -243,16 +281,52 @@ const VoiceRecorderPage: React.FC = () => {
         const normalize = (w: string) => w.toLowerCase().replace(/[.,!?;:]+$/, '');
         const wordsA = trimA.split(/\s+/);
         const wordsB = trimB.split(/\s+/);
-        const maxOverlap = Math.min(wordsA.length, wordsB.length);
+        const normA = wordsA.map(normalize);
+        const normB = wordsB.map(normalize);
 
+        // 1. STRICT OVERLAP (Sama seperti sebelumnya)
+        const maxOverlap = Math.min(normA.length, normB.length);
         for (let overlap = maxOverlap; overlap > 0; overlap--) {
-            const tailA = wordsA.slice(wordsA.length - overlap).map(normalize);
-            const headB = wordsB.slice(0, overlap).map(normalize);
+            const tailA = normA.slice(normA.length - overlap);
+            const headB = normB.slice(0, overlap);
+
             if (tailA.every((w, i) => w === headB[i])) {
                 const remainder = wordsB.slice(overlap).join(' ');
                 return remainder ? `${trimA} ${remainder}` : trimA;
             }
         }
+
+        // 2. FUZZY OVERLAP (Bi-Gram Pivot)
+        // Menangani kasus di mana OS mengoreksi 1-2 kata di perbatasan sesi (Boundary Correction)
+        if (normB.length >= 2) {
+            const headBiGram = normB.slice(0, 2).join(' ');
+            const searchWindow = Math.min(10, normA.length); // Cek 10 kata terakhir
+
+            // Cari dari belakang ke depan agar menimpa ujung kalimat yang benar
+            for (let i = normA.length - 2; i >= normA.length - searchWindow; i--) {
+                const tailBiGram = normA.slice(i, i + 2).join(' ');
+                if (tailBiGram === headBiGram) {
+                    // Potong A sampai titik pivot ini, lalu sambung dengan B penuh
+                    const keepA = wordsA.slice(0, i).join(' ');
+                    return keepA ? `${keepA} ${trimB}` : trimB;
+                }
+            }
+        }
+
+        // 3. FUZZY OVERLAP (Single Word Pivot)
+        // Berlaku jika kalimat baru cukup panjang (meminimalkan false-positive)
+        if (normB.length >= 3) {
+            const firstWordB = normB[0];
+            const searchWindow = Math.min(6, normA.length);
+
+            for (let i = normA.length - 1; i >= normA.length - searchWindow; i--) {
+                if (normA[i] === firstWordB) {
+                    const keepA = wordsA.slice(0, i).join(' ');
+                    return keepA ? `${keepA} ${trimB}` : trimB;
+                }
+            }
+        }
+
         return `${trimA} ${trimB}`;
     };
 
@@ -288,60 +362,68 @@ const VoiceRecorderPage: React.FC = () => {
 
     // Fungsi penting yang menggabungkan teks terakhir tanpa menghilangkan kata
     const lockInterimAndRestart = async () => {
-        // Cegah tumpang tindih pemanggilan jika error & stopped menembak bersamaan
-        if (statusRef.current === 'listening' && !isRestartingRef.current) {
-            isRestartingRef.current = true;
+        if (restartLockRef.current || statusRef.current !== 'listening') return;
+        restartLockRef.current = true;
 
-            if (interimTextRef.current.trim() !== '') {
-                const combined = joinText(transcriptRef.current, interimTextRef.current);
+        try {
+            const currentInterim = interimTextRef.current.trim();
+            if (currentInterim !== '') {
+                const combined = joinText(transcriptRef.current, currentInterim);
+
                 updateTranscript(combined);
                 updateInterimText('');
+                lastCommittedTextRef.current = currentInterim;
 
-                const page = selectedPageRef.current;
-                if (page) {
-                    await persistPageContent(page, combined);
-                }
+                // const page = selectedPageRef.current;
+                // if (page) {
+                //     await persistPageContent(page, combined);
+                // }
             }
 
-            // Pastikan native benar-benar mati sebelum distart ulang
-            try {
-                await SpeechRecognition.stop();
-            } catch (e) { /* Abaikan jika error */ }
+            try { await SpeechRecognition.stop(); } catch (e) { }
+
+            // PRO FIX: Naikkan delay ke 300ms. 
+            // 150ms terbukti sering membiarkan buffer lama lolos (Bleeding buffer)
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             await executeStartNative();
 
-            isRestartingRef.current = false;
+        } finally {
+            setTimeout(() => {
+                restartLockRef.current = false;
+            }, 400); // Tahan lock ekstra 100ms setelah restart
         }
     };
 
     const attachListeners = async () => {
-        if (!partialListenerRef.current) {
+        // PRO FIX: Cegah fungsi dipanggil 2x secara bersamaan
+        if (isAttachingRef.current) return;
+        isAttachingRef.current = true;
+
+        try {
+            // PRO FIX: Wajib hapus listener lama sebelum membuat yang baru!
+            await cleanupListeners();
+
             partialListenerRef.current = await SpeechRecognition.addListener(
                 'partialResults',
                 async (event: SpeechRecognitionPartialResultEvent) => {
-                    const matchText = event.matches?.[0] ?? '';
-                    // PENTING: Jangan timpa interimText jika hasilnya kosong.
-                    if (matchText.trim() !== '') {
-                        updateInterimText(matchText);
+                    if (restartLockRef.current) return;
 
-                        // Save the FULL text so far (finalized transcript +
-                        // this in-progress chunk), not just the chunk —
-                        // otherwise every save overwrites the page with only
-                        // the latest utterance and earlier speech is lost.
-                        // Read the page from the ref (see comment above) so
-                        // this always writes to whichever page is actually
-                        // selected right now, not whichever was selected
-                        // when this listener was first attached.
-                        const page = selectedPageRef.current;
-                        if (page) {
-                            await persistPageContent(page, joinText(transcriptRef.current, matchText));
-                        }
+                    const matchText = event.matches?.[0] ?? '';
+                    const trimMatch = matchText.trim();
+
+                    if (trimMatch !== '') {
+                        if (lastCommittedTextRef.current === trimMatch) return;
+
+                        updateInterimText(matchText);
+                        // const page = selectedPageRef.current;
+                        // if (page) {
+                        //     await persistPageContent(page, joinText(transcriptRef.current, matchText));
+                        // }
                     }
                 }
             );
-        }
 
-        if (!errorListenerRef.current) {
             errorListenerRef.current = await SpeechRecognition.addListener(
                 'error',
                 (event: SpeechRecognitionErrorEvent) => {
@@ -349,9 +431,7 @@ const VoiceRecorderPage: React.FC = () => {
                     lockInterimAndRestart();
                 }
             );
-        }
 
-        if (!stateListenerRef.current) {
             stateListenerRef.current = await SpeechRecognition.addListener(
                 'listeningState',
                 (event: SpeechRecognitionListeningEvent) => {
@@ -360,10 +440,15 @@ const VoiceRecorderPage: React.FC = () => {
                     }
                 }
             );
+        } finally {
+            isAttachingRef.current = false;
         }
     };
 
     const startListening = async () => {
+        // PRO FIX: Cegah double click atau pemanggilan ganda jika sudah listening
+        if (statusRef.current === 'listening') return;
+
         if (isSupported === false) {
             setToastMessage('Device is not supporting this feature.');
             return;
@@ -396,16 +481,15 @@ const VoiceRecorderPage: React.FC = () => {
         } catch (error) {
             console.error('Failed to pause recording', error);
         } finally {
-            let finalText = transcriptRef.current;
             if (interimTextRef.current.trim() !== '') {
-                finalText = joinText(transcriptRef.current, interimTextRef.current);
-                updateTranscript(finalText);
+                const combined = joinText(transcriptRef.current, interimTextRef.current);
+                updateTranscript(combined);
                 updateInterimText('');
-            }
 
-            const page = selectedPageRef.current;
-            if (page) {
-                await persistPageContent(page, finalText);
+                const page = selectedPageRef.current;
+                if (page) {
+                    await persistPageContent(page, combined);
+                }
             }
         }
     };
@@ -417,16 +501,15 @@ const VoiceRecorderPage: React.FC = () => {
         } catch (error) {
             console.error('Failed to stop recording', error);
         } finally {
-            let finalText = transcriptRef.current;
             if (interimTextRef.current.trim() !== '') {
-                finalText = joinText(transcriptRef.current, interimTextRef.current);
-                updateTranscript(finalText);
+                const combined = joinText(transcriptRef.current, interimTextRef.current);
+                updateTranscript(combined);
                 updateInterimText('');
-            }
 
-            const page = selectedPageRef.current;
-            if (page) {
-                await persistPageContent(page, finalText);
+                const page = selectedPageRef.current;
+                if (page) {
+                    await persistPageContent(page, combined);
+                }
             }
         }
     };
@@ -750,7 +833,7 @@ const VoiceRecorderPage: React.FC = () => {
                 </IonToolbar>
 
                 {isSupported && (
-                    <div className='flex items-center justify-center gap-2 border-t border-neutral-200 pt-2'>
+                    <div className='flex items-center justify-center gap-2 border-t border-neutral-200 pt-2 pb-2'>
                         <IonIcon icon={languageOutline} />
                         <IonText className='text-sm'>
                             in <span className="text-red-700" onClick={selectLanguageHandler}>{language.name}</span>
@@ -805,6 +888,18 @@ const VoiceRecorderPage: React.FC = () => {
                 <IonFooter className="w-full py-2">
                     <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                         <div className='flex flex-row gap-2 items-center justify-between pb-3 px-1'>
+                            <div className='flex items-center pl-2'>
+                                <IonButton
+                                    size='small'
+                                    shape="round"
+                                    color={'light'}
+                                    disabled={fullText === ''}
+                                    onClick={() => setShowClearAlert(true)}
+                                >
+                                    <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
+                                </IonButton>
+                            </div>
+
                             <div className='flex-1 overflow-hidden'>
                                 <div ref={pagesSwiperElRef} className='swiper !px-2'>
                                     <div id="pages-list" className='swiper-wrapper flex flex-row pb-1'>
@@ -834,7 +929,7 @@ const VoiceRecorderPage: React.FC = () => {
                         </div>
 
                         <div className='flex items-center justify-between px-3'>
-                            <div className='w-10'>
+                            <div className='block'>
                                 <IonButton
                                     size='small'
                                     shape="round"
@@ -883,7 +978,7 @@ const VoiceRecorderPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className='w-10'>
+                            <div className='block'>
                                 <IonButton
                                     size='small'
                                     shape="round"
@@ -898,6 +993,32 @@ const VoiceRecorderPage: React.FC = () => {
                     </div>
                 </IonFooter>
             )}
+
+            {/* clear content alert */}
+            <IonAlert
+                isOpen={showClearAlert}
+                onDidDismiss={() => setShowClearAlert(false)}
+                header='Are you sure to clear content?'
+                message={'All your current notes content will be permanently deleted.'}
+                buttons={[
+                    { text: 'Cancel', role: 'cancel' },
+                    {
+                        text: 'Yes',
+                        role: 'destructive',
+                        handler: async () => {
+                            updateTranscript('');
+                            updateInterimText('');
+
+                            await stopListening();
+
+                            const page = selectedPageRef.current;
+                            if (page) {
+                                await persistPageContent(page, '');
+                            }
+                        },
+                    },
+                ]}
+            ></IonAlert>
 
             {/* remove page alert */}
             <IonAlert

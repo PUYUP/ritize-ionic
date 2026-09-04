@@ -62,6 +62,7 @@ const VoiceRecorderPage: React.FC = () => {
     const statusRef = useRef<RecorderStatus>('idle');
     const transcriptRef = useRef<string>('');
     const interimTextRef = useRef<string>('');
+    const isRestartingRef = useRef(false);
 
     // The native listeners below (see attachListeners) are attached ONCE and
     // are never re-created — guarded by `if (!ref.current)`. Anything they
@@ -218,13 +219,19 @@ const VoiceRecorderPage: React.FC = () => {
         noteInitStarted.current = false;
     });
 
-    const cleanupListeners = () => {
-        partialListenerRef.current?.remove();
-        errorListenerRef.current?.remove();
-        stateListenerRef.current?.remove();
-        partialListenerRef.current = null;
-        errorListenerRef.current = null;
-        stateListenerRef.current = null;
+    const cleanupListeners = async () => {
+        if (partialListenerRef.current) {
+            await partialListenerRef.current.remove();
+            partialListenerRef.current = null;
+        }
+        if (errorListenerRef.current) {
+            await errorListenerRef.current.remove();
+            errorListenerRef.current = null;
+        }
+        if (stateListenerRef.current) {
+            await stateListenerRef.current.remove();
+            stateListenerRef.current = null;
+        }
     };
 
     const joinText = (a: string, b: string) => {
@@ -232,6 +239,20 @@ const VoiceRecorderPage: React.FC = () => {
         const trimB = b.trim();
         if (!trimA) return trimB;
         if (!trimB) return trimA;
+
+        const normalize = (w: string) => w.toLowerCase().replace(/[.,!?;:]+$/, '');
+        const wordsA = trimA.split(/\s+/);
+        const wordsB = trimB.split(/\s+/);
+        const maxOverlap = Math.min(wordsA.length, wordsB.length);
+
+        for (let overlap = maxOverlap; overlap > 0; overlap--) {
+            const tailA = wordsA.slice(wordsA.length - overlap).map(normalize);
+            const headB = wordsB.slice(0, overlap).map(normalize);
+            if (tailA.every((w, i) => w === headB[i])) {
+                const remainder = wordsB.slice(overlap).join(' ');
+                return remainder ? `${trimA} ${remainder}` : trimA;
+            }
+        }
         return `${trimA} ${trimB}`;
     };
 
@@ -267,7 +288,10 @@ const VoiceRecorderPage: React.FC = () => {
 
     // Fungsi penting yang menggabungkan teks terakhir tanpa menghilangkan kata
     const lockInterimAndRestart = async () => {
-        if (statusRef.current === 'listening') {
+        // Cegah tumpang tindih pemanggilan jika error & stopped menembak bersamaan
+        if (statusRef.current === 'listening' && !isRestartingRef.current) {
+            isRestartingRef.current = true;
+
             if (interimTextRef.current.trim() !== '') {
                 const combined = joinText(transcriptRef.current, interimTextRef.current);
                 updateTranscript(combined);
@@ -279,7 +303,14 @@ const VoiceRecorderPage: React.FC = () => {
                 }
             }
 
+            // Pastikan native benar-benar mati sebelum distart ulang
+            try {
+                await SpeechRecognition.stop();
+            } catch (e) { /* Abaikan jika error */ }
+
             await executeStartNative();
+
+            isRestartingRef.current = false;
         }
     };
 

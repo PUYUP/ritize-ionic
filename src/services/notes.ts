@@ -207,8 +207,12 @@ export const notesAPI = createApi({
                     ? [
                         ...result.notes.map(({ id }) => ({ type: 'Notes' as const, id })),
                         { type: 'Notes', id: 'LIST' },
+                        { type: 'NotePages', id: 'LIST' }
                     ]
-                    : [{ type: 'Notes', id: 'LIST' }],
+                    : [
+                        { type: 'Notes', id: 'LIST' },
+                        { type: 'NotePages', id: 'LIST' }
+                    ],
         }),
 
         // ...
@@ -282,7 +286,8 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data };
             },
-            invalidatesTags: (result, error) => [
+            invalidatesTags: (result, error, { body }) => [
+                ...(body.workspace_note_id ? [{ type: 'Notes' as const, id: body.workspace_note_id }] : []),
                 { type: 'NotePages', id: 'LIST' },
                 { type: 'Notes', id: 'LIST' }
             ],

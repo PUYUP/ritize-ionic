@@ -39,6 +39,7 @@ import { getFileTypePure, uploadFileToGCS } from '../../../../utils/gcs-upload-c
 import { UploadProgress } from '../../../../types/upload';
 import { getUser } from '../../../../utils/authState';
 import { supabase } from '../../../../utils/supabaseClient';
+import { generateUUID } from '../../../../utils/generator';
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -482,7 +483,7 @@ const CanvasEditorPage: React.FC = () => {
 				workspaceNoteId: selectedNote.id,
 				isActive: true,
 				syncedAt: new Date(),
-				syncedId: crypto.randomUUID(),
+				syncedId: generateUUID(),
 			});
 
 			const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
@@ -508,7 +509,7 @@ const CanvasEditorPage: React.FC = () => {
 			// NOTE: verify "canvas" is a valid member of your NoteFormatTypes
 			// union — swap for whatever value your backend/schema expects.
 			contentType: "canvas",
-			syncedId: crypto.randomUUID(),
+			syncedId: generateUUID(),
 			syncedAt: new Date(),
 		});
 		return entity;
@@ -545,7 +546,7 @@ const CanvasEditorPage: React.FC = () => {
 					noteInitStarted.current = true;
 					console.log("store server data to local db");
 					const nd = noteData as NoteTypes;
-					const newSyncedId = crypto.randomUUID();
+					const newSyncedId = generateUUID();
 					const nData = {
 						id: nd.id,
 						workspaceId: workspaceId,
@@ -591,7 +592,7 @@ const CanvasEditorPage: React.FC = () => {
 									userId: p.user_id,
 									pageNum: p.page_num,
 									isActive: p.is_active,
-									syncedId: p.synced_id ? p.synced_id : crypto.randomUUID(),
+									syncedId: p.synced_id ? p.synced_id : generateUUID(),
 									syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
 									note: { id: nd.id }
 								}
@@ -609,7 +610,7 @@ const CanvasEditorPage: React.FC = () => {
 							workspaceNoteId: note.id,
 							isActive: true,
 							syncedAt: new Date(),
-							syncedId: crypto.randomUUID(),
+							syncedId: generateUUID(),
 						});
 						if (!cancelled) setSelectedPage(page);
 						console.log('create page', page);
@@ -642,7 +643,7 @@ const CanvasEditorPage: React.FC = () => {
 						workspaceNoteId: note.id,
 						isActive: true,
 						syncedAt: new Date(),
-						syncedId: crypto.randomUUID(),
+						syncedId: generateUUID(),
 					});
 					if (!cancelled) setSelectedPage(page);
 					console.log('create page note didn\'t exist', page);

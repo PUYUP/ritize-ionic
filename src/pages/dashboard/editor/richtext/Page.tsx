@@ -32,6 +32,7 @@ import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
 import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
+import { generateUUID } from '../../../../utils/generator';
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -336,7 +337,7 @@ const RichTextEditorPage: React.FC = () => {
                 workspaceNoteId: selectedNote.id,
                 isActive: true,
                 syncedAt: new Date(),
-                syncedId: crypto.randomUUID(),
+                syncedId: generateUUID(),
             });
 
             const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
@@ -360,7 +361,7 @@ const RichTextEditorPage: React.FC = () => {
             content: "",
             noteDatetime: new Date(),
             contentType: "text",
-            syncedId: crypto.randomUUID(),
+            syncedId: generateUUID(),
             syncedAt: new Date(),
         });
         return entity;
@@ -398,7 +399,7 @@ const RichTextEditorPage: React.FC = () => {
                     noteInitStarted.current = true;
                     console.log("store server data to local db");
                     const nd = noteData as NoteTypes;
-                    const newSyncedId = crypto.randomUUID();
+                    const newSyncedId = generateUUID();
                     const nData = {
                         id: nd.id,
                         workspaceId: workspaceId,
@@ -444,7 +445,7 @@ const RichTextEditorPage: React.FC = () => {
                                     userId: p.user_id,
                                     pageNum: p.page_num,
                                     isActive: p.is_active,
-                                    syncedId: p.synced_id ? p.synced_id : crypto.randomUUID(),
+                                    syncedId: p.synced_id ? p.synced_id : generateUUID(),
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
                                     note: { id: nd.id }
                                 }
@@ -462,7 +463,7 @@ const RichTextEditorPage: React.FC = () => {
                             workspaceNoteId: note.id,
                             isActive: true,
                             syncedAt: new Date(),
-                            syncedId: crypto.randomUUID(),
+                            syncedId: generateUUID(),
                         });
                         if (!cancelled) setSelectedPage(page);
                         console.log('create page', page);
@@ -494,7 +495,7 @@ const RichTextEditorPage: React.FC = () => {
                         workspaceNoteId: note.id,
                         isActive: true,
                         syncedAt: new Date(),
-                        syncedId: crypto.randomUUID(),
+                        syncedId: generateUUID(),
                     });
                     if (!cancelled) setSelectedPage(page);
                     console.log('create page note didn\'t exist', page);

@@ -10,7 +10,7 @@ import {
   IonNote,
 } from '@ionic/react';
 
-import { briefcase, briefcaseOutline, home, homeOutline, people, peopleOutline, settingsOutline, settingsSharp } from 'ionicons/icons';
+import { briefcase, briefcaseOutline, home, homeOutline, logOut, logOutOutline, people, peopleOutline, settingsOutline, settingsSharp } from 'ionicons/icons';
 import './Menu.css';
 import { useLocation } from 'react-router';
 
@@ -46,6 +46,12 @@ const appPages: AppPage[] = [
     iosIcon: settingsOutline,
     mdIcon: settingsOutline
   },
+  {
+    title: 'Logout',
+    url: '',
+    iosIcon: logOutOutline,
+    mdIcon: logOutOutline
+  }
 ];
 
 const Menu: React.FC = () => {
@@ -61,8 +67,8 @@ const Menu: React.FC = () => {
             return (
               <IonMenuToggle key={index} autoHide={false}>
                 <IonItem className={location.pathname === appPage.url ? 'selected' : ''} routerLink={appPage.url} routerDirection="none" lines="none" detail={false}>
-                  <IonIcon aria-hidden="true" slot="start" ios={appPage.iosIcon} md={appPage.mdIcon} className='w-8`' />
-                  <IonLabel className='pl-4'>{appPage.title}</IonLabel>
+                  <IonIcon aria-hidden="true" slot="start" ios={appPage.iosIcon} md={appPage.mdIcon} className='w-8`' color={appPage.title == 'Logout' ? 'danger' : ''} />
+                  <IonLabel className='pl-4' color={appPage.title == 'Logout' ? 'danger' : ''}>{appPage.title}</IonLabel>
                 </IonItem>
               </IonMenuToggle>
             );

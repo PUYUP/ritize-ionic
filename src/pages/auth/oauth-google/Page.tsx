@@ -2,9 +2,10 @@ import { IonButton, IonContent, IonPage, IonSpinner, IonText, useIonRouter, useI
 import './Page.css';
 import { useState } from 'react';
 import { SocialLogin } from '@capgo/capacitor-social-login';
-import { authClient } from '../../../utils/authClient';
+import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { supabase } from '../../../utils/supabaseClient';
+import CryptoJS from 'crypto-js';
 
 const enum Status {
     INIT = "init",
@@ -17,20 +18,12 @@ const enum Status {
     ERROR = "error",
 }
 
-// 1. Generate Raw Nonce
 const generateNonce = () => {
-    const array = new Uint8Array(32);
-    window.crypto.getRandomValues(array);
-    return Array.from(array, (dec) => ('0' + dec.toString(16)).slice(-2)).join('');
+    return CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
 };
 
-// 2. Create a SHA-256 Hash Function
 const sha256 = async (message: string) => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    return CryptoJS.SHA256(message).toString(CryptoJS.enc.Hex);
 };
 
 const OAuthGooglePage: React.FC = () => {
@@ -48,19 +41,26 @@ const OAuthGooglePage: React.FC = () => {
         try {
             setStatus(Status.LOADING);
 
-            // Generate the raw nonce
-            const rawNonce = generateNonce();
+            // Cek apakah berjalan di Native (iOS / Android)
+            const isNative = Capacitor.isNativePlatform();
 
-            // Hash the nonce
-            const hashedNonce = await sha256(rawNonce);
+            let rawNonce: string | undefined = undefined;
+            let loginOptions: any = {
+                scopes: ['profile', 'email'],
+            };
 
-            // 1. Pass the HASHED nonce to Google via Capgo
+            // Jika bukan native (misal Web), kita aman menggunakan nonce.
+            // Jika native, kosongkan nonce agar tidak mismatch dengan Google SDK.
+            if (!isNative) {
+                rawNonce = generateNonce();
+                const hashedNonce = await sha256(rawNonce);
+                loginOptions.nonce = hashedNonce;
+            }
+
+            // 1. Panggil Social Login dengan opsi kondisional
             const res = await SocialLogin.login({
                 provider: 'google',
-                options: {
-                    scopes: ['profile', 'email'],
-                    nonce: hashedNonce,
-                },
+                options: loginOptions,
             });
 
             setStatus(Status.OAUTH_GOOGLE_SUCCESS);
@@ -73,34 +73,42 @@ const OAuthGooglePage: React.FC = () => {
             ) {
                 console.log("Google OAuth Response", res);
 
-                const { data, error } = await supabase.auth.signInWithIdToken({
+                // 2. Kirim ke Supabase dengan menyertakan nonce HANYA jika ada
+                const signInPayload: any = {
                     provider: 'google',
                     token: res.result.idToken,
-                    nonce: rawNonce,
-                })
+                };
+
+                if (rawNonce) {
+                    signInPayload.nonce = rawNonce;
+                }
+
+                const { data, error } = await supabase.auth.signInWithIdToken(signInPayload);
 
                 if (error) throw error;
 
                 console.log("supabase.auth.signInWithIdToken Response", data);
 
                 // save user
-                if ('user' in data) {
+                if ('user' in data && data.user) {
                     await Preferences.set({
                         key: 'ritize_user',
-                        value: JSON.stringify(data.user?.user_metadata)
+                        value: JSON.stringify(data.user.user_metadata)
                     });
 
-                    await Preferences.set({
-                        key: 'ritize_session',
-                        value: JSON.stringify(data.session),
-                    });
+                    if (data.session) {
+                        await Preferences.set({
+                            key: 'ritize_session',
+                            value: JSON.stringify(data.session),
+                        });
+                    }
 
                     // update name inside user table
                     const { data: userData, error: userError } = await supabase
                         .from('user')
                         .upsert({
-                            name: data.user?.user_metadata.full_name,
-                            email: data.user?.user_metadata.email,
+                            name: data.user.user_metadata.full_name,
+                            email: data.user.user_metadata.email,
                         }, { onConflict: 'email' })
                         .select()
                         .single();
@@ -118,6 +126,8 @@ const OAuthGooglePage: React.FC = () => {
                     ionRouter.push('/dashboard', 'forward', 'push');
                     setStatus(Status.SIGNIN_SUCCESS);
                 }, 2000);
+            } else {
+                throw new Error("Invalid Google Login Response");
             }
         } catch (error) {
             console.error(error);

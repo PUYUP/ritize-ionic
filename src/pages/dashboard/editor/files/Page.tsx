@@ -12,7 +12,7 @@ import ImageCapture from "../../../../components/image-capture/ImageCapture";
 import { CameraResultType, Photo } from "@capacitor/camera";
 import { useParams } from "react-router";
 
-const NOTE_ID = 4;
+const NOTE_ID = "4";
 
 interface RouteParams {
     id?: string
@@ -20,7 +20,7 @@ interface RouteParams {
     [key: string]: string | undefined
 }
 
-const UploadImagePage: React.FC = () => {
+const FilesEditorPage: React.FC = () => {
     const { id } = useParams<RouteParams>();
 
     const [pages, setPages] = useState<Page[]>([]);
@@ -431,7 +431,7 @@ const UploadImagePage: React.FC = () => {
                                 );
 
                                 // update selected page
-                                await NotesRepository.updatePage(selectedPage.id as number, {
+                                await NotesRepository.updatePage(selectedPage.id as string, {
                                     contentData: emptyBuffer,
                                 });
                             }
@@ -492,4 +492,4 @@ const UploadImagePage: React.FC = () => {
     )
 }
 
-export default UploadImagePage;
+export default FilesEditorPage;

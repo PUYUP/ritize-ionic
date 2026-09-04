@@ -2,7 +2,7 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getUser } from "../utils/authState";
 import { supabase } from "../utils/supabaseClient";
 
-export type NoteFormatTypes = 'text' | 'canvas' | 'image' | 'audio';
+export type NoteFormatTypes = 'text' | 'canvas' | 'file';
 
 export type NoteTypes = {
     readonly id: string;

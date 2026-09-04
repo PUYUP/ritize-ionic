@@ -1,4 +1,4 @@
-import { analyticsOutline, cloudUploadOutline, fileTrayOutline, imageOutline, imagesOutline, micOutline, shapesOutline, textOutline } from 'ionicons/icons';
+import { analyticsOutline, cloudUploadOutline, documentAttachOutline, fileTrayOutline, imageOutline, imagesOutline, micOutline, shapesOutline, textOutline } from 'ionicons/icons';
 import './StartNote.css';
 import { IonCard, IonCardContent, IonIcon, IonText } from '@ionic/react';
 
@@ -57,7 +57,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                 </div>
 
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/voice?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    {/* <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/voice?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
                             <div className='w-8 h-8 flex items-center justify-center bg-[#EEE4FA] rounded-full mb-3'>
                                 <IonIcon icon={micOutline} className='text-xl text-[#5B00C9]' />
@@ -73,11 +73,29 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                                 </IonText>
                             </div>
                         </IonCardContent>
+                    </IonCard> */}
+
+                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/files?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                        <IonCardContent>
+                            <div className='w-8 h-8 flex items-center justify-center bg-[#EEE4FA] rounded-full mb-3'>
+                                <IonIcon icon={documentAttachOutline} className='text-xl text-[#5B00C9]' />
+                            </div>
+
+                            <div className='block mt-0 mb-0'>
+                                <IonText className="font-semibold text-sm text-neutral-700">Files</IonText>
+                            </div>
+
+                            <div className='block leading-3 line-clamp-1'>
+                                <IonText className='text-xs line-clamp-1'>
+                                    Audio, image, etc
+                                </IonText>
+                            </div>
+                        </IonCardContent>
                     </IonCard>
                 </div>
             </div>
 
-            <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/upload-image?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+            {/* <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/upload-image?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                 <IonCardContent>
                     <div className='flex gap-3 items-center'>
                         <div className='w-8 h-8 flex items-center justify-center bg-[#FFF0D9] rounded-full'>
@@ -101,7 +119,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                         </div>
                     </div>
                 </IonCardContent>
-            </IonCard>
+            </IonCard> */}
         </div>
     );
 };

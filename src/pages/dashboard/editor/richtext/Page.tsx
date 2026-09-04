@@ -510,12 +510,12 @@ const RichTextEditorPage: React.FC = () => {
 
             // get all pages
             if (note && !cancelled) {
-                const currentPages = await NotesRepository.getPagesByNoteId(note.id);
-                console.log('getting pages');
-                setPages([...currentPages]);
+                const savedPages = await NotesRepository.getPagesByNoteId(note.id);
+                console.log('getting pages', savedPages);
+                setPages([...savedPages]);
 
                 // get active page
-                const activePage = currentPages.find((p: Page) => p.isActive === true);
+                const activePage = savedPages.find((p: Page) => p.isActive === true);
                 if (activePage) {
                     setSelectedPage(activePage);
                     console.log('active page', activePage);

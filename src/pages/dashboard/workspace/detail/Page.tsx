@@ -7,6 +7,7 @@ import NoteList from '../../../../components/note-list/NoteList';
 import { useParams } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useDeleteWorkspaceMutation, useGetWorkspaceByIdQuery, useLazyGetWorkspaceStatsQuery } from '../../../../services/workspace';
+import { by639_1 } from 'iso-language-codes';
 
 interface RouteParams {
     id?: string
@@ -19,8 +20,12 @@ const WorkspaceDetailPage: React.FC = () => {
     const { id } = useParams<RouteParams>();
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [deleteWorkspace, { isLoading: deleting }] = useDeleteWorkspaceMutation();
-    const { data: workspace, error, isLoading } = useGetWorkspaceByIdQuery(id ?? "", { skip: !id });
+    const { data: workspace, error, isLoading, isFetching } = useGetWorkspaceByIdQuery(id ?? "", { skip: !id });
     const [getWorkspaceStats, { data: workspaceStats, isFetching: workspaceStatsFetching }] = useLazyGetWorkspaceStatsQuery({});
+    const [language, setLanguage] = useState<{ code: string; name: string }>({
+        code: workspace?.language_code || 'en',
+        name: by639_1[(workspace?.language_code || 'en') as keyof typeof by639_1].name
+    });
 
     useEffect(() => {
         if (id) {
@@ -28,7 +33,16 @@ const WorkspaceDetailPage: React.FC = () => {
         }
     }, [id, getWorkspaceStats]);
 
-    if (isLoading || !workspace) {
+    useEffect(() => {
+        if (workspace) {
+            setLanguage({
+                code: workspace.language_code || 'en',
+                name: by639_1[(workspace.language_code || 'en') as keyof typeof by639_1].name
+            });
+        }
+    }, [workspace, setLanguage]);
+
+    if (isLoading || !workspace || isFetching) {
         return (
             <IonPage>
                 <IonContent className='ion-padding'>
@@ -61,14 +75,14 @@ const WorkspaceDetailPage: React.FC = () => {
             <IonContent role="feed">
                 <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                     <div className='ion-padding'>
-                        <div className='flex items-start mb-4'>
+                        <div className='flex items-start'>
                             <div className='block ion-padding-end'>
-                                <div className='block'>
+                                <div className='block mb-1'>
                                     <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Workspace Detail'}</IonText>
                                 </div>
 
                                 <div className='text-base text-neutral-700'>
-                                    <IonText>Add new notes...</IonText>
+                                    <IonText>in {language.name}</IonText>
                                 </div>
                             </div>
 
@@ -91,7 +105,12 @@ const WorkspaceDetailPage: React.FC = () => {
                                 </div>
                             )}
                         </div>
+                    </div>
 
+                    <div className='ion-padding !pt-0'>
+                        <div className='block mb-3 text-lg'>
+                            <IonText>Start new notes</IonText>
+                        </div>
                         <StartNote workspace={{ id: id, languageCode: workspace.language_code || 'en' }} />
                     </div>
 

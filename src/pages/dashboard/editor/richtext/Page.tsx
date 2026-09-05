@@ -81,6 +81,11 @@ const RichTextEditorPage: React.FC = () => {
     const prevPagesLengthRef = useRef(pages.length);
     const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
 
+    // Tracks the JSON we last wrote to the DB for the active page, so a
+    // no-op autosave (e.g. triggered right after loading content into the
+    // canvas) can be skipped instead of writing an identical row again.
+    const lastSavedDataRef = useRef<string | null>(null);
+
     // RTK Query
     const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
     const [upsertNote] = useUpsertNoteMutation();
@@ -101,7 +106,15 @@ const RichTextEditorPage: React.FC = () => {
         setIsSaving(true);
         try {
             const contentEmpty = isDeltaEmpty(delta);
-            const bufferData = contentEmpty ? null : Buffer.from(JSON.stringify(delta), 'utf-8');
+            const json = contentEmpty ? null : JSON.stringify(delta);
+
+            // Identical to the last thing we saved (typically a save
+            // triggered right after a programmatic updateScene, not a real
+            // edit) — skip the redundant DB write.
+            if (json === lastSavedDataRef.current) return;
+            lastSavedDataRef.current = json;
+
+            const bufferData = json ? Buffer.from(json, 'utf-8') : null;
 
             await NotesRepository.updatePage(page.id as string, { contentData: bufferData });
             console.log('selected page id: ', page.id, ' is updated');
@@ -282,14 +295,21 @@ const RichTextEditorPage: React.FC = () => {
                     }
 
                     setHasContent(true);
+                    // Seed the dedupe ref so the onChange this triggers
+                    // doesn't cause an immediate, redundant re-save.
+                    lastSavedDataRef.current = jsonString;
                 } catch (error) {
                     console.error('Failed to parse saved content', error);
                 }
             } else {
-                if (quillRef.current) {
-                    quillRef.current.setContents(new Delta());
-                }
                 setHasContent(false);
+                lastSavedDataRef.current = null;
+
+                setTimeout(() => {
+                    if (quillRef.current) {
+                        quillRef.current.setContents(new Delta());
+                    }
+                }, 100);
             }
         };
 
@@ -511,6 +531,7 @@ const RichTextEditorPage: React.FC = () => {
             setPages([]);
             setSelectedPage(null);
             setSelectedNote(null);
+            lastSavedDataRef.current = null;
             prevNoteIdRef.current = noteId;
 
             if (quillRef.current) {

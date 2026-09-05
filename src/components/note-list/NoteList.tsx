@@ -1,11 +1,12 @@
-import { IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonText } from '@ionic/react';
+import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { attachOutline, documentOutline, ellipsisVertical, shapesOutline, textOutline } from 'ionicons/icons';
+import { attachOutline, closeOutline, documentOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
 import { getUser } from '../../utils/authState';
+import NotesRepository from '../../databases/datasources/NotesRepository';
 
 interface Props {
     workspaceId: string;
@@ -30,6 +31,7 @@ const formatDateHeader = (dateKey: string): string => {
 interface NoteGroup {
     dateKey: string;
     notes: NoteTypes[];
+    onShowOptions?: (item: NoteTypes) => void;
 }
 
 /**
@@ -49,8 +51,8 @@ const groupNotesByDate = (notes: NoteTypes[]): NoteGroup[] => {
     return [...map.entries()].map(([dateKey, groupNotes]) => ({ dateKey, notes: groupNotes }));
 };
 
-const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, user }) => {
-    const { content_preview, created_at } = item;
+const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?: (item: NoteTypes) => void }> = ({ item, user, onShowOptions }) => {
+    const { content_preview } = item;
     let editor: string = 'richtext';
 
     if (item.content_type == 'canvas') {
@@ -64,6 +66,10 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, u
     // if not the creator, view the note as a normal viewer
     if (item.user.id !== user.id) {
         linkTo = `/dashboard/workspace/note-viewer?workspaceId=${item.workspace_id}&noteId=${item.id}`;
+    }
+
+    const optionsHandler = async (item: NoteTypes) => {
+        onShowOptions?.(item);
     }
 
     return (
@@ -88,7 +94,7 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, u
 
                     {user.id === item.user.id && (
                         <div className='ml-auto'>
-                            <IonButton shape='round' color={'medium'} fill='clear'>
+                            <IonButton shape='round' color={'light'} onClick={async () => await optionsHandler(item)}>
                                 <IonIcon icon={ellipsisVertical} slot='icon-only' />
                             </IonButton>
                         </div>
@@ -109,7 +115,12 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, u
 }
 
 const NoteList: React.FC<Props> = ({ workspaceId }) => {
+    const ionRouter = useIonRouter();
+    const [presentToast] = useIonToast();
     const [ionScrollEl, setIonScrollEl] = useState<HTMLIonInfiniteScrollElement | null>(null);
+    const [showOptions, setShowOptions] = useState(false);
+    const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+    const [selectedNote, setSelectedNote] = useState<NoteTypes | null>(null);
     const [user, setUser] = useState({ id: '' });
     const [page, setPage] = useState(1);
     const { data, isLoading, isFetching, isSuccess, isError } = useGetNotesByWorkspaceIdQuery({
@@ -142,6 +153,11 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
         }
     }, [isSuccess, isFetching]);
 
+    const optionsHandler = (item: NoteTypes) => {
+        setSelectedNote(item);
+        setShowOptions(true);
+    }
+
     if (isLoading && page === 1) return <IonText className='text-center ion-padding'>Loading...</IonText>;
 
     return (
@@ -158,7 +174,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                         </IonItemDivider>
 
                         {notes.map((item) => (
-                            <NoteItem key={item.id} item={item} user={user} />
+                            <NoteItem key={item.id} item={item} user={user} onShowOptions={optionsHandler} />
                         ))}
                     </IonItemGroup>
                 ))}
@@ -173,6 +189,77 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
             >
                 <IonInfiniteScrollContent></IonInfiniteScrollContent>
             </IonInfiniteScroll>
+
+            <IonActionSheet
+                isOpen={showOptions}
+                onDidDismiss={() => {
+                    setShowOptions(false);
+                }}
+                header="Note Actions"
+                buttons={[
+                    {
+                        text: 'Edit',
+                        icon: pencilOutline,
+                        data: {
+                            action: 'edit',
+                        },
+                        handler: () => {
+                            if (!selectedNote) return;
+
+                            let editor: string = 'richtext';
+
+                            if (selectedNote.content_type == 'canvas') {
+                                editor = 'canvas';
+                            } else if (selectedNote.content_type == 'file') {
+                                editor = 'file';
+                            }
+                            ionRouter.push(`/dashboard/editor/${editor}?workspaceId=${selectedNote.workspace_id}&noteId=${selectedNote.id}`, "forward");
+                        }
+                    },
+                    {
+                        text: 'Delete',
+                        icon: trashOutline,
+                        role: 'destructive',
+                        data: {
+                            action: 'delete',
+                        },
+                        handler: () => {
+                            if (!selectedNote) return;
+                            setShowDeleteAlert(true);
+                        },
+                    },
+                    {
+                        text: 'Cancel',
+                        icon: closeOutline,
+                        role: 'cancel',
+                        data: {
+                            action: 'cancel',
+                        },
+                    },
+                ]}
+            ></IonActionSheet>
+
+            {/* delete note */}
+            <IonAlert
+                isOpen={showDeleteAlert}
+                onDidDismiss={() => setShowDeleteAlert(false)}
+                header='Are you sure to remove this note?'
+                message={'All related data on this note will be permanently deleted.'}
+                buttons={[
+                    { text: 'Cancel', role: 'cancel' },
+                    {
+                        text: 'Yes',
+                        role: 'destructive',
+                        handler: async () => {
+                            if (!selectedNote) return;
+                            await NotesRepository.deleteNote(selectedNote.id, selectedNote.workspace_id);
+                            await presentToast({ message: 'Note deleted successfully', duration: 2500, color: 'success' })
+                            setShowDeleteAlert(false);
+                            setSelectedNote(null);
+                        },
+                    },
+                ]}
+            ></IonAlert>
         </>
     )
 }

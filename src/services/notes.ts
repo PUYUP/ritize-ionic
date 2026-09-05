@@ -219,6 +219,51 @@ export const notesAPI = createApi({
         }),
 
         // ...
+        // Delete note
+        // ...
+        deleteNote: builder.mutation<void, { id: string, workspace_id: string }>({
+            queryFn: async ({ id, workspace_id }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "User not found" } };
+
+                const { error } = await supabase
+                    .from("workspace_notes")
+                    .delete()
+                    .eq("id", id)
+                    .eq("workspace_id", workspace_id);
+
+                if (error) return { error: { message: error.message } };
+                return { data: undefined };
+            },
+            async onQueryStarted({ id, workspace_id }, { dispatch, queryFulfilled }) {
+                // Manipulasi cache untuk query 'getNotesByWorkspaceId'
+                const patchResult = dispatch(
+                    notesAPI.util.updateQueryData(
+                        'getNotesByWorkspaceId',
+                        // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
+                        // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
+                        // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
+                        { workspace_id: workspace_id as string, page: 1, pageSize: 20 },
+                        (draft) => {
+                            draft.notes = draft.notes.filter((note) => note.id !== id);
+                        }
+                    )
+                );
+
+                try {
+                    // Tunggu sampai proses update ke database selesai
+                    const { data } = await queryFulfilled;
+
+                    // (Opsional) Jika database mengembalikan data yang lebih lengkap (misal timestamp format baru),
+                    // Anda bisa update lagi draft-nya di sini (Pessimistic Update).
+                } catch {
+                    // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
+                    patchResult.undo();
+                }
+            },
+        }),
+
+        // ...
         // Get single note by id
         // ...
         getNoteById: builder.query<NoteTypes, { id: string }>({

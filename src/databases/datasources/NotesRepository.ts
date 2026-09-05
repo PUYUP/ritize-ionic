@@ -123,9 +123,16 @@ class NotesRepository {
         });
     }
 
-    async deleteNote(id: string): Promise<boolean> {
+    async deleteNote(id: string, workspaceId: string): Promise<boolean> {
         const result = await this.noteRepo.delete(id);
         await this.saveWebStore();
+
+        // delete from database
+        store.dispatch(notesAPI.endpoints.deleteNote.initiate({
+            id: id,
+            workspace_id: workspaceId,
+        }));
+
         return (result.affected ?? 0) > 0;
     }
 

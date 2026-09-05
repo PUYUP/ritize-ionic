@@ -73,8 +73,8 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?
     }
 
     return (
-        <IonItem lines="none" className='note-item'>
-            <div className='w-full'>
+        <IonItem lines="full" className='note-item'>
+            <div className='w-full py-3'>
                 <div className='flex'>
                     <Link to={linkTo} className='block w-full flex-1'>
                         <p className='flex gap-2 !m-0 items-center'>

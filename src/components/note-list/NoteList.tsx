@@ -1,7 +1,7 @@
 import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { attachOutline, closeOutline, documentOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { attachOutline, bookOutline, closeOutline, documentOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -74,7 +74,7 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?
 
     return (
         <IonItem lines="none" className='note-item'>
-            <IonLabel>
+            <div className='w-full'>
                 <div className='flex'>
                     <Link to={linkTo} className='block w-full flex-1'>
                         <p className='flex gap-2 !m-0 items-center'>
@@ -109,7 +109,35 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?
                         />
                     )}
                 </Link>
-            </IonLabel>
+
+                {item.papers?.length > 0 && (
+                    <div className='block px-3 mb-2 py-1 bg-neutral-100 mt-3 rounded-xl'>
+                        <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
+                            <IonItemDivider className='bg-neutral-100'>
+                                <IonLabel className='!text-neutral-700 underline italic'>Referenced Papers:</IonLabel>
+                            </IonItemDivider>
+                            {item.papers.slice(0, 2).map((paper: any) => (
+                                <IonItem
+                                    key={paper.id}
+                                    className='ion-no-padding gap-3 items-start bg-neutral-100'
+                                    style={{ '--background': 'none' }}
+                                    button={true}
+                                    mode="ios"
+                                    detail={false}
+                                    href={paper.paper.pdf_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <IonIcon slot='start' icon={bookOutline} className="text-lg mt-2" color="primary" />
+                                    <IonLabel className='ion-padding-start py-1'>
+                                        <p className='!text-blue-700'>{paper.paper.title}</p>
+                                    </IonLabel>
+                                </IonItem>
+                            ))}
+                        </IonList>
+                    </div>
+                )}
+            </div>
         </IonItem >
     )
 }

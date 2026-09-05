@@ -111,15 +111,15 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?
                 </Link>
 
                 {item.papers?.length > 0 && (
-                    <div className='block px-3 mb-2 py-1 bg-neutral-100 mt-3 rounded-xl'>
+                    <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl'>
                         <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
-                            <IonItemDivider className='bg-neutral-100'>
+                            <IonItemDivider className='bg-neutral-100 px-3'>
                                 <IonLabel className='!text-neutral-700 underline italic'>Referenced Papers:</IonLabel>
                             </IonItemDivider>
                             {item.papers.slice(0, 2).map((paper: any) => (
                                 <IonItem
                                     key={paper.id}
-                                    className='ion-no-padding gap-3 items-start bg-neutral-100'
+                                    className='bg-neutral-100'
                                     style={{ '--background': 'none' }}
                                     button={true}
                                     mode="ios"
@@ -128,7 +128,7 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
-                                    <IonIcon slot='start' icon={bookOutline} className="text-lg mt-2" color="primary" />
+                                    <IonIcon slot='start' icon={bookOutline} className="text-lg mt-1" color="primary" />
                                     <IonLabel className='ion-padding-start py-1'>
                                         <p className='!text-blue-700'>{paper.paper.title}</p>
                                     </IonLabel>

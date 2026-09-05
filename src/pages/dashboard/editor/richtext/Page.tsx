@@ -30,7 +30,7 @@ import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
-import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
+import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 import { generateUUID } from '../../../../utils/generator';
 
@@ -64,7 +64,6 @@ const RichTextEditorPage: React.FC = () => {
     const ionContentRef = useRef<HTMLIonContentElement>(null);
     const quillRef = useRef<Quill | null>(null);
     const autosaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-    const noteInitStarted = useRef(false);
     const [isDirty, setIsDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [hasContent, setHasContent] = useState(false);
@@ -80,17 +79,15 @@ const RichTextEditorPage: React.FC = () => {
     const pagesSwiperElRef = useRef<HTMLDivElement>(null);
     const pagesSwiperRef = useRef<Swiper | null>(null);
     const prevPagesLengthRef = useRef(pages.length);
+    const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
 
     // RTK Query
-    const {
-        data: noteData,
-        isLoading: gettingNote,
-        isError: gettingNoteError,
-    } = useGetNoteByIdQuery({ id: noteId! }, { skip: !noteId });
+    const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
     const [upsertNote] = useUpsertNoteMutation();
     const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
 
     const handleUpdateUrlWithNoteId = (newNoteId: string) => {
+        prevNoteIdRef.current = newNoteId;
         const newParams = new URLSearchParams(searchParams);
         newParams.set('noteId', newNoteId);
         setSearchParams(newParams, { replace: true });
@@ -184,13 +181,18 @@ const RichTextEditorPage: React.FC = () => {
 
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));
-    });
+
+        (async () => {
+            if (!workspaceId) return;
+            await contentLoader(workspaceId, noteId);
+        })();
+    }, [noteId, workspaceId]);
 
     useIonViewDidLeave(() => {
         setPages([]);
         setSelectedPage(null);
         setSelectedNote(null);
-        noteInitStarted.current = false;
+        prevNoteIdRef.current = null;
     });
 
     useEffect(() => () => {
@@ -287,6 +289,7 @@ const RichTextEditorPage: React.FC = () => {
                 if (quillRef.current) {
                     quillRef.current.setContents(new Delta());
                 }
+                setHasContent(false);
             }
         };
 
@@ -374,66 +377,51 @@ const RichTextEditorPage: React.FC = () => {
     // --- END CRUD NOTES ---
 
     // Load / create the note and its pages.
-    useEffect(() => {
-        if (!workspaceId) return;
+    const contentLoader = async (workspaceId: string, noteId: string | null = null) => {
+        let note: any | null = null;
 
-        // We only need to wait on the server fetch when there IS a noteId to
-        // fetch. When noteId is absent, the query is skipped and isLoading
-        // never resolves, so gating on it unconditionally (as before) made
-        // "create a brand-new note" unreachable — this effect would bail out
-        // on every run and no note would ever get created.
-        if (noteId && gettingNote) return;
+        if (noteId) {
+            // 1. load dari local database dulu
+            note = await NotesRepository.getNoteById(noteId);
+            if (note) {
+                console.log('load note from local database', note);
+            } else {
+                // 2. note tidak ada di local, load dari server
+                const { data: serverNote } = await getNoteById({ id: noteId });
+                console.log('load note from server', serverNote);
 
-        let cancelled = false;
-
-        (async () => {
-            let note = noteId ? await NotesRepository.getNoteById(noteId) : null;
-            if (note && !cancelled) {
-                console.log('load note from database', note);
-                setSelectedNote(note);
-            }
-
-            if (note === null && !noteInitStarted.current) {
-                // Validasi: pastikan noteData yang ada di cache RTK Query adalah milik noteId saat ini
-                if (noteData && (noteData as NoteTypes).id === noteId) {
-                    noteInitStarted.current = true;
-                    console.log("store server data to local db");
-                    const nd = noteData as NoteTypes;
+                // 3. karena dari server, inject ke local db
+                if (serverNote) {
                     const newSyncedId = generateUUID();
                     const nData = {
-                        id: nd.id,
+                        id: serverNote.id,
                         workspaceId: workspaceId,
-                        title: nd.title || "Untitled Note",
-                        content: nd.content,
-                        noteDatetime: nd.note_datetime ? new Date(nd.note_datetime) : new Date(),
-                        contentType: nd.content_type as NoteFormatTypes,
-                        syncedId: nd.synced_id ? nd.synced_id : newSyncedId,
-                        syncedAt: nd.synced_at ? new Date(nd.synced_at) : new Date(),
+                        title: serverNote.title || "Untitled Note",
+                        content: serverNote.content,
+                        noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
+                        contentType: serverNote.content_type as NoteFormatTypes,
+                        syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
+                        syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at) : new Date(),
                     }
 
                     note = await NotesRepository.insertNote(nData);
-                    // Same reasoning as the brand-new-note branch below:
-                    // insertNote() already committed to the DB, so we let the
-                    // rest of this block (sync + page creation) finish
-                    // regardless of `cancelled`, and only guard setState.
-                    if (!cancelled) setSelectedNote(note);
+                    console.log('injected note', note);
 
-                    if (!nd.synced_id) {
+                    // di server belum punya synced_id -> update server
+                    if (!serverNote.synced_id) {
                         console.log('adding synced id to existing note');
                         await upsertNote({
                             body: {
-                                id: nd.id,
+                                id: serverNote.id,
                                 synced_id: newSyncedId,
                                 synced_at: new Date().toISOString(),
-                                workspace_id: workspaceId,
-                                content: nd.content ? nd.content : '',
-                                content_type: nd.content_type as NoteFormatTypes,
                             }
                         }).unwrap();
                     }
 
-                    const currentPages: Page[] = nd?.pages
-                        ? nd.pages
+                    // 4. lanjut insert pages nya jika ada
+                    const injectedPages = serverNote.pages
+                        ? serverNote.pages
                             .slice()
                             .sort((a: NotePageTypes, b: NotePageTypes) => a.page_num - b.page_num)
                             .map((p: NotePageTypes) => {
@@ -447,16 +435,17 @@ const RichTextEditorPage: React.FC = () => {
                                     isActive: p.is_active,
                                     syncedId: p.synced_id ? p.synced_id : generateUUID(),
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
-                                    note: { id: nd.id }
+                                    note: { id: serverNote.id }
                                 }
                             })
                         : [];
 
-                    if (currentPages.length > 0) {
-                        const savedPages = await NotesRepository.addPagesBulk({ id: nd.id }, currentPages);
-                        console.log("savedPages", savedPages);
-                    }
-                    else {
+                    if (injectedPages.length > 0) {
+                        const savedPages = await NotesRepository.addPagesBulk({ id: serverNote.id }, injectedPages);
+                        console.log("injected pages", savedPages);
+                    } else {
+                        // halaman belum ada, buat halaman baru
+                        // di local db dan server juga
                         const page = await createPage({ id: note.id }, {
                             pageNum: 1,
                             workspaceId: workspaceId,
@@ -465,80 +454,68 @@ const RichTextEditorPage: React.FC = () => {
                             syncedAt: new Date(),
                             syncedId: generateUUID(),
                         });
-                        if (!cancelled) setSelectedPage(page);
-                        console.log('create page', page);
+
+                        console.log('note first page injected', page);
                     }
                 }
-                else if (!noteId) {
-                    // Brand-new note: there was never a server record to fetch.
-                    noteInitStarted.current = true;
-                    note = await initNote(workspaceId);
-                    // Don't bail out here even if `cancelled` — initNote()
-                    // already wrote the note to the DB. A note with zero
-                    // pages is an orphaned/inconsistent record, so we still
-                    // finish creating its first page regardless. `cancelled`
-                    // only needs to gate the setState calls (avoid reflecting
-                    // stale data in the UI), not the DB writes themselves.
-                    if (!cancelled) setSelectedNote(note);
-                    console.log('create new note', note);
-
-                    // update url with note id
-                    setTimeout(() => {
-                        if (note && note.id) {
-                            handleUpdateUrlWithNoteId(note.id);
-                        }
-                    }, 500);
-
-                    const page = await createPage({ id: note.id }, {
-                        pageNum: 1,
-                        workspaceId: workspaceId,
-                        workspaceNoteId: note.id,
-                        isActive: true,
-                        syncedAt: new Date(),
-                        syncedId: generateUUID(),
-                    });
-                    if (!cancelled) setSelectedPage(page);
-                    console.log('create page note didn\'t exist', page);
-                }
-                else if (gettingNoteError) {
-                    // noteId was provided, nothing local, and the server
-                    // fetch failed — surface this instead of a silently
-                    // blank editor.
-                    presentToast({ message: 'Could not load this note.', duration: 2500, color: 'danger' });
-                }
             }
+        }
+
+        // 4. setelah dari local db dan server masih juga tidak ada
+        // 5. buat note baru
+        if (note === null) {
+            // Brand-new note: there was never a server record to fetch.
+            note = await initNote(workspaceId);
+            console.log('create new note', note);
+
+            const page = await createPage({ id: note.id }, {
+                pageNum: 1,
+                workspaceId: workspaceId,
+                workspaceNoteId: note.id,
+                isActive: true,
+                syncedAt: new Date(),
+                syncedId: generateUUID(),
+            });
+            console.log('create page note didn\'t exist', page);
+        }
+
+        // setelah semuanya diatas beres
+        if (note) {
+            // set active note
+            setSelectedNote(note);
+            console.log('active note', note);
 
             // get all pages
-            if (note && !cancelled) {
-                const savedPages = await NotesRepository.getPagesByNoteId(note.id);
-                console.log('getting pages', savedPages);
-                setPages([...savedPages]);
+            const savedPages = await NotesRepository.getPagesByNoteId(note.id);
+            console.log('getting pages', savedPages);
+            setPages([...savedPages]);
 
-                // get active page
-                const activePage = savedPages.find((p: Page) => p.isActive === true);
-                if (activePage) {
-                    setSelectedPage(activePage);
-                    console.log('active page', activePage);
-                }
+            // get active page
+            const activePage = savedPages.find((p: Page) => p.isActive === true);
+            if (activePage) {
+                setSelectedPage(activePage);
+                console.log('active page', activePage);
             }
-        })();
+        }
 
-        return () => {
-            cancelled = false;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- upsertNote/presentToast are stable-ish;
-        // including them risks re-running this effect (and re-creating a note) on unrelated identity changes.
-    }, [workspaceId, noteId, noteData, gettingNote, gettingNoteError]);
+        // di url params tidak ada noteId
+        // set dengan yang baru
+        if (!noteId) {
+            handleUpdateUrlWithNoteId(note.id);
+        }
+    }
 
     // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
     useEffect(() => {
-        setPages([]);
-        setSelectedPage(null);
-        setSelectedNote(null);
-        noteInitStarted.current = false;
+        if (prevNoteIdRef.current !== noteId) {
+            setPages([]);
+            setSelectedPage(null);
+            setSelectedNote(null);
+            prevNoteIdRef.current = noteId;
 
-        if (quillRef.current) {
-            quillRef.current.setContents(new Delta());
+            if (quillRef.current) {
+                quillRef.current.setContents(new Delta());
+            }
         }
     }, [noteId]);
 

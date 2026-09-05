@@ -366,4 +366,5 @@ export const {
     useUpsertNotePagesMutation,
     useGetNotesByWorkspaceIdQuery,
     useGetNoteByIdQuery,
+    useLazyGetNoteByIdQuery,
 } = notesAPI;

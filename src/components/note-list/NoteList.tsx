@@ -14,13 +14,14 @@ interface Props {
 const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, user }) => {
     const { content_preview, created_at } = item;
     let editor: string = 'richtext';
-    let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`;
 
     if (item.content_type == 'canvas') {
         editor = 'canvas';
     } else if (item.content_type == 'file') {
         editor = 'file';
     }
+
+    let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`;
 
     // if not creator view the note as normal viewer
     if (item.user.id !== user.id) {

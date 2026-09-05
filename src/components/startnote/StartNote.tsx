@@ -87,7 +87,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
 
                             <div className='block leading-3 line-clamp-1'>
                                 <IonText className='text-xs line-clamp-1'>
-                                    Audio, image, etc
+                                    Upload any media
                                 </IonText>
                             </div>
                         </IonCardContent>

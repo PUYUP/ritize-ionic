@@ -7,13 +7,13 @@ interface WorkspaceListProps {
     items: WorkspaceTypes[];
 }
 
-const WorkspaceItem: React.FC<{ item: WorkspaceTypes }> = ({ item }) => {
+const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ item, isLast }) => {
     return (
         <IonItem
-            className="ion-no-padding workspace-item"
-            lines="none"
+            className="workspace-item"
+            lines={isLast ? "none" : "full"}
             detail={true}
-            mode="ios"
+            mode="md"
             routerLink={`/dashboard/workspace/${item.id}`}
             routerDirection="forward"
         >
@@ -35,9 +35,12 @@ const WorkspaceList: React.FC<WorkspaceListProps> = ({ items }) => {
     return (
         <IonList className="!py-0">
             {items.length === 0 && <IonItem className="ion-no-padding" lines="none">No workspaces found</IonItem>}
-            {items.map((item, index) => (
-                <WorkspaceItem key={index} item={item} />
-            ))}
+            {items.map((item, index, array) => {
+                const isLast = index === array.length - 1;
+                return (
+                    <WorkspaceItem key={index} item={item} isLast={isLast} />
+                );
+            })}
         </IonList>
     );
 }

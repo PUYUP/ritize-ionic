@@ -244,43 +244,46 @@ const WorkspaceMembersPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent className='ion-padding'>
+            <IonContent>
                 {isLoading || !currentUser ? (
                     <div className='h-full w-full flex items-center justify-center'>
                         <IonSpinner />
                     </div>
                 ) : (
-                    <IonList lines="none">
-                        {memberData?.results?.map((member) => (
-                            <IonItem key={member?.id} className="ion-no-padding" style={{ '--inner-padding-end': '0px', '--min-height': '68px' }}>
-                                <IonLabel>
-                                    {member?.user?.name}
-                                    <span className={`px-2 py-1 text-sm font-semibold ${member?.role === 'owner' ? 'text-blue-600' : member?.role === 'admin' ? 'text-purple-600' : 'text-orange-600'} leading-3`}>{member?.role}</span>
-                                    <p>{member?.user?.email}</p>
-                                </IonLabel>
-                                <div slot="end" className="flex items-center gap-2">
-                                    <IonButtons className="gap-2">
-                                        {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.user_id === member.user_id && (
-                                            <IonButton fill="clear" shape="round" onClick={() => {
-                                                setEditMember(member);
-                                                setShowLeaveAlert(true);
-                                            }}>
-                                                <IonIcon icon={logOutOutline} color="danger" slot="icon-only" />
-                                            </IonButton>
-                                        )}
+                    <IonList lines="full">
+                        {memberData?.results?.map((member, index: number, array: any) => {
+                            const isLast = index === array.length - 1;
+                            return (
+                                <IonItem key={member?.id} lines={isLast ? "none" : "full"} style={{ '--inner-padding-end': isLast ? '8px' : '0px', '--min-height': '68px' }}>
+                                    <IonLabel>
+                                        {member?.user?.name}
+                                        <span className={`px-2 py-1 text-sm font-semibold ${member?.role === 'owner' ? 'text-blue-600' : member?.role === 'admin' ? 'text-purple-600' : 'text-orange-600'} leading-3`}>{member?.role}</span>
+                                        <p>{member?.user?.email}</p>
+                                    </IonLabel>
+                                    <div slot="end" className="flex items-center gap-2">
+                                        <IonButtons className="gap-2">
+                                            {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.user_id === member.user_id && (
+                                                <IonButton fill="clear" shape="round" onClick={() => {
+                                                    setEditMember(member);
+                                                    setShowLeaveAlert(true);
+                                                }}>
+                                                    <IonIcon icon={logOutOutline} color="danger" slot="icon-only" />
+                                                </IonButton>
+                                            )}
 
-                                        {(currentUser.role === 'owner' || currentUser.role === 'admin') && currentUser.user_id !== member.user_id && member.role !== 'owner' && (
-                                            <IonButton fill="clear" shape="round" onClick={() => {
-                                                setEditMember(member);
-                                                setShowMemberActionSheet(true);
-                                            }}>
-                                                <IonIcon icon={settingsOutline} slot="icon-only" />
-                                            </IonButton>
-                                        )}
-                                    </IonButtons>
-                                </div>
-                            </IonItem>
-                        ))}
+                                            {(currentUser.role === 'owner' || currentUser.role === 'admin') && currentUser.user_id !== member.user_id && member.role !== 'owner' && (
+                                                <IonButton fill="clear" shape="round" onClick={() => {
+                                                    setEditMember(member);
+                                                    setShowMemberActionSheet(true);
+                                                }}>
+                                                    <IonIcon icon={settingsOutline} slot="icon-only" />
+                                                </IonButton>
+                                            )}
+                                        </IonButtons>
+                                    </div>
+                                </IonItem>
+                            )
+                        })}
                     </IonList>
                 )}
             </IonContent>

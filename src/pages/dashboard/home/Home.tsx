@@ -32,7 +32,7 @@ const HomePage: React.FC = () => {
     return (
         <IonPage>
             <IonHeader className='ion-no-border'>
-                <IonToolbar>
+                <IonToolbar className='bg-white'>
                     <IonButtons slot="start">
                         <IonMenuButton />
                     </IonButtons>
@@ -78,8 +78,8 @@ const HomePage: React.FC = () => {
                     />
                 </div> */}
 
-                <div className='ion-padding'>
-                    <div className='block mb-3 text-lg flex items-center justify-between'>
+                <div className='block ion-padding-top ion-padding-bottom'>
+                    <div className='block mb-3 text-lg flex items-center justify-between ion-padding-start ion-padding-end'>
                         <IonText>My Workspaces</IonText>
                         <div className='ml-auto'>
                             <IonButton fill="outline" size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>

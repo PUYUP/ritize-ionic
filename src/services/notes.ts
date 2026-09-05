@@ -307,6 +307,7 @@ export const notesAPI = createApi({
                     `, { count: "exact" })
                     .eq("workspace_id", workspace_id)
                     .order("created_at", { ascending: false })
+                    .limit(2, { foreignTable: "papers" })
                     .range(from, to);
 
                 if (error) return { error: { message: error.message } };

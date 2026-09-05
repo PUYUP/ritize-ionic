@@ -135,20 +135,7 @@ export const notesAPI = createApi({
 
                 const { data, error } = await supabase
                     .from("workspace_notes")
-                    .upsert(
-                        {
-                            id: body.id,
-                            user_id: user.id,
-                            workspace_id: body.workspace_id,
-                            title: body.title,
-                            content_type: body.content_type,
-                            content: body.content,
-                            note_datetime: body.note_datetime,
-                            synced_id: body.synced_id,
-                            synced_at: body.synced_at,
-                        },
-                        { onConflict: "id,synced_id" }
-                    )
+                    .upsert(body, { onConflict: "id,synced_id" })
                     .select(`
                         *
                         , user!inner(id, name)
@@ -218,17 +205,7 @@ export const notesAPI = createApi({
                     if (!note.content_type) return { error: { message: `Content type is required (note id: ${note.id})` } };
                 }
 
-                const payload = notes.map((note) => ({
-                    id: note.id,
-                    user_id: user.id,
-                    workspace_id: note.workspace_id,
-                    title: note.title,
-                    content_type: note.content_type,
-                    content: note.content,
-                    note_datetime: note.note_datetime,
-                    synced_id: note.synced_id,
-                    synced_at: note.synced_at,
-                }));
+                const payload = notes.map((note) => ({ ...note }));
 
                 const { data, error } = await supabase
                     .from("workspace_notes")
@@ -412,20 +389,7 @@ export const notesAPI = createApi({
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")
-                    .upsert(
-                        {
-                            id: body.id,
-                            user_id: user.id,
-                            workspace_id: body.workspace_id,
-                            workspace_note_id: body.workspace_note_id,
-                            page_num: body.page_num,
-                            is_active: body.is_active ?? true,
-                            content_data: body.content_data,
-                            synced_id: body.synced_id,
-                            synced_at: body.synced_at,
-                        },
-                        { onConflict: "id,synced_id" }
-                    )
+                    .upsert(body, { onConflict: "id,synced_id" })
                     .select()
                     .single();
 
@@ -489,20 +453,9 @@ export const notesAPI = createApi({
                     if (!page.workspace_id) return { error: { message: `[Upsert Note Pages] Workspace ID is required (page id: ${page.id})` } };
                     if (!page.workspace_note_id) return { error: { message: `[Upsert Note Pages] Workspace Note ID is required (page id: ${page.id})` } };
                     if (page.page_num === undefined || page.page_num === null) return { error: { message: `[Upsert Note Pages] Page number is required (page id: ${page.id})` } };
-                    // if (!page.content_data) return { error: { message: `Content data is required (page id: ${page.id})` } };
                 }
 
-                const payload = pages.map((page) => ({
-                    id: page.id,
-                    user_id: user.id,
-                    workspace_id: page.workspace_id,
-                    workspace_note_id: page.workspace_note_id,
-                    page_num: page.page_num,
-                    is_active: page.is_active ?? true,
-                    content_data: page.content_data,
-                    synced_id: page.synced_id,
-                    synced_at: page.synced_at,
-                }));
+                const payload = pages.map((page) => ({ ...page }));
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")

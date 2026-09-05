@@ -1,8 +1,8 @@
-import { IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonList, IonText } from '@ionic/react';
+import { IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonText } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
 import { attachOutline, documentOutline, ellipsisVertical, shapesOutline, textOutline } from 'ionicons/icons';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
 import { getUser } from '../../utils/authState';
@@ -10,6 +10,44 @@ import { getUser } from '../../utils/authState';
 interface Props {
     workspaceId: string;
 }
+
+// --- Grouping helpers (per-day, based on note_datetime) ---
+
+const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** Extract the "YYYY-MM-DD" date key from note_datetime, with no timezone conversion. */
+const getDateKey = (isoString: string): string => isoString.slice(0, 10);
+
+/** "2026-09-05" -> "September 5, 2026" (safe from timezone shifts when parsing Date). */
+const formatDateHeader = (dateKey: string): string => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return `${MONTH_NAMES[month - 1]} ${day}, ${year}`;
+};
+
+interface NoteGroup {
+    dateKey: string;
+    notes: NoteTypes[];
+}
+
+/**
+ * Group notes by note_datetime (per day).
+ * The order of dates and notes within each group follows the original API order
+ * (not re-sorted), to stay consistent with pagination/infinite scroll.
+ */
+const groupNotesByDate = (notes: NoteTypes[]): NoteGroup[] => {
+    const map = new Map<string, NoteTypes[]>();
+
+    for (const note of notes) {
+        const key = getDateKey(note.note_datetime);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(note);
+    }
+
+    return [...map.entries()].map(([dateKey, groupNotes]) => ({ dateKey, notes: groupNotes }));
+};
 
 const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, user }) => {
     const { content_preview, created_at } = item;
@@ -23,13 +61,13 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, u
 
     let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`;
 
-    // if not creator view the note as normal viewer
+    // if not the creator, view the note as a normal viewer
     if (item.user.id !== user.id) {
         linkTo = `/dashboard/workspace/note-viewer?workspaceId=${item.workspace_id}&noteId=${item.id}`;
     }
 
     return (
-        <IonItem lines="none" className='ion-no-padding note-item'>
+        <IonItem lines="none" className='note-item'>
             <IonLabel>
                 <div className='flex'>
                     <Link to={linkTo} className='block w-full flex-1'>
@@ -80,6 +118,8 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
         pageSize: 20,
     });
 
+    const groupedNotes = useMemo(() => groupNotesByDate(data?.notes ?? []), [data?.notes]);
+
     const handleIonInfinite = async (e: CustomEvent<void>) => {
         if (!isFetching) {
             setPage((p) => p + 1);
@@ -102,13 +142,25 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
         }
     }, [isSuccess, isFetching]);
 
-    if (isLoading && page === 1) return <IonText className='text-center'>Loading...</IonText>;
+    if (isLoading && page === 1) return <IonText className='text-center ion-padding'>Loading...</IonText>;
 
     return (
         <>
             <IonList id="notelist" className='flex flex-col gap-6'>
-                {data?.notes.map((item) => (
-                    <NoteItem key={item.id} item={item} user={user} />
+                {groupedNotes.map(({ dateKey, notes }) => (
+                    <IonItemGroup key={dateKey}>
+                        <IonItemDivider sticky color="light">
+                            <IonLabel className='ion-padding-start ion-padding-end'>
+                                <IonText className='font-semibold text-orange-600 uppercase tracking-wide'>
+                                    {formatDateHeader(dateKey)}
+                                </IonText>
+                            </IonLabel>
+                        </IonItemDivider>
+
+                        {notes.map((item) => (
+                            <NoteItem key={item.id} item={item} user={user} />
+                        ))}
+                    </IonItemGroup>
                 ))}
             </IonList>
 

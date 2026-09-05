@@ -100,8 +100,8 @@ const WorkspaceDetailPage: React.FC = () => {
                     </div>
 
                     {id && (
-                        <div className='ion-padding'>
-                            <div className='block mb-0 text-lg'>
+                        <div className='block'>
+                            <div className='block mb-0 text-lg ion-padding !pb-0'>
                                 <IonText>Notes in workspace</IonText>
                             </div>
                             <NoteList workspaceId={id} />

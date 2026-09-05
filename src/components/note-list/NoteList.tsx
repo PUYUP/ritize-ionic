@@ -1,8 +1,8 @@
-import { IonButton, IonIcon, IonItem, IonLabel, IonList, IonText } from '@ionic/react';
+import { IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonList, IonText } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
 import { attachOutline, documentOutline, ellipsisVertical, shapesOutline, textOutline } from 'ionicons/icons';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
 import { getUser } from '../../utils/authState';
@@ -71,19 +71,22 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, u
 }
 
 const NoteList: React.FC<Props> = ({ workspaceId }) => {
+    const [ionScrollEl, setIonScrollEl] = useState<HTMLIonInfiniteScrollElement | null>(null);
     const [user, setUser] = useState({ id: '' });
     const [page, setPage] = useState(1);
-    const { data, isLoading, isFetching } = useGetNotesByWorkspaceIdQuery({
+    const { data, isLoading, isFetching, isSuccess, isError } = useGetNotesByWorkspaceIdQuery({
         workspace_id: workspaceId,
-        page,
+        page: page,
         pageSize: 20,
     });
 
     const handleIonInfinite = async (e: CustomEvent<void>) => {
-        if (!isFetching && data && data.notes.length < data.count) {
+        if (!isFetching) {
             setPage((p) => p + 1);
+            console.log("page: ", page);
         }
-        (e.target as HTMLIonInfiniteScrollElement).complete();
+
+        setIonScrollEl(e.target as HTMLIonInfiniteScrollElement);
     };
 
     useEffect(() => {
@@ -93,14 +96,32 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
         })()
     }, []);
 
-    if (isLoading) return <IonText className='text-center'>Loading...</IonText>;
+    useEffect(() => {
+        if (isSuccess && !isFetching) {
+            ionScrollEl?.complete();
+        }
+    }, [isSuccess, isFetching]);
+
+    if (isLoading && page === 1) return <IonText className='text-center'>Loading...</IonText>;
 
     return (
-        <IonList id="notelist" className='flex flex-col gap-6'>
-            {data?.notes.map((item) => (
-                <NoteItem key={item.id} item={item} user={user} />
-            ))}
-        </IonList>
+        <>
+            <IonList id="notelist" className='flex flex-col gap-6'>
+                {data?.notes.map((item) => (
+                    <NoteItem key={item.id} item={item} user={user} />
+                ))}
+            </IonList>
+
+            <IonInfiniteScroll
+                disabled={isError}
+                onIonInfinite={(event) => {
+                    handleIonInfinite(event);
+                    setTimeout(() => event.target.complete(), 500);
+                }}
+            >
+                <IonInfiniteScrollContent></IonInfiniteScrollContent>
+            </IonInfiniteScroll>
+        </>
     )
 }
 

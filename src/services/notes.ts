@@ -202,6 +202,34 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data: { notes: data ?? [], count: count ?? 0 } };
             },
+
+            // --- TAMBAHAN UNTUK PAGINASI (APPEND) ---
+
+            // 1. Simpan cache berdasarkan workspace_id saja (abaikan 'page' agar data tergabung)
+            serializeQueryArgs: ({ endpointName, queryArgs }) => {
+                return `${endpointName}-${queryArgs.workspace_id}`;
+            },
+
+            // 2. Gabungkan data baru ke data lama
+            merge: (currentCache, newItems, { arg }) => {
+                if (arg.page === 1) {
+                    // Jika memuat ulang dari halaman 1, timpa / reset cache lama
+                    currentCache.notes = newItems.notes;
+                    currentCache.count = newItems.count;
+                } else {
+                    // Jika halaman 2 dan seterusnya, APPEND data ke array 'notes'
+                    currentCache.notes.push(...newItems.notes);
+                    currentCache.count = newItems.count; // Update count terbaru
+                }
+            },
+
+            // 3. Wajibkan refetch setiap kali nomor 'page' berubah
+            forceRefetch({ currentArg, previousArg }) {
+                return currentArg?.page !== previousArg?.page;
+            },
+
+            // ----------------------------------------
+
             providesTags: (result) =>
                 result
                     ? [

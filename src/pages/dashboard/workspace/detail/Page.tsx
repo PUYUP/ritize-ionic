@@ -51,7 +51,7 @@ const WorkspaceDetailPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent>
+            <IonContent role="feed">
                 <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                     <div className='ion-padding'>
                         <div className='flex items-start mb-4'>
@@ -101,6 +101,9 @@ const WorkspaceDetailPage: React.FC = () => {
 
                     {id && (
                         <div className='ion-padding'>
+                            <div className='block mb-0 text-lg'>
+                                <IonText>Notes in workspace</IonText>
+                            </div>
                             <NoteList workspaceId={id} />
                         </div>
                     )}

@@ -41,12 +41,12 @@ const Page: React.FC = () => {
                 </IonButton>
               </div>
 
-              <div className='block text-center mt-4'>
+              {/* <div className='block text-center mt-4'>
                 <IonButton color={'primary'} fill="clear" mode={'ios'} shape='round' className='items-center gap-3'>
                   <IonIcon slot='start' icon={mailOutline} />
                   <IonText className='ml-2'>Use an Email</IonText>
                 </IonButton>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

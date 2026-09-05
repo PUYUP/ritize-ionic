@@ -63,19 +63,21 @@ const WorkspacePage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent className="ion-padding">
+            <IonContent>
                 <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
                     <IonRefresherContent />
                 </IonRefresher>
 
-                {Array.from({ length: pageCount }).map((_, page) => (
-                    <WorkspacePageBlock
-                        key={page}
-                        page={page}
-                        perPage={PER_PAGE}
-                        onLoaded={handlePageLoaded}
-                    />
-                ))}
+                {Array.from({ length: pageCount }).map((_, page) => {
+                    return (
+                        <WorkspacePageBlock
+                            key={page}
+                            page={page}
+                            perPage={PER_PAGE}
+                            onLoaded={handlePageLoaded}
+                        />
+                    )
+                })}
 
                 <IonInfiniteScroll
                     ref={infiniteScrollRef}

@@ -5,8 +5,8 @@ import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
 import { useParams } from 'react-router';
-import { useState } from 'react';
-import { useDeleteWorkspaceMutation, useGetWorkspaceByIdQuery } from '../../../../services/workspace';
+import { useEffect, useState } from 'react';
+import { useDeleteWorkspaceMutation, useGetWorkspaceByIdQuery, useLazyGetWorkspaceStatsQuery } from '../../../../services/workspace';
 
 interface RouteParams {
     id?: string
@@ -20,6 +20,13 @@ const WorkspaceDetailPage: React.FC = () => {
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [deleteWorkspace, { isLoading: deleting }] = useDeleteWorkspaceMutation();
     const { data: workspace, error, isLoading } = useGetWorkspaceByIdQuery(id ?? "", { skip: !id });
+    const [getWorkspaceStats, { data: workspaceStats, isFetching: workspaceStatsFetching }] = useLazyGetWorkspaceStatsQuery({});
+
+    useEffect(() => {
+        if (id) {
+            getWorkspaceStats({ workspaceId: id });
+        }
+    }, [id, getWorkspaceStats]);
 
     if (isLoading || !workspace) {
         return (
@@ -93,7 +100,7 @@ const WorkspaceDetailPage: React.FC = () => {
                             <IonText>Today's in workspace</IonText>
                         </div>
                         <WorkspaceStats
-                            note={{ todayCount: 2, total: 34000 }}
+                            note={{ todayCount: workspaceStats?.total_notes_today ?? 0, total: workspaceStats?.total_notes ?? 0 }}
                             material={{ todayCount: 1, total: 221 }}
                             digest={{ todayCount: 3, total: 62 }}
                         />

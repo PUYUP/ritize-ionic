@@ -77,6 +77,7 @@ class NotesRepository {
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
                         body: {
                             id: note.id,
+                            user_id: user.id,
                             workspace_id: note.workspaceId,
                             synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
                             synced_id: note.syncedId,
@@ -95,6 +96,7 @@ class NotesRepository {
 
     async upsertNote(data: Partial<Note>, conflictPaths: string[] = ['id']): Promise<Note | null> {
         return this.enqueueWrite(async () => {
+            const user = await getUser();
             const result = await this.noteRepo.upsert(data as any, conflictPaths);
             await this.saveWebStore();
             const insertedId = result.identifiers?.[0]?.id;
@@ -107,6 +109,7 @@ class NotesRepository {
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
                         body: {
                             id: note.id,
+                            user_id: user.id,
                             workspace_id: note.workspaceId,
                             synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
                             synced_id: note.syncedId,

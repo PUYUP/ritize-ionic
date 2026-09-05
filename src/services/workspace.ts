@@ -169,6 +169,23 @@ export const workspaceAPI = createApi({
             },
             providesTags: [{ type: 'Workspace', id: 'LIST' }],
         }),
+
+        // get workspace stats
+        getWorkspaceStats: builder.query<any, { workspaceId?: string, userId?: string }>({
+            queryFn: async ({ workspaceId, userId }) => {
+                const { data, error } = await supabase.rpc('get_workspace_notes_stats', {
+                    p_workspace_id: workspaceId,
+                    p_user_id: userId
+                })
+
+                if (error) {
+                    return { error: { message: error.message ?? 'Failed to fetch workspace' } };
+                }
+
+                return { data };
+            },
+            providesTags: (result, error, { workspaceId }) => [{ type: 'Workspace', id: workspaceId }],
+        }),
     }),
 });
 
@@ -179,4 +196,6 @@ export const {
     useDeleteWorkspaceMutation,
     useGetAllWorkspacesQuery,
     useLazyGetAllWorkspacesQuery,
+    useGetWorkspaceStatsQuery,
+    useLazyGetWorkspaceStatsQuery,
 } = workspaceAPI

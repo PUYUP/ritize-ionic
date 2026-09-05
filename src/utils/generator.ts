@@ -18,3 +18,19 @@ export const generateUUID = (): string => {
         chars.slice(20, 32).join(''),
     ].join('-');
 };
+
+export function getInitials(name: string): string {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+
+    if (words.length === 0) return "";
+
+    // Kalau cuma 1 kata, ambil 2 huruf pertama
+    if (words.length === 1) {
+        return words[0].slice(0, 2).toUpperCase();
+    }
+
+    // Kalau lebih dari 1 kata, ambil huruf pertama dari kata pertama dan kata terakhir
+    const first = words[0][0];
+    const last = words[words.length - 1][0];
+    return (first + last).toUpperCase();
+}

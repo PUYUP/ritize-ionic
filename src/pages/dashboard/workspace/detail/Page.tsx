@@ -147,6 +147,16 @@ const WorkspaceDetailPage: React.FC = () => {
                 header="Workspace Actions"
                 buttons={[
                     {
+                        text: 'Manage Members',
+                        icon: personCircleOutline,
+                        data: {
+                            action: 'manage-members',
+                        },
+                        handler: () => {
+                            ionRouter.push(`/dashboard/workspace/${id}/members`, "forward");
+                        }
+                    },
+                    {
                         text: 'Edit',
                         icon: pencilOutline,
                         data: {

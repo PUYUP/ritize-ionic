@@ -141,7 +141,7 @@ const VoiceRecorderPage: React.FC = () => {
             const contentEmpty = fullText.trim().length === 0;
             const bufferData = contentEmpty ? null : Buffer.from(JSON.stringify(fullText), 'utf-8');
 
-            await NotesRepository.updatePage(page.id as string, { contentData: bufferData });
+            await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
 
             setPages((prevPages) =>
                 prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
@@ -1043,7 +1043,12 @@ const VoiceRecorderPage: React.FC = () => {
                             }
 
                             try {
-                                await NotesRepository.deletePage(pages[activeIndex].id, pages[activeIndex].syncedId);
+                                await NotesRepository.deletePage(
+                                    pages[activeIndex].id,
+                                    pages[activeIndex].syncedId,
+                                    pages[activeIndex].workspaceId,
+                                    pages[activeIndex].workspaceNoteId,
+                                );
 
                                 const remaining = pages.filter((_, idx) => idx !== activeIndex);
 

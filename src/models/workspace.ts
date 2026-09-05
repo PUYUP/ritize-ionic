@@ -4,6 +4,6 @@ export interface WorkspaceItem {
     icon?: string;
     color?: string;
     scope: 'personal' | 'group';
-    memberCount: number;
-    todayNoteCount: number;
+    member_count: number;
+    today_note_count: number;
 }

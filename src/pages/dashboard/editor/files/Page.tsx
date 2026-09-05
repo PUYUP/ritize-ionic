@@ -431,9 +431,7 @@ const FilesEditorPage: React.FC = () => {
                                 );
 
                                 // update selected page
-                                await NotesRepository.updatePage(selectedPage.id as string, {
-                                    contentData: emptyBuffer,
-                                });
+                                await NotesRepository.updatePage(selectedPage.id as string, { contentData: emptyBuffer }, false);
                             }
                         },
                     },
@@ -467,7 +465,12 @@ const FilesEditorPage: React.FC = () => {
                             const nextActiveIndex = Math.min(activeIndex, filtered.length - 1);
 
                             // delete page from db
-                            await NotesRepository.deletePage(pages[activeIndex].id);
+                            await NotesRepository.deletePage(
+                                pages[activeIndex].id,
+                                pages[activeIndex].syncedId,
+                                pages[activeIndex].workspaceId,
+                                pages[activeIndex].workspaceNoteId,
+                            );
 
                             // re-index all pages
                             const reindexed = filtered.map((p, idx) => ({

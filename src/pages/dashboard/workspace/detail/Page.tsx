@@ -74,7 +74,7 @@ const WorkspaceDetailPage: React.FC = () => {
                                         <div className='flex items-center justify-between w-full'>
                                             <div className='flex items-center gap-1'>
                                                 <IonIcon icon={personCircleOutline} className='text-xl text-[#424242] mt-[1px]' />
-                                                <IonText className='text-lg text-[#383838] font-semibold'>{workspace.memberCount || 0}</IonText>
+                                                <IonText className='text-lg text-[#383838] font-semibold'>{workspace.member_count || 0}</IonText>
                                             </div>
                                             <IonIcon icon={chevronForwardOutline} className='text-xl text-[#424242] mt-[1px]' />
                                         </div>

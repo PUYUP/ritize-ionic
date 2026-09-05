@@ -156,7 +156,7 @@ class NotesRepository {
                 }
 
                 store
-                    .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
+                    .dispatch(notesAPI.endpoints.insertNotePage.initiate({
                         body: {
                             id: savedPage.id,
                             user_id: savedPage.userId,
@@ -192,35 +192,35 @@ class NotesRepository {
         await this.saveWebStore();
 
         // Sync semua page baru ke server secara paralel
-        await Promise.all(
-            savedPages.map((savedPage) => {
-                let objString = null;
-                if (savedPage.contentData) {
-                    const decoder = new TextDecoder('utf-8');
-                    const jsonString = decoder.decode(savedPage.contentData);
-                    objString = jsonString ? JSON.parse(jsonString) : {};
-                }
+        // Bangun payload sync untuk semua page sekaligus
+        const updatingPages = savedPages.map((savedPage) => {
+            let objString = null;
+            if (savedPage.contentData) {
+                const decoder = new TextDecoder('utf-8');
+                const jsonString = decoder.decode(savedPage.contentData);
+                objString = jsonString ? JSON.parse(jsonString) : {};
+            }
 
-                return store
-                    .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
-                        body: {
-                            id: savedPage.id,
-                            user_id: savedPage.userId,
-                            workspace_id: savedPage.workspaceId,
-                            workspace_note_id: savedPage.workspaceNoteId,
-                            synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
-                            synced_id: savedPage.syncedId,
-                            content_data: objString,
-                            page_num: savedPage.pageNum,
-                            is_active: savedPage.isActive,
-                        }
-                    }))
-                    .unwrap()
-                    .catch((err) => {
-                        console.error('Gagal sync page ke server:', savedPage.id, err);
-                    });
-            })
-        );
+            return {
+                id: savedPage.id,
+                user_id: savedPage.userId,
+                workspace_id: savedPage.workspaceId,
+                workspace_note_id: savedPage.workspaceNoteId,
+                synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
+                synced_id: savedPage.syncedId,
+                content_data: objString,
+                page_num: savedPage.pageNum,
+                is_active: savedPage.isActive,
+            };
+        });
+
+        // Kirim satu request bulk ke server, bukan banyak request paralel
+        await store
+            .dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages }))
+            .unwrap()
+            .catch((err) => {
+                console.error('Gagal sync pages ke server:', err);
+            });
 
         return savedPages;
     }
@@ -244,36 +244,39 @@ class NotesRepository {
     }
 
     /** Update properti Page (misal update isActive / JSON Canvas) */
-    async updatePage(pageId: string, data: Partial<Page>): Promise<Page | null> {
+    async updatePage(pageId: string, data: Partial<Page>, directToSupabase: boolean = true): Promise<Page | null> {
         return this.enqueueWrite(async () => {
             await this.pageRepo.update(pageId, data as any);
             await this.saveWebStore();
 
             const savedPage = await this.getPageById(pageId);
 
-            if (savedPage) {
-                let objString = null;
-                if (savedPage.contentData) {
-                    const decoder = new TextDecoder('utf-8');
-                    const jsonString = decoder.decode(savedPage.contentData);
-                    objString = jsonString ? JSON.parse(jsonString) : {};
-                }
+            // Update bulk langsung ke supabase jangan 1 per 1
+            if (!directToSupabase) {
+                if (savedPage) {
+                    let objString = null;
+                    if (savedPage.contentData) {
+                        const decoder = new TextDecoder('utf-8');
+                        const jsonString = decoder.decode(savedPage.contentData);
+                        objString = jsonString ? JSON.parse(jsonString) : {};
+                    }
 
-                store
-                    .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
-                        body: {
-                            id: savedPage.id,
-                            user_id: savedPage.userId,
-                            workspace_id: savedPage.workspaceId,
-                            workspace_note_id: savedPage.workspaceNoteId,
-                            synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
-                            synced_id: savedPage.syncedId,
-                            content_data: objString,
-                            page_num: savedPage.pageNum,
-                            is_active: savedPage.isActive,
-                        }
-                    }))
-                    .unwrap();
+                    store
+                        .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
+                            body: {
+                                id: savedPage.id,
+                                user_id: savedPage.userId,
+                                workspace_id: savedPage.workspaceId,
+                                workspace_note_id: savedPage.workspaceNoteId,
+                                synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
+                                synced_id: savedPage.syncedId,
+                                content_data: objString,
+                                page_num: savedPage.pageNum,
+                                is_active: savedPage.isActive,
+                            }
+                        }))
+                        .unwrap();
+                }
             }
 
             return savedPage;
@@ -290,7 +293,7 @@ class NotesRepository {
 
         for (let p of pages) {
             if (p.id) {
-                const res = await this.updatePage(p.id, p);
+                const res = await this.updatePage(p.id, p, true);
                 if (res) {
                     results.push(res);
                     // Simpan perubahan ke IndexedDB jika di platform web
@@ -299,11 +302,30 @@ class NotesRepository {
             }
         }
 
+        // langsung update ke supabase
+        const updatingPages = pages.map((p) => ({
+            id: p.id,
+            user_id: p.userId,
+            workspace_id: p.workspaceId,
+            workspace_note_id: p.workspaceNoteId,
+            synced_at: p.syncedAt ? p.syncedAt.toISOString() : new Date().toISOString(),
+            synced_id: p.syncedId,
+            page_num: p.pageNum,
+            is_active: p.isActive,
+        }));
+
+        store.dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages })).unwrap();
+
         return results;
     }
 
     /** Hapus 1 halaman Page */
-    async deletePage(pageId: string, syncedId: string | null = null): Promise<boolean> {
+    async deletePage(
+        pageId: string,
+        syncedId: string | null = null,
+        workspaceId: string,
+        workspaceNoteId: string,
+    ): Promise<boolean> {
         const result = await this.pageRepo.delete(pageId);
         await this.saveWebStore();
 
@@ -311,6 +333,8 @@ class NotesRepository {
             store
                 .dispatch(notesAPI.endpoints.deleteNotePage.initiate({
                     synced_id: syncedId,
+                    workspace_id: workspaceId,
+                    workspace_note_id: workspaceNoteId,
                 }))
                 .unwrap();
         }

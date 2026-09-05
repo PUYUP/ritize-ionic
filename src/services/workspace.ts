@@ -15,8 +15,8 @@ export type WorkspaceTypes = {
     scope: 'personal' | 'group';
 
     // placeholder only, may join from another table
-    memberCount?: number;
-    todayNoteCount?: number;
+    member_count?: number;
+    today_note_count?: number;
 }
 
 export type MemberTypes = {
@@ -38,7 +38,7 @@ export const workspaceAPI = createApi({
                     .from("workspaces")
                     .select(`
                         *,
-                        memberCount:workspace_members(count)
+                        member_count:workspace_members(count)
                     `)
                     .eq("id", id)
                     .single();
@@ -47,7 +47,7 @@ export const workspaceAPI = createApi({
                     return { error: { message: error.message ?? 'Failed to fetch workspace' } };
                 }
 
-                return { data: { ...data, memberCount: data.memberCount?.[0]?.count || 0 } };
+                return { data: { ...data, member_count: data.member_count?.[0]?.count || 0 } };
             },
             providesTags: (result, error, id) => [{ type: 'Workspace', id }],
         }),
@@ -67,7 +67,7 @@ export const workspaceAPI = createApi({
                     })
                     .select(`
                         *,
-                        memberCount:workspace_members(count)
+                        member_count:workspace_members(count)
                     `)
                     .single();
 
@@ -89,7 +89,7 @@ export const workspaceAPI = createApi({
                     return { error: { message: memberError.message ?? 'Failed to create workspace member' } };
                 }
 
-                return { data: { ...insertedData, memberCount: insertedData.memberCount?.[0]?.count || 0 } };
+                return { data: { ...insertedData, mmember_count: insertedData.member_count?.[0]?.count || 0 } };
             },
             invalidatesTags: (result, error) => [{ type: 'Workspace', id: 'LIST' }],
         }),
@@ -108,7 +108,7 @@ export const workspaceAPI = createApi({
                     .eq("id", id)
                     .select(`
                         *,
-                        memberCount:workspace_members(count)
+                        member_count:workspace_members(count)
                     `)
                     .single();
 
@@ -116,7 +116,7 @@ export const workspaceAPI = createApi({
                     return { error: { message: error.message ?? 'Failed to update workspace' } };
                 }
 
-                return { data: { ...updatedData, memberCount: updatedData.memberCount?.[0]?.count || 0 } };
+                return { data: { ...updatedData, member_count: updatedData.member_count?.[0]?.count || 0 } };
             },
             invalidatesTags: (result, error, { id }) => [
                 { type: 'Workspace', id },
@@ -152,7 +152,7 @@ export const workspaceAPI = createApi({
                     .select(`
                         *,
                         membersInside:workspace_members!inner(*),
-                        memberCount:workspace_members(count)
+                        member_count:workspace_members(count)
                     `)
                     .in('membersInside.user_id', [user.id])
                     .order('created_at', { ascending: false })
@@ -163,7 +163,7 @@ export const workspaceAPI = createApi({
                 const serialized = data.map((org) => {
                     return {
                         ...org,
-                        memberCount: org.memberCount?.[0]?.count || 0,
+                        member_count: org.member_count?.[0]?.count || 0,
                     };
                 });
 

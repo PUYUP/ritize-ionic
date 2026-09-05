@@ -23,8 +23,8 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes }> = ({ item }) => {
             <IonLabel className="ion-padding-start py-2">
                 <h3 className="!mt-0 !mb-1 !text-lg leading-6">{item.title}</h3>
                 <p className="flex items-center flex-wrap gap-4">
-                    {item.scope === 'group' && <span className="text-sm text-gray-500">{item.memberCount} members</span>}
-                    {item.todayNoteCount && item.todayNoteCount > 0 && <span className="text-sm text-green-600">{item.todayNoteCount} today's notes</span>}
+                    {item.scope === 'group' && <span className="text-sm text-gray-500">{item.member_count} members</span>}
+                    {item.today_note_count && item.today_note_count > 0 && <span className="text-sm text-green-600">{item.today_note_count} today's notes</span>}
                 </p>
             </IonLabel>
         </IonItem>

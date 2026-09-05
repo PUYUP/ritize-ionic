@@ -42,7 +42,7 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string } }> = ({ item, u
                                 {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
                                 {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
                                 {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
-                                <IonText className='text-sm text-neutral-500'>{item.pageCount?.[0]?.count || 0} page</IonText>
+                                <IonText className='text-sm text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
                             </span>
                         </p>
                         <IonText color="dark font-semibold">{item.user.name}</IonText>

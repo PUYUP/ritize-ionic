@@ -141,7 +141,7 @@ const CanvasEditorPage: React.FC = () => {
 
 			const bufferData = json ? Buffer.from(json, 'utf-8') : null;
 
-			await NotesRepository.updatePage(page.id as string, { contentData: bufferData });
+			await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
 			console.log('selected page id: ', page.id, ' is updated');
 
 			setPages((prevPages) =>
@@ -860,7 +860,12 @@ const CanvasEditorPage: React.FC = () => {
 							}
 
 							try {
-								await NotesRepository.deletePage(pages[activeIndex].id, pages[activeIndex].syncedId);
+								await NotesRepository.deletePage(
+									pages[activeIndex].id,
+									pages[activeIndex].syncedId,
+									pages[activeIndex].workspaceId,
+									pages[activeIndex].workspaceNoteId,
+								);
 
 								const remaining = pages.filter((_, idx) => idx !== activeIndex);
 

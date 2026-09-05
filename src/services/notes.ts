@@ -1,6 +1,6 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getUser } from "../utils/authState";
-import { supabase } from "../utils/supabaseClient";
+import { supabase } from '../lib/supabase';
 
 export type NoteFormatTypes = 'text' | 'canvas' | 'file';
 

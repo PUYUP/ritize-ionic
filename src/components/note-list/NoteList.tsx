@@ -146,7 +146,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
 
     return (
         <>
-            <IonList id="notelist" className='flex flex-col gap-6'>
+            <IonList id="notelist" className='flex flex-col gap-6 !pt-0'>
                 {groupedNotes.map(({ dateKey, notes }) => (
                     <IonItemGroup key={dateKey}>
                         <IonItemDivider sticky color="light">

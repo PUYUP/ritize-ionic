@@ -13,6 +13,7 @@ import {
 import { briefcase, briefcaseOutline, home, homeOutline, logOut, logOutOutline, people, peopleOutline, settingsOutline, settingsSharp } from 'ionicons/icons';
 import './Menu.css';
 import { useLocation } from 'react-router';
+import { useAuth } from '../utils/authContext';
 
 interface AppPage {
   url: string;
@@ -46,16 +47,11 @@ const appPages: AppPage[] = [
     iosIcon: settingsOutline,
     mdIcon: settingsOutline
   },
-  {
-    title: 'Logout',
-    url: '',
-    iosIcon: logOutOutline,
-    mdIcon: logOutOutline
-  }
 ];
 
 const Menu: React.FC = () => {
   const location = useLocation();
+  const { logout } = useAuth();
 
   return (
     <IonMenu contentId="main" type="overlay">
@@ -73,6 +69,13 @@ const Menu: React.FC = () => {
               </IonMenuToggle>
             );
           })}
+
+          <IonMenuToggle key={'logout'} autoHide={false}>
+            <IonItem onClick={async () => logout()} routerDirection="none" lines="none" detail={false}>
+              <IonIcon aria-hidden="true" slot="start" ios={logOutOutline} md={logOutOutline} className='w-8`' color={'danger'} />
+              <IonLabel className='pl-4' color={'danger'}>Logout</IonLabel>
+            </IonItem>
+          </IonMenuToggle>
         </IonList>
       </IonContent>
     </IonMenu>

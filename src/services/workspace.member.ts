@@ -1,6 +1,6 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
-import { supabase } from '../utils/supabaseClient';
 import { workspaceAPI } from './workspace';
+import { supabase } from '../lib/supabase';
 
 export type MemberTypes = {
     readonly id: string;

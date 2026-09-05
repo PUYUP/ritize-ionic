@@ -1,6 +1,6 @@
 import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
-import { chevronForwardOutline, closeOutline, pencilOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
+import { chevronForwardOutline, closeOutline, filterOutline, pencilOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
 import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
@@ -101,8 +101,13 @@ const WorkspaceDetailPage: React.FC = () => {
 
                     {id && (
                         <div className='block'>
-                            <div className='block mb-0 text-lg ion-padding !pb-0'>
+                            <div className='bg-neutral-200 block mb-0 text-lg ion-padding-start ion-padding-end !py-2 flex items-center justify-center'>
                                 <IonText>Notes in workspace</IonText>
+                                <div className='ml-auto flex items-center'>
+                                    <IonButton shape='round' color="light" size="small">
+                                        <IonIcon icon={filterOutline} slot='icon-only' />
+                                    </IonButton>
+                                </div>
                             </div>
                             <NoteList workspaceId={id} />
                         </div>

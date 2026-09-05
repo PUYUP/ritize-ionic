@@ -33,13 +33,13 @@ import { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { Note, Page } from '../../../../databases/entities/notes';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
-import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
+import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 import { getFileTypePure, uploadFileToGCS } from '../../../../utils/gcs-upload-client';
 import { UploadProgress } from '../../../../types/upload';
 import { getUser } from '../../../../utils/authState';
-import { supabase } from '../../../../utils/supabaseClient';
 import { generateUUID } from '../../../../utils/generator';
+import { supabase } from '../../../../lib/supabase';
 
 const AUTOSAVE_DELAY_MS = 1500;
 

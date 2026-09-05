@@ -1,8 +1,6 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
-import { authClient } from '../utils/authClient';
 import { getUser } from '../utils/authState';
-import { supabase } from '../utils/supabaseClient';
-import slugify from 'slugify';
+import { supabase } from '../lib/supabase';
 
 export type WorkspaceTypes = {
     readonly id: string;

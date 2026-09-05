@@ -1,5 +1,5 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from '../lib/supabase';
 
 type GetUserArgs =
     | { id: string; email?: string }

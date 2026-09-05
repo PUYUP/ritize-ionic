@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
-import { supabase } from '../../../utils/supabaseClient';
 import CryptoJS from 'crypto-js';
+import { supabase } from '../../../lib/supabase';
 
 const enum Status {
     INIT = "init",

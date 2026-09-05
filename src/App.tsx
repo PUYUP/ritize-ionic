@@ -37,55 +37,63 @@ import { dashboardRoutes } from './routes/dashboard.routes';
 import { mainRoutes } from './routes/main.routes';
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { Route } from 'react-router';
+import ProtectedRoute from './routes/ProtectedRoute';
+import { AuthProvider } from './utils/authContext';
 
 setupIonicReact({ mode: "md", animated: false });
 
 const App: React.FC = () => {
-  const [fontReady, setFontReady] = useState(false);
+	const [fontReady, setFontReady] = useState(false);
 
-  useEffect(() => {
-    const font = new FontFace('Excalifont', 'url(/fonts/Inter-Regular.woff2)');
-    font.load()
-      .then((loadedFont) => {
-        document.fonts.add(loadedFont);
-        setFontReady(true);
-        console.log('Font berhasil di-load:', loadedFont.status);
-      })
-      .catch((err) => {
-        console.error('Font GAGAL di-load:', err);
-      });
+	useEffect(() => {
+		const font = new FontFace('Excalifont', 'url(/fonts/Inter-Regular.woff2)');
+		font.load()
+			.then((loadedFont) => {
+				document.fonts.add(loadedFont);
+				setFontReady(true);
+				console.log('Font berhasil di-load:', loadedFont.status);
+			})
+			.catch((err) => {
+				console.error('Font GAGAL di-load:', err);
+			});
 
-    // google oauth initializing
-    (async () => {
-      await SocialLogin.initialize({
-        google: {
-          webClientId: '1036154501218-uonc708al3gm9bpr84i58ib3ojfon6sv.apps.googleusercontent.com',
-          iOSClientId: '1036154501218-7q37t2sk7uboql5tpfko5p1eqiis1c22.apps.googleusercontent.com',
-          iOSServerClientId: '1036154501218-uonc708al3gm9bpr84i58ib3ojfon6sv.apps.googleusercontent.com',
-          mode: 'online',
-        }
-      });
-    })();
-  }, []);
+		// google oauth initializing
+		(async () => {
+			await SocialLogin.initialize({
+				google: {
+					webClientId: '1036154501218-uonc708al3gm9bpr84i58ib3ojfon6sv.apps.googleusercontent.com',
+					iOSClientId: '1036154501218-7q37t2sk7uboql5tpfko5p1eqiis1c22.apps.googleusercontent.com',
+					iOSServerClientId: '1036154501218-uonc708al3gm9bpr84i58ib3ojfon6sv.apps.googleusercontent.com',
+					mode: 'online',
+				}
+			});
+		})();
+	}, []);
 
-  return (
-    <IonApp>
-      <IonReactRouter>
-        <IonSplitPane contentId="main" when={false}>
-          <Menu />
-          <IonRouterOutlet id="main">
-            {mainRoutes.map((route) => (
-              <Route key={route.path as string} {...route} />
-            ))}
+	return (
+		<IonApp>
+			<AuthProvider>
+				<IonReactRouter>
+					<IonSplitPane contentId="main" when={false}>
+						<Menu />
+						<IonRouterOutlet id="main">
+							{mainRoutes.map((route) => (
+								<Route key={route.path as string} {...route} />
+							))}
 
-            {dashboardRoutes.map((route) => (
-              <Route key={route.path as string} {...route} />
-            ))}
-          </IonRouterOutlet>
-        </IonSplitPane>
-      </IonReactRouter>
-    </IonApp>
-  );
+							{dashboardRoutes.map((route) => (
+								<Route
+									key={route.path as string}
+									path={route.path}
+									element={<ProtectedRoute>{route.element}</ProtectedRoute>}
+								/>
+							))}
+						</IonRouterOutlet>
+					</IonSplitPane>
+				</IonReactRouter>
+			</AuthProvider>
+		</IonApp>
+	);
 };
 
 export default App;

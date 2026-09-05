@@ -1,6 +1,6 @@
 import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
-import { chevronForwardOutline, closeOutline, filterOutline, pencilOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
+import { chevronForwardOutline, closeOutline, filterOutline, languageOutline, pencilOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
 import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
@@ -81,8 +81,9 @@ const WorkspaceDetailPage: React.FC = () => {
                                     <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Workspace Detail'}</IonText>
                                 </div>
 
-                                <div className='text-base text-neutral-700'>
-                                    <IonText>in {language.name}</IonText>
+                                <div className='flex items-center gap-2 text-base text-neutral-700'>
+                                    <IonIcon icon={languageOutline} />
+                                    <IonText>{language.name}</IonText>
                                 </div>
                             </div>
 

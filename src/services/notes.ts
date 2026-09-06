@@ -286,7 +286,7 @@ export const notesAPI = createApi({
                         , page_count:workspace_notes_pages(count)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
-                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
+                        , documents:workspace_notes_documents(id, document_content, paper_id, paper:paper_id(title, pdf_url))
                     `)
                     .eq("id", id)
                     .eq("workspace_id", workspace_id)
@@ -294,6 +294,19 @@ export const notesAPI = createApi({
                     .single();
 
                 if (error) return { error: { message: error.message } };
+
+                if (data) {
+                    const seen = new Set<string>();
+                    data.documents = (data.documents ?? [])
+                        .filter((doc: any) => {
+                            if (seen.has(doc.paper_id)) return false;
+                            seen.add(doc.paper_id);
+                            return true;
+                        })
+                        .slice(0, 2);
+
+                }
+
                 return { data };
             },
             async onQueryStarted({ id, workspace_id }, { dispatch, queryFulfilled }) {
@@ -352,14 +365,14 @@ export const notesAPI = createApi({
                 const from = (page - 1) * pageSize;
                 const to = from + pageSize - 1;
 
-                const { data, error, count } = await supabase
+                let { data, error, count } = await supabase
                     .from("workspace_notes_list")
                     .select(`
                         *
                         , page_count:workspace_notes_pages(count)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
-                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
+                        , documents:workspace_notes_documents(id, document_content, paper_id, paper:paper_id(title, pdf_url))
                     `, { count: "exact" })
                     .eq("workspace_id", workspace_id)
                     .order("created_at", { ascending: false })
@@ -373,6 +386,22 @@ export const notesAPI = createApi({
                         return { data: { notes: [], count: count ?? 0 } };
                     }
                     return { error: { message: error.message } };
+                }
+
+                if (data) {
+                    const seen = new Set<string>();
+                    data = (data ?? [])
+                        .map((note: any) => {
+                            if (!note.documents) return note;
+                            note.documents = note.documents
+                                .filter((doc: any) => {
+                                    if (seen.has(doc.paper_id)) return false;
+                                    seen.add(doc.paper_id);
+                                    return true;
+                                })
+                                .slice(0, 2);
+                            return note;
+                        });
                 }
 
                 return { data: { notes: data ?? [], count: count ?? 0 } };

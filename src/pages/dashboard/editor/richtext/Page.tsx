@@ -542,7 +542,7 @@ const RichTextEditorPage: React.FC = () => {
             <IonHeader className="ion-no-border">
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
-                        <IonBackButton defaultHref="/" />
+                        <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
 
                     <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>

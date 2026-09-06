@@ -671,7 +671,7 @@ const CanvasEditorPage: React.FC = () => {
 			<IonHeader className='ion-no-border'>
 				<IonToolbar className='fixed'>
 					<IonButtons slot="start" className='ion-padding-start'>
-						<IonBackButton defaultHref='/' />
+						<IonBackButton defaultHref='/dashboard' />
 					</IonButtons>
 
 					<IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>

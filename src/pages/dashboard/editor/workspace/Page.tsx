@@ -96,7 +96,7 @@ const WorkspaceEditorPage: React.FC = () => {
             <IonHeader className='ion-no-border'>
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
-                        <IonBackButton defaultHref="/" />
+                        <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
                         Workspace Editor

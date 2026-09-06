@@ -59,7 +59,7 @@ const WorkspaceDetailPage: React.FC = () => {
             <IonHeader className='ion-no-border'>
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
-                        <IonBackButton defaultHref="/" />
+                        <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center flex items-center justify-center fixed left-14 right-14 top-0 bottom-0 text-lg line-clamp-1">
                         Workspace

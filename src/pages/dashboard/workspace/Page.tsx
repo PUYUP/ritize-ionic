@@ -1,8 +1,10 @@
 import {
     IonBackButton,
+    IonButton,
     IonButtons,
     IonContent,
     IonHeader,
+    IonIcon,
     IonInfiniteScroll,
     IonInfiniteScrollContent,
     IonPage,
@@ -16,6 +18,7 @@ import { useParams } from "react-router";
 import { useDispatch } from "react-redux";
 import { workspaceAPI } from "../../../services/workspace";
 import WorkspacePageBlock from "../../../components/workspace-list/WorkspacePageBlock";
+import { add } from "ionicons/icons";
 
 interface RouteParams {
     id?: string;
@@ -52,7 +55,7 @@ const WorkspacePage: React.FC = () => {
 
     return (
         <IonPage>
-            <IonHeader className="ion-no-border">
+            <IonHeader>
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
                         <IonBackButton defaultHref="/dashboard" />
@@ -60,10 +63,15 @@ const WorkspacePage: React.FC = () => {
                     <IonTitle className="text-base text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
                         My Workspaces
                     </IonTitle>
+                    <IonButtons slot="end" className="ion-padding-end">
+                        <IonButton fill="outline" size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
+                            <IonIcon icon={add} slot='icon-only' className='text-xl' />
+                        </IonButton>
+                    </IonButtons>
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent>
+            <IonContent className="ion-padding-top">
                 <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
                     <IonRefresherContent />
                 </IonRefresher>

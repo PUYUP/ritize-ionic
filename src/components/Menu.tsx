@@ -32,23 +32,23 @@ const appPages: AppPage[] = [
         mdIcon: homeOutline
     },
     {
-        title: 'My Workspaces',
+        title: 'Workspaces',
         url: '/dashboard/workspace',
         iosIcon: briefcaseOutline,
         mdIcon: briefcaseOutline
     },
-    {
-        title: 'Profile',
-        url: '/dashboard/profile',
-        iosIcon: peopleOutline,
-        mdIcon: peopleOutline
-    },
-    {
-        title: 'Settings',
-        url: '/dashboard/settings',
-        iosIcon: settingsOutline,
-        mdIcon: settingsOutline
-    },
+    // {
+    //     title: 'Profile',
+    //     url: '/dashboard/profile',
+    //     iosIcon: peopleOutline,
+    //     mdIcon: peopleOutline
+    // },
+    // {
+    //     title: 'Settings',
+    //     url: '/dashboard/settings',
+    //     iosIcon: settingsOutline,
+    //     mdIcon: settingsOutline
+    // },
 ];
 
 const Menu: React.FC = () => {

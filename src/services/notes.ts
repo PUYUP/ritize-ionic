@@ -72,7 +72,11 @@ export const notesAPI = createApi({
                         synced_id: body.synced_id,
                         synced_at: body.synced_at,
                     })
-                    .select()
+                    .select(`
+                        *
+                        , user!inner(id, name)
+                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
+                    `)
                     .single();
 
                 if (error) return { error: { message: error.message } };
@@ -140,6 +144,7 @@ export const notesAPI = createApi({
                     .select(`
                         *
                         , user!inner(id, name)
+                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
                     `)
                     .single();
 
@@ -285,6 +290,7 @@ export const notesAPI = createApi({
                     `)
                     .eq("id", id)
                     .eq("workspace_id", workspace_id)
+                    .limit(2, { foreignTable: "documents" })
                     .single();
 
                 if (error) return { error: { message: error.message } };
@@ -477,6 +483,7 @@ export const notesAPI = createApi({
                             if (noteIndex !== -1) {
                                 // Timpa data lama dengan data baru (patch)
                                 draft.notes[noteIndex].page_count[0].count += 1;
+                                draft.notes[noteIndex].documents = [];
                             }
                         }
                     )
@@ -535,6 +542,7 @@ export const notesAPI = createApi({
                             const noteIndex = draft.notes.findIndex((n) => n.id === body.workspace_note_id);
                             if (noteIndex !== -1) {
                                 const contentType = draft.notes[noteIndex].content_type;
+                                const documents = draft.notes[noteIndex].documents;
 
                                 if (contentType === 'text') {
                                     const newContent = ((body.content_data as any)?.ops ?? [])
@@ -543,6 +551,7 @@ export const notesAPI = createApi({
 
                                     // Timpa data lama dengan data baru (patch)
                                     draft.notes[noteIndex].content_preview = newContent !== '' ? newContent : draft.notes[noteIndex].content_preview;
+                                    draft.notes[noteIndex].documents = documents ? documents : [];
                                 }
                             }
                         }

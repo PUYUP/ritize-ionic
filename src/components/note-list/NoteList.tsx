@@ -162,9 +162,10 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
     });
 
     const groupedNotes = useMemo(() => groupNotesByDate(data?.notes ?? []), [data?.notes]);
+    const hasMore = (data?.notes.length ?? 0) < (data?.count ?? 0);
 
     const handleIonInfinite = async (e: CustomEvent<void>) => {
-        if (!isFetching) {
+        if (!isFetching && hasMore) {
             setPage((p) => p + 1);
             console.log("page: ", page);
         }
@@ -216,7 +217,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
             </IonList>
 
             <IonInfiniteScroll
-                disabled={isError}
+                disabled={isError || !hasMore}
                 onIonInfinite={(event) => {
                     handleIonInfinite(event);
                     setTimeout(() => event.target.complete(), 500);

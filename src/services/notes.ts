@@ -26,6 +26,7 @@ export type NotePageTypes = {
     workspace_id: string;
     workspace_note_id: string;
     page_num: number;
+    title?: string | null;
     synced_at?: string | null;
     synced_id?: string | null;
     is_active: boolean;

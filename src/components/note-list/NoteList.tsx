@@ -1,7 +1,7 @@
 import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { attachOutline, bookOutline, closeOutline, documentOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { attachOutline, bookOutline, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -51,14 +51,14 @@ const groupNotesByDate = (notes: NoteTypes[]): NoteGroup[] => {
     return [...map.entries()].map(([dateKey, groupNotes]) => ({ dateKey, notes: groupNotes }));
 };
 
-const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?: (item: NoteTypes) => void }> = ({ item, user, onShowOptions }) => {
+const NoteItem: React.FC<{ item: NoteTypes, isLast: boolean, user: { id: string }, onShowOptions?: (item: NoteTypes) => void }> = ({ item, isLast, user, onShowOptions }) => {
     const { content_preview } = item;
     let editor: string = 'richtext';
 
     if (item.content_type == 'canvas') {
         editor = 'canvas';
     } else if (item.content_type == 'file') {
-        editor = 'file';
+        editor = 'files';
     }
 
     let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`;
@@ -73,7 +73,7 @@ const NoteItem: React.FC<{ item: NoteTypes, user: { id: string }, onShowOptions?
     }
 
     return (
-        <IonItem lines="full" className='note-item'>
+        <IonItem lines={isLast ? "none" : "full"} className='note-item'>
             <div className='w-full py-3'>
                 <div className='flex'>
                     <Link to={linkTo} className='block w-full flex-1'>
@@ -205,9 +205,12 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                             </IonLabel>
                         </IonItemDivider>
 
-                        {notes.map((item) => (
-                            <NoteItem key={item.id} item={item} user={user} onShowOptions={optionsHandler} />
-                        ))}
+                        {notes.map((item, index, array) => {
+                            const isLast = index === array.length - 1;
+                            return (
+                                <NoteItem key={item.id} item={item} user={user} isLast={isLast} onShowOptions={optionsHandler} />
+                            )
+                        })}
                     </IonItemGroup>
                 ))}
             </IonList>
@@ -285,7 +288,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                         handler: async () => {
                             if (!selectedNote) return;
                             await NotesRepository.deleteNote(selectedNote.id, selectedNote.workspace_id);
-                            await presentToast({ message: 'Note deleted successfully', duration: 2500, color: 'success' })
+                            await presentToast({ message: 'Note deleted successfully', duration: 750, color: 'success' })
                             setShowDeleteAlert(false);
                             setSelectedNote(null);
                         },

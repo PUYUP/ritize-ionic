@@ -4,6 +4,7 @@ import { AddSyncedAt1787798749382 } from "./1787798749382-AddSyncedAt";
 import { SyncFieldsWithServer1788323977271 } from "./1788323977271-SyncFieldsWithServer";
 import { ChangeIdToUUID1788334495878 } from "./1788334495878-ChangeIdToUUID";
 import { AddSyncedId1788338342366 } from "./1788338342366-AddSyncedId";
+import { AddTitleToPage1788660796642 } from "./1788660796642-AddTitleToPage";
 
 export {
     InitialNotes1787674018377,
@@ -12,4 +13,5 @@ export {
     SyncFieldsWithServer1788323977271,
     ChangeIdToUUID1788334495878,
     AddSyncedId1788338342366,
+    AddTitleToPage1788660796642,
 };

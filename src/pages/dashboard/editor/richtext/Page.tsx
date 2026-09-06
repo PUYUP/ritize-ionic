@@ -15,7 +15,6 @@ import {
     useIonToast,
     useIonViewDidEnter,
     useIonViewDidLeave,
-    useIonViewWillEnter,
     useIonViewWillLeave,
 } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -181,10 +180,6 @@ const RichTextEditorPage: React.FC = () => {
     const handleEnter = useCallback((quill: Quill) => {
         ionContentRef.current?.scrollToBottom(0);
     }, []);
-
-    useIonViewWillEnter(() => {
-        // pass
-    });
 
     // Ionic's router outlet keeps pages mounted in its history stack, so plain
     // unmount isn't a reliable "user is leaving" signal — flush explicitly.
@@ -352,7 +347,9 @@ const RichTextEditorPage: React.FC = () => {
             await flushPendingSave();
 
             const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
-            await NotesRepository.updatePagesBulk(prevPages);
+            if (prevPages.length > 0) {
+                await NotesRepository.updatePagesBulk(prevPages);
+            }
 
             await createPage(selectedNote, {
                 pageNum: pages.length + 1,

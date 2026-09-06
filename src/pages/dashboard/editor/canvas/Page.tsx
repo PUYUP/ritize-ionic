@@ -13,7 +13,6 @@ import {
 	useIonToast,
 	useIonViewDidEnter,
 	useIonViewDidLeave,
-	useIonViewWillEnter,
 	useIonViewWillLeave,
 } from '@ionic/react';
 import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
@@ -41,10 +40,7 @@ import { getUser } from '../../../../utils/authState';
 import { generateUUID } from '../../../../utils/generator';
 import { supabase } from '../../../../lib/supabase';
 
-const AUTOSAVE_DELAY_MS = 1500;
-
-// Posisi & zoom yang dikunci — canvas selalu balik ke sini
-const LOCKED_VIEW = { scrollX: 0, scrollY: 0, zoomValue: 1 };
+const AUTOSAVE_DELAY_MS = 500;
 
 /**
  * A scene is "empty" only if it has no visible (non-deleted) elements.
@@ -158,7 +154,6 @@ const CanvasEditorPage: React.FC = () => {
 			const file = new File([blob], 'canvas.png', { type: 'image/png' });
 			let progress = 0;
 
-
 			const user = await getUser();
 			const result = await uploadFileToGCS(
 				file,
@@ -261,10 +256,6 @@ const CanvasEditorPage: React.FC = () => {
 			void persistCurrentPage();
 		}, AUTOSAVE_DELAY_MS);
 	}, [persistCurrentPage]);
-
-	useIonViewWillEnter(() => {
-		// pass
-	});
 
 	// Ionic's router outlet keeps pages mounted in its history stack, so plain
 	// unmount isn't a reliable "user is leaving" signal — flush explicitly.
@@ -476,7 +467,9 @@ const CanvasEditorPage: React.FC = () => {
 			await flushPendingSave();
 
 			const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
-			await NotesRepository.updatePagesBulk(prevPages);
+			if (prevPages.length > 0) {
+				await NotesRepository.updatePagesBulk(prevPages);
+			}
 
 			await createPage(selectedNote, {
 				pageNum: pages.length + 1,

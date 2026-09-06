@@ -1,40 +1,36 @@
-import { IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonPage, IonText, IonTitle, IonToolbar, useIonViewDidEnter, useIonViewDidLeave } from "@ionic/react";
-import { cameraOutline, copyOutline, trashOutline } from "ionicons/icons";
-import { useEffect, useRef, useState } from "react";
-import Swiper from "swiper";
-import 'swiper/css';
-import 'swiper/css/pagination';
+import { IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonNote, IonPage, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
+import { cameraOutline, cloudUploadOutline, copyOutline, trashOutline } from "ionicons/icons";
+import { useCallback, useEffect, useRef, useState } from "react";
 import './Page.css';
 import { Note, Page } from "../../../../databases/entities/notes";
-import { FreeMode, Mousewheel, Pagination, Thumbs } from "swiper/modules";
 import NotesRepository from "../../../../databases/datasources/NotesRepository";
 import ImageCapture from "../../../../components/image-capture/ImageCapture";
 import { CameraResultType, Photo } from "@capacitor/camera";
-import { useParams } from "react-router";
+import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from "../../../../services/notes";
+import { useSearchParams } from "react-router-dom";
+import { useGetWorkspaceByIdQuery } from "../../../../services/workspace";
+import { generateUUID } from "../../../../utils/generator";
+import { getUser } from "../../../../utils/authState";
+import { uploadFileToGCS } from "../../../../utils/gcs-upload-client";
+import { UploadProgress } from "../../../../types/upload";
+import { FilePicker } from '@capawesome/capacitor-file-picker';
 
-const NOTE_ID = "4";
-
-interface RouteParams {
-    id?: string
-    name?: string
-    [key: string]: string | undefined
+interface FilePage extends Page {
+    uploadProgress?: number | null;
 }
 
 const FilesEditorPage: React.FC = () => {
-    const { id } = useParams<RouteParams>();
+    const [presentToast] = useIonToast();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const workspaceId = searchParams.get('workspaceId');
+    const noteId = searchParams.get('noteId');
 
-    const [pages, setPages] = useState<Page[]>([]);
+    const [pages, setPages] = useState<FilePage[]>([]);
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-    const [selectedPage, setSelectedPage] = useState<Partial<Page> | null>(null);
+    const [selectedPage, setSelectedPage] = useState<Partial<FilePage> | null>(null);
 
-    const pagesSwiperElRef = useRef<HTMLDivElement>(null);
-    const thumbsSwiperElRef = useRef<HTMLDivElement>(null);
-    const pagesSwiperRef = useRef<Swiper | null>(null);
-    const thumbsSwiperRef = useRef<Swiper | null>(null);
-    const prevPagesLengthRef = useRef(pages.length);
-
-    const pagesRef = useRef<Page[]>([]);
-    const selectedPageRef = useRef<Partial<Page> | null>(null);
+    const pagesRef = useRef<FilePage[]>([]);
+    const selectedPageRef = useRef<Partial<FilePage> | null>(null);
     const selectedNoteRef = useRef<Note | null>(null);
 
     useEffect(() => { pagesRef.current = pages; }, [pages]);
@@ -44,262 +40,421 @@ const FilesEditorPage: React.FC = () => {
     const [showClearAlert, setShowClearAlert] = useState(false);
     const [showRemoveAlert, setShowRemoveAlert] = useState(false);
 
-    useEffect(() => {
-        const containerEl = pagesSwiperElRef.current;
-        const thumbsContainerEl = thumbsSwiperElRef.current;
-        if (!containerEl || !thumbsContainerEl) return;
+    const [isDirty, setIsDirty] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasContent, setHasContent] = useState(false);
+    const autosaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const lastSavedDataRef = useRef<string | null>(null);
+    const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
 
-        const isNewPageAdded = pages.length > prevPagesLengthRef.current;
-        prevPagesLengthRef.current = pages.length;
+    // RTK Query
+    const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
+    const [upsertNote] = useUpsertNoteMutation();
+    const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
 
-        // Tunggu 1 frame agar DOM selesai me-render item baru
-        const raf = requestAnimationFrame(async () => {
-            // thumbs dulu
-            if (!thumbsSwiperRef.current) {
-                // Langsung inisialisasi Swiper tanpa syarat overflow
-                thumbsSwiperRef.current = new Swiper(thumbsContainerEl, {
-                    modules: [FreeMode, Mousewheel, Thumbs],
-                    direction: 'horizontal',
-                    slidesPerView: 'auto',
-                    centerInsufficientSlides: true,
-                    spaceBetween: 8, // Jarak antar item (pengganti gap-4)
-                    freeMode: {
-                        enabled: true,
-                        momentum: true,
-                        momentumBounce: false,
-                        sticky: false,
-                    },
-                    mousewheel: {
-                        forceToAxis: true,
-                        releaseOnEdges: true,
-                    },
-                    resistanceRatio: 0,
-                    watchOverflow: true, // Otomatis disable scroll jika item belum penuh
-                    observer: true,
-                    observeParents: true,
-                    centeredSlides: true,
-                    centeredSlidesBounds: true,
-                });
-            } else {
-                // Jika Swiper sudah ada, cukup update state-nya saat ada page baru
-                thumbsSwiperRef.current.update();
+    const handleUpdateUrlWithNoteId = (newNoteId: string) => {
+        prevNoteIdRef.current = newNoteId;
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('noteId', newNoteId);
+        setSearchParams(newParams, { replace: true });
+    };
 
-                // Scroll ke item paling bawah (indeks terakhir)
-                // Parameter kedua (300) adalah durasi animasi dalam milidetik (opsional)
-                // Cuma auto-scroll ke bawah kalau memang ada page baru
-                if (isNewPageAdded) {
-                    thumbsSwiperRef.current.slideTo(pages.length - 1, 300);
-                }
-            }
+    // Saves an explicit (page, delta) pair. Takes both as arguments rather
+    // than reading them from refs/state at call time, so callers control
+    // exactly what gets written where — this is what makes it safe to call
+    // right before switching pages (see flushPendingSave / persistCurrentPage).
+    const persistPageContent = useCallback(async (page: Partial<Page>, content: any) => {
+        setIsSaving(true);
+        try {
+            const contentEmpty = false;
+            const json = contentEmpty ? null : JSON.stringify(content);
 
-            // baru pages
-            if (!pagesSwiperRef.current) {
-                // Langsung inisialisasi Swiper tanpa syarat overflow
-                pagesSwiperRef.current = new Swiper(containerEl, {
-                    modules: [Pagination, FreeMode, Thumbs],
-                    direction: 'horizontal',
-                    slidesPerView: 1,
-                    spaceBetween: 0,
-                    centeredSlides: true,
-                    resistanceRatio: 0,
-                    watchOverflow: true, // Otomatis disable scroll jika item belum penuh
-                    observer: true,
-                    observeParents: true,
-                    thumbs: { swiper: thumbsSwiperRef.current },
-                    on: {
-                        slideChange: (swiper) => {
-                            handleActivePageChange(swiper.activeIndex);
-                        },
-                    },
-                });
-            } else {
-                // Jika Swiper sudah ada, cukup update state-nya saat ada page baru
-                pagesSwiperRef.current.update();
+            // Identical to the last thing we saved (typically a save
+            // triggered right after a programmatic updateScene, not a real
+            // edit) — skip the redundant DB write.
+            if (json === lastSavedDataRef.current) return;
+            lastSavedDataRef.current = json;
 
-                // Scroll ke item paling bawah (indeks terakhir)
-                // Parameter kedua (300) adalah durasi animasi dalam milidetik (opsional)
-                // Cuma auto-scroll ke bawah kalau memang ada page baru
-                if (isNewPageAdded) {
-                    pagesSwiperRef.current.slideTo(pages.length - 1, 300);
-                }
-            }
-        });
+            const bufferData = json ? Buffer.from(json, 'utf-8') : null;
 
-        return () => cancelAnimationFrame(raf);
-    }, [pages]);
+            await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
+            console.log('selected page id: ', page.id, ' is updated');
 
-    // load content data from database
-    useEffect(() => {
-        console.log("loadContentData useEffect triggered", { selectedPage: selectedPage?.id });
+            setPages((prevPages) =>
+                prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
+            );
+        } catch (err) {
+            console.error('Failed to save document', err);
+            presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
+        } finally {
+            setIsSaving(false);
+        }
+    }, [presentToast]);
+
+    // Persists whatever is currently in the editor for the currently selected page.
+    const persistCurrentPage = useCallback(async () => {
         if (!selectedPage) return;
+        await persistPageContent(selectedPage, null);
+        setIsDirty(false);
+    }, [selectedPage, persistPageContent]);
 
-        setPages((prevPages) =>
-            prevPages.map((p) => {
-                const nextActive = p.id === selectedPage?.id;
-                // hanya buat objek baru kalau nilainya memang berubah
-                return p.isActive === nextActive ? p : { ...p, isActive: nextActive };
-            })
-        );
+    // Cancels any pending debounced autosave and, if there are unsaved
+    // changes, saves them immediately for the CURRENT page.
+    //
+    // This must be awaited before switching pages, adding a page, or leaving
+    // the editor. Without it, a pending autosave (scheduled while page A was
+    // active) can fire after page B's content has already been swapped into
+    // the editor, saving page B's content under page A's id.
+    const flushPendingSave = useCallback(async () => {
+        if (autosaveTimer.current) {
+            clearTimeout(autosaveTimer.current);
+            autosaveTimer.current = undefined;
+        }
+        if (!isDirty) return;
+        await persistCurrentPage();
+    }, [isDirty, persistCurrentPage]);
+
+    // Ionic's router outlet keeps pages mounted in its history stack, so plain
+    // unmount isn't a reliable "user is leaving" signal — flush explicitly.
+    useIonViewWillLeave(() => {
+        void flushPendingSave();
+    });
+
+    useIonViewDidEnter(() => {
+        window.dispatchEvent(new Event('resize'));
+
+        (async () => {
+            if (!workspaceId) return;
+            await contentLoader(workspaceId, noteId);
+        })();
+    }, [noteId, workspaceId]);
+
+    useIonViewDidLeave(() => {
+        setPages([]);
+        setSelectedPage(null);
+        setSelectedNote(null);
+        prevNoteIdRef.current = null;
+    });
+
+    useEffect(() => () => {
+        if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    }, []);
+
+    // Load content data for the active page into the editor.
+    useEffect(() => {
+        if (!selectedPage) return;
 
         const loadContentData = async () => {
             const contentData = selectedPage?.contentData;
-            console.log("contentData type/length:", contentData ? (contentData as any).length || (contentData as any).byteLength : "null");
 
             if (contentData) {
                 try {
-                    // 1. Ubah Uint8Array ke String menggunakan TextDecoder
-                    const decoder = new TextDecoder('utf-8');
-                    const jsonString = decoder.decode(contentData);
-
-                    if (!jsonString) {
-                        console.log("Decoded jsonString is empty");
-                        return;
-                    }
-
-                    // 2. Parse string yang sudah valid menjadi JSON object
-                    const json = JSON.parse(jsonString);
-                    console.log("JSON parsed successfully, elements count:", json);
-
+                    setHasContent(true);
+                    // Seed the dedupe ref so the onChange this triggers
+                    // doesn't cause an immediate, redundant re-save.
+                    lastSavedDataRef.current = 'content value';
                 } catch (error) {
-                    console.error("Gagal melakukan parse JSON:", error);
+                    console.error('Failed to parse saved content', error);
                 }
             } else {
-                console.log("contentData is empty/falsy, setting empty elements array");
+                setHasContent(false);
+                lastSavedDataRef.current = null;
             }
-        }
+        };
 
         loadContentData();
     }, [selectedPage]);
 
-    // component lifecycles
-    useIonViewDidEnter(() => {
-        window.dispatchEvent(new Event('resize'));
+    // select page
+    const selectPageHandler = async (page: FilePage) => {
+        if (selectedPage?.id === page.id) return;
 
-        // init note — run async logic without returning its promise
-        (async () => {
-            let note = await NotesRepository.getNoteById(NOTE_ID);
-            if (note) {
-                console.log('load note from database');
-                setSelectedNote(note);
-            }
+        try {
+            // Flush any unsaved edits on the OUTGOING page before touching
+            // selectedPage / swapping the editor's content.
+            await flushPendingSave();
 
-            // check if note is null, then create a new note
-            if (note === null) {
-                console.log('create new note');
-                note = await initNote("123456");
-                setSelectedNote(note);
+            const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
+            await NotesRepository.updatePagesBulk(updatedPages);
+            setPages(updatedPages);
 
-                const page = await createPage({ id: note.id }, 1);
-                console.log('create page', page);
-                setSelectedPage(page);
-            }
+            if (selectedNote) {
+                const currentPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
+                setPages(currentPages);
 
-            // get all pages
-            if (note) {
-                const currentPages = await NotesRepository.getPagesByNoteId(note.id);
-                console.log('get pages');
-                setPages([...currentPages]);
-
-                // get active page
-                const activePage = currentPages.find((p: Page) => p.isActive === true);
-                if (activePage) {
-                    setSelectedPage(activePage);
-                    console.log('active page', activePage);
+                const freshSelectedPage = currentPages.find((p) => p.id === page.id);
+                if (freshSelectedPage) {
+                    setSelectedPage(freshSelectedPage);
                 }
             }
-        })();
-    });
-
-    useIonViewDidLeave(() => {
-        // reset the pages
-        setPages([]);
-    });
-
-    // select page
-    const selectPageHandler = async (page: Page) => {
-        const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
-        await NotesRepository.updatePagesBulk(updatedPages);
-        setPages(updatedPages);
-
-        // getting page from database agar kita mendapatkan contentData yang TERBARU
-        if (selectedNote) {
-            const currentPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
-            setPages(currentPages);
-
-            // CARI halaman yang dituju dari data yang FRESH ini
-            const freshSelectedPage = currentPages.find(p => p.id === page.id);
-            if (freshSelectedPage) {
-                // Update state selectedPage dengan data TERBARU (termasuk coretan terakhir)
-                setSelectedPage(freshSelectedPage);
-            }
+        } catch (err) {
+            console.error('Failed to switch page', err);
+            presentToast({ message: 'Could not switch pages.', duration: 2500, color: 'danger' });
         }
-    }
+    };
 
     // add new page
-    const newPageHandler = async () => {
+    const newPageHandler = async (title: string | null = '') => {
         if (!selectedNote) return;
 
-        const prevPages = [...pages.map((p: Page) => ({ ...p, isActive: false }))];
-        await NotesRepository.updatePagesBulk(prevPages);
+        try {
+            await flushPendingSave();
 
-        // Buat halaman baru
-        await createPage(selectedNote, pages.length + 1);
-
-        // RE-FETCH dari database untuk memastikan kita mendapatkan ID yang benar
-        const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
-        setPages(updatedPages);
-
-        const activePage = updatedPages.find((p) => p.isActive);
-        if (activePage) {
-            setSelectedPage(activePage);
-        }
-    };
-
-    const handleActivePageChange = async (index: number) => {
-        const page = pagesRef.current[index];
-        if (!page) return;
-
-        // sudah aktif (misal dipicu slideTo programatik dari newPageHandler) → skip, hindari kerja dobel
-        if (selectedPageRef.current?.id === page.id) return;
-
-        const updatedPages = pagesRef.current.map((p) => ({
-            ...p,
-            isActive: p.id === page.id,
-        }));
-
-        await NotesRepository.updatePagesBulk(updatedPages);
-        setPages(updatedPages);
-
-        const note = selectedNoteRef.current;
-        if (note) {
-            const currentPages = await NotesRepository.getPagesByNoteId(note.id);
-            setPages(currentPages);
-
-            const freshSelectedPage = currentPages.find((p) => p.id === page.id);
-            if (freshSelectedPage) {
-                setSelectedPage(freshSelectedPage);
+            const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
+            if (prevPages.length > 0) {
+                await NotesRepository.updatePagesBulk(prevPages);
             }
+
+            await createPage(selectedNote, {
+                title: title ?? 'Untitled Page',
+                pageNum: pages.length + 1,
+                workspaceId: selectedNote.workspaceId,
+                workspaceNoteId: selectedNote.id,
+                isActive: true,
+                syncedAt: new Date(),
+                syncedId: generateUUID(),
+            });
+
+            const updatedPages = (await NotesRepository.getPagesByNoteId(selectedNote.id)) as FilePage[];
+            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null })));
+
+            const activePage = updatedPages.find((p) => p.isActive);
+            if (activePage) {
+                setSelectedPage(activePage);
+            }
+        } catch (err) {
+            console.error('Failed to create a new page', err);
+            presentToast({ message: 'Could not create a new page.', duration: 2500, color: 'danger' });
         }
     };
 
-    // --- CRUD NOTES ---  
+    // bulk create pages
+    const bulkNewPagesHandler = async (newPages: Page[]) => {
+        if (!selectedNote) return;
+
+        try {
+            await flushPendingSave();
+
+            const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
+            if (prevPages.length > 0) {
+                await NotesRepository.updatePagesBulk(prevPages);
+            }
+
+            const pageLength = pages.length;
+            const insertedPages = newPages.map((page, index) => {
+                const pageNum = (index + 1) + pageLength;
+                return {
+                    id: generateUUID(),
+                    title: page.title ?? 'Untitled Page',
+                    pageNum: pageNum,
+                    workspaceId: selectedNote.workspaceId,
+                    workspaceNoteId: selectedNote.id,
+                    isActive: true,
+                    syncedAt: new Date(),
+                    syncedId: generateUUID(),
+                }
+            });
+
+            // 2. insert pages ke database
+            await NotesRepository.addPagesBulk(selectedNote, insertedPages);
+
+            const updatedPages = (await NotesRepository.getPagesByNoteId(selectedNote.id)) as FilePage[];
+            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null })));
+
+            const activePage = updatedPages.find((p) => p.isActive);
+            if (activePage) {
+                setSelectedPage(activePage);
+            }
+        } catch (err) {
+            console.error('Failed to create a new page', err);
+            presentToast({ message: 'Could not create a new page.', duration: 2500, color: 'danger' });
+        }
+    };
+
+    // --- CRUD NOTES ---
     const initNote = async (workspaceId: string) => {
-        const entity = await NotesRepository.insertNote({ workspaceId: workspaceId });
+        const entity = await NotesRepository.insertNote({
+            workspaceId: workspaceId,
+            title: "Untitled Note",
+            content: "",
+            noteDatetime: new Date(),
+            contentType: "file",
+            syncedId: generateUUID(),
+            syncedAt: new Date(),
+        });
         return entity;
     }
 
-    const createPage = async (note: Partial<Note>, pageNum: number) => {
-        const entity = await NotesRepository.addPage({ id: note.id }, {
-            pageNum: pageNum,
-            isActive: true,
-        });
-
+    const createPage = async (note: Partial<Note>, data: Partial<Page>): Promise<Page> => {
+        const entity = await NotesRepository.addPage({ id: note.id }, data);
         return entity;
     }
     // --- END CRUD NOTES ---
 
-    // --- UPLOAD FUNCTION ---
-    const handleImageCaptured = (photo: Photo) => {
+    // Load / create the note and its pages.
+    const contentLoader = async (workspaceId: string, noteId: string | null = null) => {
+        let note: any | null = null;
+
+        if (noteId) {
+            // 1. load dari local database dulu
+            note = await NotesRepository.getNoteById(noteId);
+            if (note) {
+                console.log('load note from local database', note);
+            } else {
+                // 2. note tidak ada di local, load dari server
+                const { data: serverNote } = await getNoteById({ id: noteId });
+                console.log('load note from server', serverNote);
+
+                // 3. karena dari server, inject ke local db
+                if (serverNote) {
+                    const newSyncedId = generateUUID();
+                    const nData = {
+                        id: serverNote.id,
+                        workspaceId: workspaceId,
+                        title: serverNote.title || "Untitled Note",
+                        content: serverNote.content,
+                        noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
+                        contentType: serverNote.content_type as NoteFormatTypes,
+                        syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
+                        syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at) : new Date(),
+                    }
+
+                    note = await NotesRepository.insertNote(nData);
+                    console.log('injected note', note);
+
+                    // di server belum punya synced_id -> update server
+                    if (!serverNote.synced_id) {
+                        console.log('adding synced id to existing note');
+                        await upsertNote({
+                            body: {
+                                id: serverNote.id,
+                                synced_id: newSyncedId,
+                                synced_at: new Date().toISOString(),
+                            }
+                        }).unwrap();
+                    }
+
+                    // 4. lanjut insert pages nya jika ada
+                    const injectedPages = serverNote.pages
+                        ? serverNote.pages
+                            .slice()
+                            .sort((a: NotePageTypes, b: NotePageTypes) => a.page_num - b.page_num)
+                            .map((p: NotePageTypes) => {
+                                return {
+                                    id: p.id,
+                                    workspaceId: p.workspace_id,
+                                    workspaceNoteId: p.workspace_note_id,
+                                    contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
+                                    userId: p.user_id,
+                                    pageNum: p.page_num,
+                                    isActive: p.is_active,
+                                    syncedId: p.synced_id ? p.synced_id : generateUUID(),
+                                    syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
+                                    note: { id: serverNote.id }
+                                }
+                            })
+                        : [];
+
+                    if (injectedPages.length > 0) {
+                        const savedPages = await NotesRepository.addPagesBulk({ id: serverNote.id }, injectedPages);
+                        console.log("injected pages", savedPages);
+                    } else {
+                        // halaman belum ada, buat halaman baru
+                        // di local db dan server juga
+                        // const page = await createPage({ id: note.id }, {
+                        //     pageNum: 1,
+                        //     workspaceId: workspaceId,
+                        //     workspaceNoteId: note.id,
+                        //     isActive: true,
+                        //     syncedAt: new Date(),
+                        //     syncedId: generateUUID(),
+                        // });
+
+                        // console.log('note first page injected', page);
+                    }
+                }
+            }
+        }
+
+        // 4. setelah dari local db dan server masih juga tidak ada
+        // 5. buat note baru
+        if (note === null) {
+            // Brand-new note: there was never a server record to fetch.
+            note = await initNote(workspaceId);
+            console.log('create new note', note);
+
+            // const page = await createPage({ id: note.id }, {
+            //     pageNum: 1,
+            //     workspaceId: workspaceId,
+            //     workspaceNoteId: note.id,
+            //     isActive: true,
+            //     syncedAt: new Date(),
+            //     syncedId: generateUUID(),
+            // });
+            // console.log('create page note didn\'t exist', page);
+        }
+
+        // setelah semuanya diatas beres
+        if (note) {
+            // set active note
+            setSelectedNote(note);
+            console.log('active note', note);
+
+            // get all pages
+            const savedPages = await NotesRepository.getPagesByNoteId(note.id);
+            console.log('getting pages', savedPages);
+            setPages([...savedPages]);
+
+            // get active page
+            const activePage = savedPages.find((p: Page) => p.isActive === true);
+            if (activePage) {
+                setSelectedPage(activePage);
+                console.log('active page', activePage);
+            }
+        }
+
+        // di url params tidak ada noteId
+        // set dengan yang baru
+        if (!noteId) {
+            handleUpdateUrlWithNoteId(note.id);
+        }
+    }
+
+    // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
+    useEffect(() => {
+        if (prevNoteIdRef.current !== noteId) {
+            setPages([]);
+            setSelectedPage(null);
+            setSelectedNote(null);
+            lastSavedDataRef.current = null;
+            prevNoteIdRef.current = noteId;
+        }
+    }, [noteId]);
+
+    // --- CAPTURE IMAGE AND UPLOAD FUNCTION ---
+    const handleImageCaptured = async (photo: Photo) => {
+        if (!selectedPage || !photo || !photo.webPath) return;
+
+        const response = await fetch(photo.webPath);
+        const blob = await response.blob();
+
+        const file = new File(
+            [blob],
+            'image.png',
+            { type: blob.type }
+        );
+
+        let progress = 0;
+        const user = await getUser();
+        const result = await uploadFileToGCS(
+            file,
+            { onProgress: (p: UploadProgress) => { progress = p.percentage; } },
+            {
+                pageId: selectedPage?.id,
+                workspaceId: workspaceId,
+            }
+        );
+
         console.log('Image captured:', photo);
         // do something with the imageUri, e.g., set it to state
     };
@@ -307,7 +462,41 @@ const FilesEditorPage: React.FC = () => {
     const handleError = (error: Error) => {
         console.error('Image capture error:', error);
     };
-    // --- END UPLOAD FUNCTION ---
+    // --- END CAPTURE IMAGE AND UPLOAD FUNCTION ---
+
+    // --- SELECT FILE AND UPLOAD FUNCTION ---
+    const selectFile = async () => {
+        const result = await FilePicker.pickFiles({
+            types: [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'text/plain',
+                'image/png',
+                'image/jpeg',
+                'image/jpg',
+                'image/gif',
+                'image/webp',
+            ],
+            limit: 0,
+        });
+        console.log('select file', result);
+
+        for (const file of result.files) {
+            console.log(file.name)
+        }
+
+        const newPages: FilePage[] = result.files.map((file) => {
+            return {
+                title: file.name,
+                uploadProgress: null,
+            } as FilePage;
+        });
+        await bulkNewPagesHandler(newPages);
+
+        // await newPageHandler();
+    };
+    // --- END SELECT FILE AND UPLOAD FUNCTION ---
 
     return (
         <IonPage>
@@ -317,76 +506,58 @@ const FilesEditorPage: React.FC = () => {
                         <IonBackButton defaultHref="/" />
                     </IonButtons>
 
-                    <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>Kimia Jaya Analisis Teknik Dasar Terapan Dr. Fitri</IonTitle>
+                    <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>
+                        {workspaceData?.title ?? 'Untitled Note'}
+                    </IonTitle>
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent className="ion-padding" scrollY={false}>
-                <div className="w-5/6 mx-auto">
-                    <div ref={pagesSwiperElRef} className='swiper swiper-image'>
-                        <div className="swiper-wrapper">
-                            {pages.map((page) => (
-                                <div key={page.id} className="swiper-slide !h-auto">
-                                    <div className="relative w-full aspect-[1/1.6] bg-red-200">
-                                        {page.id}
-                                    </div>
+            <IonContent>
+                <IonList lines='full'>
+                    {pages.map((page: Page, index, array) => {
+                        const isLast = index === array.length - 1;
+
+                        return (
+                            <IonItem lines={isLast ? 'none' : 'full'} key={page.id}>
+                                <div slot="start" className="ion-padding-end">
+                                    <IonNote>{page.pageNum}.</IonNote>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                                <IonLabel className="py-2 !text-sm">{page.title || `Page ${page.pageNum}`}</IonLabel>
+
+                                <div slot="end" className="ion-padding-start">
+                                    <IonButton
+                                        shape="round"
+                                        size="small"
+                                        color="light"
+                                        onClick={() => {
+                                            setShowRemoveAlert(true)
+                                            setSelectedPage(page);
+                                        }}
+                                    >
+                                        <IonIcon icon={trashOutline} slot='icon-only' color={'danger'}></IonIcon>
+                                    </IonButton>
+                                </div>
+                            </IonItem>
+                        );
+                    })}
+                </IonList>
             </IonContent>
 
-            <IonFooter className="w-full py-2">
+            <IonFooter className="w-full py-3 ion-no-border">
                 <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
-                    <div className="flex items-center mb-3 mt-0 px-3">
-                        <div className='w-auto pb-1'>
-                            <IonButton
-                                size='small'
-                                shape="round"
-                                color={'light'}
-                                onClick={() => setShowClearAlert(true)}
-                            >
-                                <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
-                            </IonButton>
-                        </div>
-
-                        <div className='flex-1 overflow-hidden !px-3'>
-                            <div ref={thumbsSwiperElRef} className='swiper swiper-image !px-2'>
-                                <div id="pages-list" className='swiper-wrapper flex flex-row pb-1'>
-                                    {pages.map((page, index) => (
-                                        <div key={page.id} className='swiper-slide !h-auto !w-auto flex-none'>
-                                            <IonButton
-                                                size='small'
-                                                shape="round"
-                                                color={'light'}
-                                                className={`font-normal ${page.isActive ? 'font-semibold page-active' : ''}`}
-                                                onClick={() => pagesSwiperRef.current?.slideTo(index)}
-                                            >
-                                                <IonText slot='icon-only'>{page.pageNum}</IonText>
-                                            </IonButton>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className='w-auto pb-1'>
-                            <IonButton
-                                size='small'
-                                shape="round"
-                                color={'light'}
-                                onClick={() => setShowRemoveAlert(true)}
-                            >
-                                <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
-                            </IonButton>
-                        </div>
-                    </div>
-
                     <div className='flex items-center justify-between px-3'>
                         <div className='flex-1'>
                             <div className="flex justify-center gap-4">
-                                <div className="flex items-center">
+                                <div className="flex items-center gap-4">
+                                    <IonButton
+                                        shape="round"
+                                        color={'dark'}
+                                        onClick={selectFile}
+                                    >
+                                        <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
+                                        <IonText className="ml-2">Select File</IonText>
+                                    </IonButton>
+
                                     <ImageCapture
                                         resultType={CameraResultType.Uri}
                                         onImageCaptured={handleImageCaptured}
@@ -396,8 +567,7 @@ const FilesEditorPage: React.FC = () => {
                                     >
                                         <IonButton
                                             shape="round"
-                                            size="large"
-                                            color={'success'}
+                                            color={'dark'}
                                         >
                                             <IonIcon icon={cameraOutline} slot="icon-only"></IonIcon>
                                         </IonButton>
@@ -409,49 +579,32 @@ const FilesEditorPage: React.FC = () => {
                 </div>
             </IonFooter>
 
-            {/* clear content alert */}
-            <IonAlert
-                isOpen={showClearAlert}
-                onDidDismiss={() => setShowClearAlert(false)}
-                header='Are you sure to clear content?'
-                message={'All your current notes content will be permanently deleted.'}
-                buttons={[
-                    { text: 'Cancel', role: 'cancel' },
-                    {
-                        text: 'Yes',
-                        role: 'destructive',
-                        handler: async () => {
-                            if (selectedPage) {
-                                const emptyBuffer = Buffer.from('{}', 'utf-8');
-
-                                setPages((prevPages) =>
-                                    prevPages.map(p =>
-                                        p.id === selectedPage.id ? { ...p, contentData: emptyBuffer } : p
-                                    )
-                                );
-
-                                // update selected page
-                                await NotesRepository.updatePage(selectedPage.id as string, { contentData: emptyBuffer }, false);
-                            }
-                        },
-                    },
-                ]}
-            ></IonAlert>
-
             {/* remove page alert */}
             <IonAlert
                 isOpen={showRemoveAlert}
                 onDidDismiss={() => setShowRemoveAlert(false)}
-                header='Are you sure to remove this page?'
-                message={'All your current notes on this page will be permanently deleted.'}
+                header='Are you sure to remove this file?'
+                message={'This file and everything in it will be permanently deleted.'}
                 buttons={[
                     { text: 'Cancel', role: 'cancel' },
                     {
                         text: 'Yes',
                         role: 'destructive',
                         handler: async () => {
-                            const activeIndex = pages.findIndex((p) => p.isActive);
-                            if (activeIndex === -1) return;
+                            if (!selectedPage) return;
+
+                            let activeIndex = pages.findIndex((p) => p.isActive);
+                            if (activeIndex === -1) {
+                                activeIndex = pages.findIndex(p => p.id == selectedPage.id);
+                            };
+
+                            // delete page from db
+                            await NotesRepository.deletePage(
+                                pages[activeIndex].id,
+                                pages[activeIndex].syncedId,
+                                pages[activeIndex].workspaceId,
+                                pages[activeIndex].workspaceNoteId,
+                            );
 
                             const filtered = pages.filter((_, idx) => idx !== activeIndex);
 
@@ -463,14 +616,6 @@ const FilesEditorPage: React.FC = () => {
 
                             // pilih page berikutnya kalau ada, atau page sebelumnya kalau yang dihapus adalah terakhir
                             const nextActiveIndex = Math.min(activeIndex, filtered.length - 1);
-
-                            // delete page from db
-                            await NotesRepository.deletePage(
-                                pages[activeIndex].id,
-                                pages[activeIndex].syncedId,
-                                pages[activeIndex].workspaceId,
-                                pages[activeIndex].workspaceNoteId,
-                            );
 
                             // re-index all pages
                             const reindexed = filtered.map((p, idx) => ({

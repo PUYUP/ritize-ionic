@@ -176,6 +176,7 @@ class NotesRepository {
                             synced_id: savedPage.syncedId,
                             content_data: objString,
                             page_num: savedPage.pageNum,
+                            title: page.title,
                             is_active: savedPage.isActive,
                         }
                     }))
@@ -194,7 +195,7 @@ class NotesRepository {
             this.pageRepo.create({
                 ...data,
                 userId: user.id,
-                note: note,
+                // note: note,
             })
         );
 
@@ -220,6 +221,7 @@ class NotesRepository {
                 synced_id: savedPage.syncedId,
                 content_data: objString,
                 page_num: savedPage.pageNum,
+                title: savedPage.title,
                 is_active: savedPage.isActive,
             };
         });
@@ -282,6 +284,7 @@ class NotesRepository {
                                 synced_id: savedPage.syncedId,
                                 content_data: objString,
                                 page_num: savedPage.pageNum,
+                                title: savedPage.title,
                                 is_active: savedPage.isActive,
                             }
                         }))
@@ -321,6 +324,7 @@ class NotesRepository {
             synced_at: p.syncedAt ? p.syncedAt.toISOString() : new Date().toISOString(),
             synced_id: p.syncedId,
             page_num: p.pageNum,
+            title: p.title,
             is_active: p.isActive,
         }));
 

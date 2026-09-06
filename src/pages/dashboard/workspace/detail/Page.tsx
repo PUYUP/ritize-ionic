@@ -121,8 +121,8 @@ const WorkspaceDetailPage: React.FC = () => {
                         </div>
                         <WorkspaceStats
                             note={{ todayCount: workspaceStats?.total_notes_today ?? 0, total: workspaceStats?.total_notes ?? 0 }}
-                            material={{ todayCount: 1, total: 221 }}
-                            digest={{ todayCount: 3, total: 62 }}
+                            material={{ todayCount: workspaceStats?.total_materials_today ?? 0, total: workspaceStats?.total_materials ?? 0 }}
+                            digest={{ todayCount: workspaceStats?.total_digests_today ?? 0, total: workspaceStats?.total_digests ?? 0 }}
                         />
                     </div>
 

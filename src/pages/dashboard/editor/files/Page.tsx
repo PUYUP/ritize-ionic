@@ -1,5 +1,5 @@
-import { IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonNote, IonPage, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
-import { cameraOutline, cloudUploadOutline, copyOutline, trashOutline } from "ionicons/icons";
+import { IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonNote, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
+import { albums, albumsOutline, cameraOutline, checkmarkCircleOutline, cloudUploadOutline, copyOutline, trashOutline } from "ionicons/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import './Page.css';
 import { Note, Page } from "../../../../databases/entities/notes";
@@ -13,11 +13,42 @@ import { generateUUID } from "../../../../utils/generator";
 import { getUser } from "../../../../utils/authState";
 import { uploadFileToGCS } from "../../../../utils/gcs-upload-client";
 import { UploadProgress } from "../../../../types/upload";
-import { FilePicker } from '@capawesome/capacitor-file-picker';
+import { FilePicker, PickedFile } from '@capawesome/capacitor-file-picker';
+import { Capacitor } from '@capacitor/core';
 
 interface FilePage extends Page {
     uploadProgress?: number | null;
+    uploadError?: boolean;
 }
+
+// FilePicker mengembalikan `PickedFile`, bukan `File` bawaan browser yang
+// dibutuhkan `uploadFileToGCS`. Bentuk `PickedFile` beda-beda tergantung
+// platform, helper ini menormalkan semuanya jadi `File` biasa:
+// - Web: `blob` sudah tersedia langsung.
+// - Native (Android/iOS) tanpa `readData`: hanya ada `path`, dikonversi lewat
+//   `Capacitor.convertFileSrc` + fetch (pola sama seperti `handleImageCaptured`
+//   memproses `photo.webPath`).
+// - Native dengan opsi `readData: true` saat pickFiles: `data` berisi base64.
+const pickedFileToFile = async (pickedFile: PickedFile): Promise<File> => {
+    if (pickedFile.blob) {
+        return new File([pickedFile.blob], pickedFile.name, { type: pickedFile.mimeType });
+    }
+
+    if (pickedFile.path) {
+        const fileSrc = Capacitor.convertFileSrc(pickedFile.path);
+        const response = await fetch(fileSrc);
+        const blob = await response.blob();
+        return new File([blob], pickedFile.name, { type: pickedFile.mimeType || blob.type });
+    }
+
+    if (pickedFile.data) {
+        const response = await fetch(`data:${pickedFile.mimeType};base64,${pickedFile.data}`);
+        const blob = await response.blob();
+        return new File([blob], pickedFile.name, { type: pickedFile.mimeType });
+    }
+
+    throw new Error(`Tidak bisa membaca file "${pickedFile.name}": tidak ada blob, path, maupun data.`);
+};
 
 const FilesEditorPage: React.FC = () => {
     const [presentToast] = useIonToast();
@@ -32,6 +63,7 @@ const FilesEditorPage: React.FC = () => {
     const pagesRef = useRef<FilePage[]>([]);
     const selectedPageRef = useRef<Partial<FilePage> | null>(null);
     const selectedNoteRef = useRef<Note | null>(null);
+    const ionContentRef = useRef<HTMLIonContentElement>(null);
 
     useEffect(() => { pagesRef.current = pages; }, [pages]);
     useEffect(() => { selectedPageRef.current = selectedPage; }, [selectedPage]);
@@ -174,7 +206,11 @@ const FilesEditorPage: React.FC = () => {
             // selectedPage / swapping the editor's content.
             await flushPendingSave();
 
-            const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
+            const updatedPages = pages.map((p) => {
+                delete p.uploadProgress;
+                delete p.uploadError;
+                return { ...p, isActive: p.id === page.id }
+            });
             await NotesRepository.updatePagesBulk(updatedPages);
             setPages(updatedPages);
 
@@ -229,22 +265,34 @@ const FilesEditorPage: React.FC = () => {
     };
 
     // bulk create pages
-    const bulkNewPagesHandler = async (newPages: Page[]) => {
+    // `newPages` may already carry an `id` (set when the file behind it was
+    // uploaded to GCS under that id as `pageId`) — reuse it here instead of
+    // minting a fresh one, so the DB page ends up with the same id the
+    // uploaded file was actually associated with.
+    const bulkNewPagesHandler = async (newPages: FilePage[]) => {
         if (!selectedNote) return;
 
         try {
             await flushPendingSave();
 
-            const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
+            const prevPages = pages.map((p) => {
+                delete p.uploadProgress;
+                delete p.uploadError;
+                return { ...p, isActive: false }
+            });
             if (prevPages.length > 0) {
                 await NotesRepository.updatePagesBulk(prevPages);
             }
 
             const pageLength = pages.length;
             const insertedPages = newPages.map((page, index) => {
+                // `uploadProgress` is not part of this model, remove it
+                delete page.uploadProgress;
+                delete page.uploadError;
+
                 const pageNum = (index + 1) + pageLength;
                 return {
-                    id: generateUUID(),
+                    id: page.id ?? generateUUID(),
                     title: page.title ?? 'Untitled Page',
                     pageNum: pageNum,
                     workspaceId: selectedNote.workspaceId,
@@ -435,6 +483,8 @@ const FilesEditorPage: React.FC = () => {
     const handleImageCaptured = async (photo: Photo) => {
         if (!selectedPage || !photo || !photo.webPath) return;
 
+        ionContentRef.current?.scrollToBottom(0);
+
         const response = await fetch(photo.webPath);
         const blob = await response.blob();
 
@@ -444,18 +494,18 @@ const FilesEditorPage: React.FC = () => {
             { type: blob.type }
         );
 
-        let progress = 0;
-        const user = await getUser();
-        const result = await uploadFileToGCS(
-            file,
-            { onProgress: (p: UploadProgress) => { progress = p.percentage; } },
-            {
-                pageId: selectedPage?.id,
-                workspaceId: workspaceId,
-            }
-        );
+        // let progress = 0;
+        // const user = await getUser();
+        // const result = await uploadFileToGCS(
+        //     file,
+        //     { onProgress: (p: UploadProgress) => { progress = p.percentage; } },
+        //     {
+        //         pageId: selectedPage?.id,
+        //         workspaceId: workspaceId,
+        //     }
+        // );
 
-        console.log('Image captured:', photo);
+        // console.log('Image captured:', photo);
         // do something with the imageUri, e.g., set it to state
     };
 
@@ -466,35 +516,147 @@ const FilesEditorPage: React.FC = () => {
 
     // --- SELECT FILE AND UPLOAD FUNCTION ---
     const selectFile = async () => {
-        const result = await FilePicker.pickFiles({
-            types: [
-                'application/pdf',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'text/plain',
-                'image/png',
-                'image/jpeg',
-                'image/jpg',
-                'image/gif',
-                'image/webp',
-            ],
-            limit: 0,
-        });
-        console.log('select file', result);
+        const user = await getUser();
+        let result;
 
-        for (const file of result.files) {
-            console.log(file.name)
+        try {
+            result = await FilePicker.pickFiles({
+                types: [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'text/plain',
+                    'image/png',
+                    'image/jpeg',
+                    'image/jpg',
+                    'image/gif',
+                    'image/webp',
+                    'audio/mpeg',      // .mp3
+                    'audio/wav',       // .wav
+                    'audio/x-wav',     // .wav (varian beberapa browser)
+                    'audio/ogg',       // .ogg
+                    'audio/webm',      // .webm audio
+                    'audio/mp4',       // .m4a
+                    'audio/x-m4a',     // .m4a (varian Safari/iOS)
+                    'audio/aac',       // .aac
+                    'audio/flac',      // .flac
+                ],
+                limit: 0,
+            });
+        } catch (err) {
+            console.error('Failed to open file picker', err);
+            return;
         }
 
-        const newPages: FilePage[] = result.files.map((file) => {
-            return {
-                title: file.name,
-                uploadProgress: null,
-            } as FilePage;
-        });
-        await bulkNewPagesHandler(newPages);
+        console.log('select file', result);
+        if (!result.files.length) return;
 
-        // await newPageHandler();
+        ionContentRef.current?.scrollToBottom(0);
+
+        // Buat entry sementara dulu untuk tiap file yang dipilih, supaya progress
+        // upload-nya kelihatan di list selagi masih berjalan (belum tersimpan di DB).
+        const tempEntries: FilePage[] = result.files.map((file) => ({
+            id: generateUUID(),
+            title: file.name,
+            uploadProgress: 0,
+            uploadError: false,
+            userId: user.id,
+        } as FilePage));
+
+        setPages((prev) => [...prev, ...tempEntries]);
+
+        const successfulPages: FilePage[] = [];
+        const existingPageCount = pages.length;
+
+        // Upload satu per satu secara berurutan (bukan Promise.all / .map),
+        // supaya urutannya A -> B -> C dan progress masing-masing bisa dipantau.
+        for (let i = 0; i < result.files.length; i++) {
+            const pickedFile = result.files[i];
+            const tempId = tempEntries[i].id as string;
+
+            try {
+                // PickedFile -> File asli dulu, baru bisa dioper ke uploadFileToGCS
+                const file = await pickedFileToFile(pickedFile);
+                const result = await uploadFileToGCS(
+                    file,
+                    {
+                        onProgress: (p: UploadProgress) => {
+                            setPages((prev) =>
+                                prev.map((page) =>
+                                    page.id === tempId
+                                        ? { ...page, uploadProgress: p.percentage }
+                                        : page
+                                )
+                            );
+                        },
+                    },
+                    {
+                        // pakai id yang sama dengan tempEntries, nanti id ini juga
+                        // dipakai sebagai id page asli di bulkNewPagesHandler,
+                        // jadi file yang ter-upload konsisten terhubung ke page-nya.
+                        pageId: tempId,
+                        workspaceId: workspaceId,
+                    }
+                );
+
+                // create page directly after upload sucess
+                if (selectedNote) {
+                    const pageNum = existingPageCount + i + 1;
+                    const newPage = await createPage(selectedNote, {
+                        title: file.name ?? 'Untitled Page',
+                        pageNum: pageNum,
+                        workspaceId: selectedNote.workspaceId,
+                        workspaceNoteId: selectedNote.id,
+                        isActive: true,
+                        syncedAt: new Date(),
+                        syncedId: generateUUID(),
+                        contentData: Buffer.from(JSON.stringify(result)),
+                    });
+
+                    setPages((prev) =>
+                        prev.map((page) =>
+                            page.id === tempId
+                                ? { ...page, uploadProgress: null, id: newPage.id, pageNum: pageNum }
+                                : page
+                        )
+                    );
+                }
+
+                successfulPages.push({
+                    id: tempId,
+                    title: pickedFile.name,
+                    uploadProgress: null,
+                } as FilePage);
+            } catch (err) {
+                // pakai pickedFile.name (bukan file.name) karena kalau
+                // pickedFileToFile sendiri yang gagal, `file` belum sempat ada
+                console.error(`Failed to upload file "${pickedFile.name}"`, err);
+                presentToast({
+                    message: `Gagal mengunggah "${pickedFile.name}", lanjut ke file berikutnya.`,
+                    duration: 2500,
+                    color: 'danger',
+                });
+
+                // tandai entry ini gagal di UI, lalu lanjut ke file berikutnya
+                // (tidak throw / break, biar loop tetap jalan)
+                setPages((prev) =>
+                    prev.map((page) =>
+                        page.id === tempId
+                            ? { ...page, uploadProgress: null, uploadError: true }
+                            : page
+                    )
+                );
+            }
+        }
+
+        // Buang semua entry sementara — yang sukses akan digantikan oleh data
+        // asli dari DB lewat bulkNewPagesHandler, yang gagal memang tidak perlu
+        // tetap nampang (toast sudah memberi tahu file mana yang gagal).
+        setPages((prev) => prev.filter((page) => !tempEntries.some((t) => t.id === page.id)));
+
+        // if (successfulPages.length > 0) {
+        //     await bulkNewPagesHandler(successfulPages);
+        // }
     };
     // --- END SELECT FILE AND UPLOAD FUNCTION ---
 
@@ -512,41 +674,80 @@ const FilesEditorPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent>
-                <IonList lines='full'>
-                    {pages.map((page: Page, index, array) => {
-                        const isLast = index === array.length - 1;
+            <IonContent ref={ionContentRef}>
+                {pages.length === 0 && (
+                    <div className='flex flex-col items-center justify-center h-full ion-padding'>
+                        <IonIcon icon={albumsOutline} className="text-4xl mb-2"></IonIcon>
+                        <IonText className="text-sm text-center w-2/3 mx-auto" color={'medium'}>
+                            No files uploaded yet. Tap button to upload a file.
+                        </IonText>
+                    </div>
+                )}
 
-                        return (
-                            <IonItem lines={isLast ? 'none' : 'full'} key={page.id}>
-                                <div slot="start" className="ion-padding-end">
-                                    <IonNote>{page.pageNum}.</IonNote>
-                                </div>
-                                <IonLabel className="py-2 !text-sm">{page.title || `Page ${page.pageNum}`}</IonLabel>
+                {pages.length > 0 && (
+                    <IonList lines='full'>
+                        {[...pages].map((page: FilePage, index, array) => {
+                            const isLast = index === array.length - 1;
+                            const isUploading = page.uploadProgress !== null && page.uploadProgress !== undefined;
 
-                                <div slot="end" className="ion-padding-start">
-                                    <IonButton
-                                        shape="round"
-                                        size="small"
-                                        color="light"
-                                        onClick={() => {
-                                            setShowRemoveAlert(true)
-                                            setSelectedPage(page);
-                                        }}
-                                    >
-                                        <IonIcon icon={trashOutline} slot='icon-only' color={'danger'}></IonIcon>
-                                    </IonButton>
-                                </div>
-                            </IonItem>
-                        );
-                    })}
-                </IonList>
+                            return (
+                                <IonItem lines={isLast ? 'none' : 'full'} key={page.id}>
+                                    <div slot="start" className="ion-padding-end w-8">
+                                        {isUploading && (page.uploadProgress ?? 0) < 100 && (
+                                            <IonSpinner name="crescent" color="primary" className="w-4 h-4" />
+                                        )}
+
+                                        {(page.uploadProgress ?? 0) >= 100 && (
+                                            <IonIcon icon={checkmarkCircleOutline} className="text-lg" color="success"></IonIcon>
+                                        )}
+
+                                        {page.pageNum && <IonNote className="underline">{page.pageNum ?? '-'}.</IonNote>}
+                                    </div>
+                                    <IonLabel className="py-2 !text-sm">
+                                        {page.title || `Page ${page.pageNum}`}
+
+                                        {isUploading && (
+                                            <IonProgressBar
+                                                value={(page.uploadProgress ?? 0) / 100}
+                                                color="primary"
+                                                className="mt-1"
+                                            />
+                                        )}
+
+                                        {page.uploadError && (
+                                            <IonNote color="danger" className="block !text-xs mt-1">
+                                                Gagal diunggah
+                                            </IonNote>
+                                        )}
+                                    </IonLabel>
+
+                                    <div slot="end" className="ion-padding-start">
+                                        {!isUploading && (
+                                            <IonButton
+                                                shape="round"
+                                                size="small"
+                                                color="light"
+                                                onClick={() => {
+                                                    setShowRemoveAlert(true)
+                                                    setSelectedPage(page);
+                                                }}
+                                            >
+                                                <IonIcon icon={trashOutline} slot='icon-only' color={'danger'}></IonIcon>
+                                            </IonButton>
+                                        )}
+                                    </div>
+                                </IonItem>
+                            );
+                        })}
+                    </IonList>
+                )}
             </IonContent>
 
             <IonFooter className="w-full py-3 ion-no-border">
                 <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
-                    <div className='flex items-center justify-between px-3'>
-                        <div className='flex-1'>
+                    <div className='px-3 text-center'>
+                        <IonText className="text-sm text-center w-full" color={'medium'}>Upload PDF, DOCX, TXT, Image and Audio Files</IonText>
+                        <div className='flex-1 mt-2'>
                             <div className="flex justify-center gap-4">
                                 <div className="flex items-center gap-4">
                                     <IonButton
@@ -618,11 +819,16 @@ const FilesEditorPage: React.FC = () => {
                             const nextActiveIndex = Math.min(activeIndex, filtered.length - 1);
 
                             // re-index all pages
-                            const reindexed = filtered.map((p, idx) => ({
-                                ...p,
-                                pageNum: idx + 1,
-                                isActive: idx === nextActiveIndex,
-                            }));
+                            const reindexed = filtered.map((p, idx) => {
+                                delete p.uploadProgress;
+                                delete p.uploadError;
+
+                                return {
+                                    ...p,
+                                    pageNum: idx + 1,
+                                    isActive: idx === nextActiveIndex,
+                                }
+                            });
 
                             // set current active page
                             const newSelected = reindexed.find((p) => p.isActive);

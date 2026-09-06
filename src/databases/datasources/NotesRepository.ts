@@ -258,6 +258,7 @@ class NotesRepository {
     /** Update properti Page (misal update isActive / JSON Canvas) */
     async updatePage(pageId: string, data: Partial<Page>, directToSupabase: boolean = true): Promise<Page | null> {
         return this.enqueueWrite(async () => {
+            // remove property note related to this model
             await this.pageRepo.update(pageId, data as any);
             await this.saveWebStore();
 

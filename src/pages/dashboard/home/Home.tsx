@@ -95,8 +95,11 @@ const HomePage: React.FC = () => {
                         </div>
                     ) : (
                         !workspaces || workspaces.length === 0 ? (
-                            <div className='flex flex-col items-center justify-center gap-4 bg-red-100 rounded-lg border border-red-200 ion-padding'>
-                                <IonText className='text-center text-xs'>No workspaces found. Create one to get started.</IonText>
+                            <div className='ion-padding-start ion-padding-end'>
+                                <div className='flex flex-col items-center justify-center gap-4 bg-red-100 rounded-lg border border-red-200 ion-padding'>
+                                    <IonText className='text-center text-base block'>No workspaces found. Create one to get started.</IonText>
+                                    <IonButton mode='ios' routerLink={'/dashboard/editor/workspace'} shape="round">Create Workspace</IonButton>
+                                </div>
                             </div>
                         ) : (
                             <>

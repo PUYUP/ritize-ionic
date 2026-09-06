@@ -23,7 +23,8 @@ const Page: React.FC = () => {
 
             <h1 className='block ion-text-center !mt-0 px-3'>
               <IonText className='text-2xl font-bold'>
-                Exchange lecture notes to assist studies every day.
+                {/* Exchange lecture notes to assist studies every day. */}
+                Note taking for power students, assist studies on every moment.
               </IonText>
             </h1>
 

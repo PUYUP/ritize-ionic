@@ -1,9 +1,9 @@
-import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonText, useIonRouter, useIonToast } from '@ionic/react';
+import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { attachOutline, bookOutline, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { attachOutline, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
-import { NoteTypes, useGetNotesByWorkspaceIdQuery } from '../../services/notes';
+import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
 import { getUser } from '../../utils/authState';
 import NotesRepository from '../../databases/datasources/NotesRepository';
@@ -32,6 +32,7 @@ interface NoteGroup {
     dateKey: string;
     notes: NoteTypes[];
     onShowOptions?: (item: NoteTypes) => void;
+    onRefreshPapers?: (item: NoteTypes) => void;
 }
 
 /**
@@ -51,100 +52,132 @@ const groupNotesByDate = (notes: NoteTypes[]): NoteGroup[] => {
     return [...map.entries()].map(([dateKey, groupNotes]) => ({ dateKey, notes: groupNotes }));
 };
 
-const NoteItem: React.FC<{ item: NoteTypes, isLast: boolean, user: { id: string }, onShowOptions?: (item: NoteTypes) => void }> = ({ item, isLast, user, onShowOptions }) => {
-    const { content_preview } = item;
-    let editor: string = 'richtext';
+const NoteItem: React.FC<{
+    item: NoteTypes,
+    isLast: boolean,
+    user: { id: string },
+    onShowOptions?: (item: NoteTypes) => void,
+    onRefreshPapers?: (item: NoteTypes) => void
+}> = ({
+    item,
+    isLast,
+    user,
+    onShowOptions,
+    onRefreshPapers
+}) => {
+        const { content_preview } = item;
 
-    if (item.content_type == 'canvas') {
-        editor = 'canvas';
-    } else if (item.content_type == 'file') {
-        editor = 'files';
-    }
+        let editor: string = 'richtext';
 
-    let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`;
+        if (item.content_type == 'canvas') {
+            editor = 'canvas';
+        } else if (item.content_type == 'file') {
+            editor = 'files';
+        }
 
-    // if not the creator, view the note as a normal viewer
-    if (item.user.id !== user.id) {
-        linkTo = `/dashboard/workspace/note-viewer?workspaceId=${item.workspace_id}&noteId=${item.id}`;
-    }
+        let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`;
 
-    const optionsHandler = async (item: NoteTypes) => {
-        onShowOptions?.(item);
-    }
+        // if not the creator, view the note as a normal viewer
+        if (item.user.id !== user.id) {
+            linkTo = `/dashboard/workspace/note-viewer?workspaceId=${item.workspace_id}&noteId=${item.id}`;
+        }
 
-    return (
-        <IonItem lines={isLast ? "none" : "full"} className='note-item'>
-            <div className='w-full py-3'>
-                <div className='flex'>
-                    <Link to={linkTo} className='block w-full flex-1'>
-                        <p className='flex gap-2 !m-0 items-center'>
-                            <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
-                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                            <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
-                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                            <span className='flex gap-1 items-center'>
-                                {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
-                                {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
-                                {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
-                                <IonText className='text-sm text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
-                            </span>
-                        </p>
-                        <IonText color="dark font-semibold">{item.user.name}</IonText>
+        const optionsHandler = async (item: NoteTypes) => {
+            onShowOptions?.(item);
+        }
+
+        const refreshPapers = async (item: NoteTypes) => {
+            onRefreshPapers?.(item);
+        }
+
+        return (
+            <IonItem lines={isLast ? "none" : "full"} className='note-item'>
+                <div className='w-full py-3'>
+                    <div className='flex'>
+                        <Link to={linkTo} className='block w-full flex-1'>
+                            <p className='flex gap-2 !m-0 items-center'>
+                                <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
+                                <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
+                                <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                <span className='flex gap-1 items-center'>
+                                    {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
+                                    {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
+                                    {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
+                                    <IonText className='text-sm text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
+                                </span>
+                            </p>
+                            <IonText color="dark font-semibold">{item.user.name}</IonText>
+                        </Link>
+
+                        {user.id === item.user.id && (
+                            <div className='ml-auto'>
+                                <IonButton shape='round' color={'light'} onClick={async () => await optionsHandler(item)}>
+                                    <IonIcon icon={ellipsisVertical} slot='icon-only' />
+                                </IonButton>
+                            </div>
+                        )}
+                    </div>
+
+                    <Link to={linkTo}>
+                        {content_preview && (
+                            <div
+                                dangerouslySetInnerHTML={{ __html: content_preview }}
+                                className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
+                            />
+                        )}
                     </Link>
 
-                    {user.id === item.user.id && (
-                        <div className='ml-auto'>
-                            <IonButton shape='round' color={'light'} onClick={async () => await optionsHandler(item)}>
-                                <IonIcon icon={ellipsisVertical} slot='icon-only' />
-                            </IonButton>
+                    {content_preview && (
+                        <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
+                            <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
+                                <IonItemDivider className='bg-neutral-100 ion-padding-start'>
+                                    <IonLabel className='!text-neutral-700 underline italic'>Relevant papers:</IonLabel>
+                                </IonItemDivider>
+                                {item.documents?.length > 0 && (
+                                    <>
+                                        {item.documents.map((doc: any, index: number, array: any) => {
+                                            const isLast = index === array.length - 1;
+                                            return (
+                                                <IonItem
+                                                    key={doc.id}
+                                                    lines={isLast ? 'none' : 'full'}
+                                                    className='bg-neutral-100'
+                                                    style={{ '--background': 'none' }}
+                                                    button={true}
+                                                    mode="md"
+                                                    detail={false}
+                                                    href={doc.paper.pdf_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <IonLabel className='py-1'>
+                                                        <p className='!text-blue-700'>{doc.paper.title}</p>
+                                                        <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
+                                                    </IonLabel>
+                                                </IonItem>
+                                            )
+                                        })}
+                                    </>
+                                )}
+                                {item.documents?.length === 0 && (
+                                    <IonItem className='bg-neutral-100' style={{ '--background': 'none' }} button={true} mode="md" detail={false}>
+                                        <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
+                                        <IonLabel className='pl-2'>
+                                            <p className='text-neutral-500 !text-xs'>Discovering...</p>
+                                        </IonLabel>
+                                        <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
+                                            tap here to refresh
+                                        </IonButton>
+                                    </IonItem>
+                                )}
+                            </IonList>
                         </div>
                     )}
                 </div>
-
-                <Link to={linkTo}>
-                    {content_preview && (
-                        <div
-                            dangerouslySetInnerHTML={{ __html: content_preview }}
-                            className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
-                        />
-                    )}
-                </Link>
-
-                {item.documents?.length > 0 && (
-                    <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
-                        <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
-                            <IonItemDivider className='bg-neutral-100 ion-padding-start'>
-                                <IonLabel className='!text-neutral-700 underline italic'>Referenced papers by chunks:</IonLabel>
-                            </IonItemDivider>
-                            {item.documents.map((doc: any, index: number, array: any) => {
-                                const isLast = index === array.length - 1;
-                                return (
-                                    <IonItem
-                                        key={doc.id}
-                                        lines={isLast ? 'none' : 'full'}
-                                        className='bg-neutral-100'
-                                        style={{ '--background': 'none' }}
-                                        button={true}
-                                        mode="md"
-                                        detail={false}
-                                        href={doc.paper.pdf_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <IonLabel className='py-1'>
-                                            <p className='!text-blue-700'>{doc.paper.title}</p>
-                                            <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
-                                        </IonLabel>
-                                    </IonItem>
-                                )
-                            })}
-                        </IonList>
-                    </div>
-                )}
-            </div>
-        </IonItem >
-    )
-}
+            </IonItem>
+        )
+    }
 
 const NoteList: React.FC<Props> = ({ workspaceId }) => {
     const ionRouter = useIonRouter();
@@ -155,6 +188,9 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
     const [selectedNote, setSelectedNote] = useState<NoteTypes | null>(null);
     const [user, setUser] = useState({ id: '' });
     const [page, setPage] = useState(1);
+
+    // RTK Query
+    const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
     const { data, isLoading, isFetching, isSuccess, isError } = useGetNotesByWorkspaceIdQuery({
         workspace_id: workspaceId,
         page: page,
@@ -191,6 +227,10 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
         setShowOptions(true);
     }
 
+    const refreshPapers = async (item: NoteTypes) => {
+        await getNoteById({ id: item.id, workspace_id: workspaceId as string });
+    }
+
     if (isLoading && page === 1) return <IonText className='text-center ion-padding'>Loading...</IonText>;
 
     return (
@@ -209,7 +249,14 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                         {notes.map((item, index, array) => {
                             const isLast = index === array.length - 1;
                             return (
-                                <NoteItem key={item.id} item={item} user={user} isLast={isLast} onShowOptions={optionsHandler} />
+                                <NoteItem
+                                    key={item.id}
+                                    item={item}
+                                    user={user}
+                                    isLast={isLast}
+                                    onShowOptions={optionsHandler}
+                                    onRefreshPapers={refreshPapers}
+                                />
                             )
                         })}
                     </IonItemGroup>

@@ -267,22 +267,71 @@ export const notesAPI = createApi({
         // ...
         // Get single note by id
         // ...
-        getNoteById: builder.query<NoteTypes, { id: string }>({
-            queryFn: async ({ id }) => {
+        getNoteById: builder.query<NoteTypes, { id: string, workspace_id: string }>({
+            queryFn: async ({ id, workspace_id }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "User not found" } };
                 if (!id) return { error: { message: "Note ID is required" } };
+                if (!workspace_id) return { error: { message: "Workspace ID is required" } };
 
                 const { data, error } = await supabase
-                    .from("workspace_notes")
-                    .select("*, pages:workspace_notes_pages(*)")
+                    .from("workspace_notes_list")
+                    .select(`
+                        *
+                        , page_count:workspace_notes_pages(count)
+                        , user!inner(id, name)
+                        , attachments(*, file:file_id(*))
+                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
+                    `)
                     .eq("id", id)
+                    .eq("workspace_id", workspace_id)
                     .single();
 
                 if (error) return { error: { message: error.message } };
                 return { data };
             },
-            providesTags: (result, error, { id }) => [{ type: 'Notes', id }],
+            async onQueryStarted({ id, workspace_id }, { dispatch, queryFulfilled }) {
+                // Manipulasi cache untuk query 'getNotesByWorkspaceId'
+                let patchResult: any;
+                try {
+                    // Tunggu sampai proses update ke database selesai
+                    const { data } = await queryFulfilled;
+
+                    patchResult = dispatch(
+                        notesAPI.util.updateQueryData(
+                            'getNotesByWorkspaceId',
+                            // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
+                            // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
+                            // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
+                            { workspace_id: workspace_id as string, page: 1, pageSize: 20 },
+                            (draft) => {
+                                // Cari note yang sedang diupdate di dalam array cache
+                                const noteIndex = draft.notes.findIndex((n) => n.id === id);
+                                if (noteIndex !== -1) {
+                                    // Update existing note
+                                    draft.notes[noteIndex] = {
+                                        ...draft.notes[noteIndex],
+                                        ...data,
+                                    };
+                                } else {
+                                    // Add new note at the beginning (most recent)
+                                    draft.notes.unshift({
+                                        ...data,
+                                        page_count: [
+                                            {
+                                                count: 1
+                                            }
+                                        ],
+                                    });
+                                }
+                            }
+                        )
+                    );
+                } catch {
+                    // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
+                    patchResult.undo();
+                }
+            },
         }),
 
         // ...
@@ -361,6 +410,26 @@ export const notesAPI = createApi({
                         { type: 'Notes', id: 'LIST' },
                         { type: 'NotePages', id: 'LIST' }
                     ],
+        }),
+
+        // ...
+        // Get single page by id
+        // ...
+        getPageById: builder.query<NotePageTypes, { id: string }>({
+            queryFn: async ({ id }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "User not found" } };
+                if (!id) return { error: { message: "Page ID is required" } };
+
+                const { data, error } = await supabase
+                    .from("workspace_notes_pages")
+                    .select("*")
+                    .eq("id", id)
+                    .single();
+
+                if (error) return { error: { message: error.message } };
+                return { data };
+            },
         }),
 
         // ...

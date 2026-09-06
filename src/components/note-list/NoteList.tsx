@@ -110,30 +110,30 @@ const NoteItem: React.FC<{ item: NoteTypes, isLast: boolean, user: { id: string 
                     )}
                 </Link>
 
-                {item.papers?.length > 0 && (
-                    <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl'>
+                {item.documents?.length > 0 && (
+                    <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
                         <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
-                            <IonItemDivider className='bg-neutral-100 px-3'>
-                                <IonLabel className='!text-neutral-700 underline italic'>Referenced Papers:</IonLabel>
+                            <IonItemDivider className='bg-neutral-100 ion-padding-start'>
+                                <IonLabel className='!text-neutral-700 underline italic'>Referenced papers by chunks:</IonLabel>
                             </IonItemDivider>
-                            {item.papers.slice(0, 2).map((paper: any, index: number, array: any) => {
+                            {item.documents.map((doc: any, index: number, array: any) => {
                                 const isLast = index === array.length - 1;
                                 return (
                                     <IonItem
-                                        key={paper.id}
+                                        key={doc.id}
                                         lines={isLast ? 'none' : 'full'}
                                         className='bg-neutral-100'
                                         style={{ '--background': 'none' }}
                                         button={true}
                                         mode="md"
                                         detail={false}
-                                        href={paper.paper.pdf_url}
+                                        href={doc.paper.pdf_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     >
-                                        <IonIcon slot='start' icon={bookOutline} className="text-lg mt-1" color="primary" />
-                                        <IonLabel className='ion-padding-start py-1'>
-                                            <p className='!text-blue-700'>{paper.paper.title}</p>
+                                        <IonLabel className='py-1'>
+                                            <p className='!text-blue-700'>{doc.paper.title}</p>
+                                            <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
                                         </IonLabel>
                                     </IonItem>
                                 )

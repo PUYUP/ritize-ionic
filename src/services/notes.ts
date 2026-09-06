@@ -304,11 +304,11 @@ export const notesAPI = createApi({
                         , page_count:workspace_notes_pages(count)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
-                        , papers:workspace_notes_papers(id, paper:paper_id(title, pdf_url))
+                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
                     `, { count: "exact" })
                     .eq("workspace_id", workspace_id)
                     .order("created_at", { ascending: false })
-                    .limit(2, { foreignTable: "papers" })
+                    .limit(2, { foreignTable: "documents" })
                     .range(from, to);
 
                 if (error) {

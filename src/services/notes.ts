@@ -311,7 +311,15 @@ export const notesAPI = createApi({
                     .limit(2, { foreignTable: "papers" })
                     .range(from, to);
 
-                if (error) return { error: { message: error.message } };
+                if (error) {
+                    // PGRST103 / HTTP 416 berarti range halaman habis (sudah halaman terakhir)
+                    // Kembalikan array kosong agar cache RTK Query tetap berstatus 'fulfilled'
+                    if (error.code === 'PGRST103' || error.message.includes("range")) {
+                        return { data: { notes: [], count: count ?? 0 } };
+                    }
+                    return { error: { message: error.message } };
+                }
+
                 return { data: { notes: data ?? [], count: count ?? 0 } };
             },
 

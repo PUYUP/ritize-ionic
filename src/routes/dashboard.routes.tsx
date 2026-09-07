@@ -8,6 +8,8 @@ import { RouteProps } from "react-router";
 import WorkspaceMembersPage from "../pages/dashboard/workspace/members/Page";
 import WorkspacePage from "../pages/dashboard/workspace/Page";
 import FilesEditorPage from "../pages/dashboard/editor/files/Page";
+import NotesPage from "../pages/dashboard/notes/Page";
+import MaterialsPage from "../pages/dashboard/materials/Page";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -20,4 +22,6 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/workspace", element: <WorkspacePage /> },
     { path: "/dashboard/workspace/:id", element: <WorkspaceDetailPage /> },
     { path: "/dashboard/workspace/:id/members", element: <WorkspaceMembersPage /> },
+    { path: "/dashboard/notes", element: <NotesPage /> },
+    { path: "/dashboard/materials", element: <MaterialsPage /> },
 ];

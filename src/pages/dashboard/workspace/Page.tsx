@@ -55,7 +55,7 @@ const WorkspacePage: React.FC = () => {
 
     return (
         <IonPage>
-            <IonHeader>
+            <IonHeader className="ion-no-border">
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
                         <IonBackButton defaultHref="/dashboard" />
@@ -64,7 +64,7 @@ const WorkspacePage: React.FC = () => {
                         My Workspaces
                     </IonTitle>
                     <IonButtons slot="end" className="ion-padding-end">
-                        <IonButton fill="outline" size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
+                        <IonButton fill="outline" color={'primary'} size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
                             <IonIcon icon={add} slot='icon-only' className='text-xl' />
                         </IonButton>
                     </IonButtons>

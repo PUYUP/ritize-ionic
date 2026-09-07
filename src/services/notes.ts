@@ -39,7 +39,7 @@ export type PaginatedNotesResponse = {
 }
 
 export type GetNotesByWorkspaceIdParams = {
-    workspace_id: string;
+    workspace_id?: string;
     page?: number;      // default 1
     pageSize?: number;  // default 20
 }
@@ -398,12 +398,11 @@ export const notesAPI = createApi({
             queryFn: async ({ workspace_id, page = 1, pageSize = 20 }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Get Notes] User not found" } };
-                if (!workspace_id) return { error: { message: "[Get Notes] Workspace ID is required" } };
 
                 const from = (page - 1) * pageSize;
                 const to = from + pageSize - 1;
 
-                let { data, error, count } = await supabase
+                let query = supabase
                     .from("workspace_notes_list")
                     .select(`
                         *
@@ -421,8 +420,20 @@ export const notesAPI = createApi({
                             )
                         )
                         , chunks:workspace_notes_chunks(clustered_date)
-                    `, { count: "exact" })
-                    .eq("workspace_id", workspace_id)
+                        , workspace:workspace_id!inner(
+                            title
+                            , workspace_members!inner(user_id)
+                        )
+                    `, { count: "exact" });
+
+                if (workspace_id) {
+                    query = query.eq("workspace_id", workspace_id);
+                } else {
+                    // Dapatkan semua notes di mana current user adalah member dari workspace notes tersebut
+                    query = query.eq("workspace.workspace_members.user_id", user.id);
+                }
+
+                let { data, error, count } = await query
                     .order("created_at", { ascending: false })
                     .limit(2, { foreignTable: "documents" })
                     .limit(1, { foreignTable: "workspace_notes_chunks" })

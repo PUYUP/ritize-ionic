@@ -1,7 +1,7 @@
 import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { attachOutline, checkmarkCircleSharp, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { attachOutline, briefcaseOutline, checkmarkCircleSharp, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { getUser } from '../../utils/authState';
 import NotesRepository from '../../databases/datasources/NotesRepository';
 
 interface Props {
-    workspaceId: string;
+    workspaceId?: string;
 }
 
 // --- Grouping helpers (per-day, based on note_datetime) ---
@@ -56,12 +56,14 @@ const NoteItem: React.FC<{
     item: NoteTypes,
     isLast: boolean,
     user: { id: string },
+    workspaceId?: string,
     onShowOptions?: (item: NoteTypes) => void,
     onRefreshPapers?: (item: NoteTypes) => void
 }> = ({
     item,
     isLast,
     user,
+    workspaceId,
     onShowOptions,
     onRefreshPapers
 }) => {
@@ -114,7 +116,7 @@ const NoteItem: React.FC<{
                                         <IonText className='text-sm text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
                                     </span>
                                 </p>
-                                <IonText color="dark font-semibold">{item.user.name}</IonText>
+                                <IonText color="dark font-semibold text-sm -mt-0.5 block">{item.user.name}</IonText>
                             </Link>
 
                             {user.id === item.user.id && (
@@ -126,60 +128,67 @@ const NoteItem: React.FC<{
                             )}
                         </div>
 
-                        <Link to={linkTo}>
-                            {content_preview && (
-                                <div
-                                    dangerouslySetInnerHTML={{ __html: content_preview }}
-                                    className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
-                                />
-                            )}
-                        </Link>
-
                         {content_preview && (
-                            <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
-                                <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
-                                    <IonItemDivider className='bg-neutral-100 ion-padding-start'>
-                                        <IonLabel className='!text-neutral-700 underline italic'>Relevant papers:</IonLabel>
-                                    </IonItemDivider>
-                                    {item.documents?.length > 0 && (
-                                        <>
-                                            {item.documents.map((doc: any, index: number, array: any) => {
-                                                const isLast = index === array.length - 1;
-                                                return (
-                                                    <IonItem
-                                                        key={doc.id}
-                                                        lines={isLast ? 'none' : 'full'}
-                                                        className='bg-neutral-100'
-                                                        style={{ '--background': 'none' }}
-                                                        button={true}
-                                                        mode="md"
-                                                        detail={false}
-                                                        href={doc.paper.pdf_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        <IonLabel className='py-1'>
-                                                            <p className='!text-blue-700'>{doc.paper.title}</p>
-                                                            <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
-                                                        </IonLabel>
-                                                    </IonItem>
-                                                )
-                                            })}
-                                        </>
-                                    )}
-                                    {item.documents?.length === 0 && (
-                                        <IonItem className='bg-neutral-100' style={{ '--background': 'none' }} button={true} mode="md" detail={false}>
-                                            <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
-                                            <IonLabel className='pl-2'>
-                                                <p className='text-neutral-500 !text-xs'>Discovering...</p>
-                                            </IonLabel>
-                                            <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
-                                                tap here to refresh
-                                            </IonButton>
-                                        </IonItem>
-                                    )}
-                                </IonList>
-                            </div>
+                            <>
+                                {item.workspace && !workspaceId && (
+                                    <div className='flex items-center gap-2 mt-2 text-orange-700'>
+                                        <IonIcon icon={briefcaseOutline}></IonIcon>
+                                        <IonText className='text-xs'>{item.workspace.title}</IonText>
+                                    </div>
+                                )}
+
+                                <Link to={linkTo}>
+                                    <div
+                                        dangerouslySetInnerHTML={{ __html: content_preview }}
+                                        className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
+                                    />
+                                </Link>
+
+                                <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
+                                    <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
+                                        <IonItemDivider className='bg-neutral-100 ion-padding-start'>
+                                            <IonLabel className='!text-neutral-700 underline italic'>Relevant papers:</IonLabel>
+                                        </IonItemDivider>
+                                        {item.documents?.length > 0 && (
+                                            <>
+                                                {item.documents.map((doc: any, index: number, array: any) => {
+                                                    const isLast = index === array.length - 1;
+                                                    return (
+                                                        <IonItem
+                                                            key={doc.id}
+                                                            lines={isLast ? 'none' : 'full'}
+                                                            className='bg-neutral-100'
+                                                            style={{ '--background': 'none' }}
+                                                            button={true}
+                                                            mode="md"
+                                                            detail={false}
+                                                            href={doc.paper.pdf_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            <IonLabel className='py-1'>
+                                                                <p className='!text-blue-700'>{doc.paper.title}</p>
+                                                                <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
+                                                            </IonLabel>
+                                                        </IonItem>
+                                                    )
+                                                })}
+                                            </>
+                                        )}
+                                        {item.documents?.length === 0 && (
+                                            <IonItem className='bg-neutral-100' style={{ '--background': 'none' }} button={true} mode="md" detail={false}>
+                                                <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
+                                                <IonLabel className='pl-2'>
+                                                    <p className='text-neutral-500 !text-xs'>Discovering...</p>
+                                                </IonLabel>
+                                                <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
+                                                    tap here to refresh
+                                                </IonButton>
+                                            </IonItem>
+                                        )}
+                                    </IonList>
+                                </div>
+                            </>
                         )}
                     </div>
                 </IonItem>
@@ -262,6 +271,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                                     item={item}
                                     user={user}
                                     isLast={isLast}
+                                    workspaceId={workspaceId}
                                     onShowOptions={optionsHandler}
                                     onRefreshPapers={refreshPapers}
                                 />

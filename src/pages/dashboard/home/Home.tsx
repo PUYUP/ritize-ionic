@@ -1,4 +1,4 @@
-import { IonAvatar, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonImg, IonMenuButton, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
+import { IonAvatar, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonImg, IonMenuButton, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Home.css';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
@@ -11,6 +11,7 @@ import { useGetAllWorkspacesQuery, useLazyGetWorkspaceStatsQuery } from '../../.
 import { getInitials } from '../../../utils/generator';
 
 const HomePage: React.FC = () => {
+    const ionRouter = useIonRouter();
     const { name = '' } = useParams<{ name: string; }>();
     const { data: workspaces, isLoading } = useGetAllWorkspacesQuery({ from: 0, to: 10 });
     const [getWorkspaceStats, { data: workspaceStats, isFetching: workspaceStatsFetching }] = useLazyGetWorkspaceStatsQuery({});
@@ -28,6 +29,22 @@ const HomePage: React.FC = () => {
         }
         fetchUser();
     }, []);
+
+    const gotoPage = (tab: string) => {
+        switch (tab) {
+            case 'note':
+                ionRouter.push('/dashboard/notes');
+                break;
+            case 'material':
+                ionRouter.push('/dashboard/materials');
+                break;
+            case 'digest':
+                ionRouter.push('/dashboard/digests');
+                break;
+            default:
+                break;
+        }
+    }
 
     return (
         <IonPage>
@@ -61,6 +78,7 @@ const HomePage: React.FC = () => {
                         <IonText>Happening Today's</IonText>
                     </div>
                     <WorkspaceStats
+                        onSetActiveTab={gotoPage}
                         note={{ todayCount: workspaceStats?.total_notes_today ?? 0, total: workspaceStats?.total_notes ?? 0 }}
                         material={{ todayCount: workspaceStats?.total_materials_today ?? 0, total: workspaceStats?.total_materials ?? 0 }}
                         digest={{ todayCount: workspaceStats?.total_digests_today ?? 0, total: workspaceStats?.total_digests ?? 0 }}

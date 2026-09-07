@@ -60,7 +60,10 @@ const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSet
                     <IonCard onClick={() => onSetActiveTab?.('material')} className={`relative w-full rounded-xl ${isTab && activeTab === 'material' ? 'bg-blue-50' : ''}`}>
                         <IonCardContent>
                             <div className='flex items-center justify-between w-full'>
-                                <div className='text-2xl font-semibold leading-3 text-neutral-700'>{material.todayCount}</div>
+                                <div className='text-2xl font-semibold leading-3 text-neutral-700 relative'>
+                                    {material.todayCount > 0 && <div className="h-2 w-2 bg-green-500 rounded-full animate-ping absolute -top-1 -right-1"></div>}
+                                    {material.todayCount}
+                                </div>
                                 <div className='ml-auto flex items-center'>
                                     <IonIcon icon={folderOpenOutline} className='text-2xl text-[#1683E8]' />
                                 </div>
@@ -91,7 +94,10 @@ const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSet
                     <IonCard onClick={() => onSetActiveTab?.('digest')} className={`relative w-full rounded-xl ${isTab && activeTab === 'digest' ? 'bg-yellow-50' : ''}`}>
                         <IonCardContent>
                             <div className='flex items-center justify-between w-full'>
-                                <div className='text-2xl font-semibold leading-3 text-neutral-700'>{digest.todayCount}</div>
+                                <div className='text-2xl font-semibold leading-3 text-neutral-700 relative'>
+                                    {digest.todayCount > 0 && <div className="h-2 w-2 bg-green-500 rounded-full animate-ping absolute -top-1 -right-1"></div>}
+                                    {digest.todayCount}
+                                </div>
                                 <div className='ml-auto flex items-center'>
                                     <IonIcon icon={bulbOutline} className='text-2xl text-[#E5A000]' />
                                 </div>

@@ -18,6 +18,8 @@ interface RouteParams {
 const WorkspaceDetailPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { id } = useParams<RouteParams>();
+    const [activeTab, setActiveTab] = useState<string>('note');
+    const [activeTabLabel, setActiveTabLabel] = useState<string>('Notes');
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [deleteWorkspace, { isLoading: deleting }] = useDeleteWorkspaceMutation();
     const { data: workspace, error, isLoading, isFetching } = useGetWorkspaceByIdQuery(id ?? "", { skip: !id });
@@ -41,6 +43,17 @@ const WorkspaceDetailPage: React.FC = () => {
             });
         }
     }, [workspace, setLanguage]);
+
+    const selectedTabHandler = (tab: string) => {
+        if (tab === 'note') {
+            setActiveTabLabel('Notes');
+        } else if (tab === 'material') {
+            setActiveTabLabel('Materials');
+        } else if (tab === 'digest') {
+            setActiveTabLabel('Digest');
+        }
+        setActiveTab(tab);
+    }
 
     if (isLoading || !workspace || isFetching) {
         return (
@@ -120,6 +133,9 @@ const WorkspaceDetailPage: React.FC = () => {
                             <IonText>Today's in workspace</IonText>
                         </div>
                         <WorkspaceStats
+                            isTab={true}
+                            activeTab={activeTab}
+                            onSetActiveTab={selectedTabHandler}
                             note={{ todayCount: workspaceStats?.total_notes_today ?? 0, total: workspaceStats?.total_notes ?? 0 }}
                             material={{ todayCount: workspaceStats?.total_materials_today ?? 0, total: workspaceStats?.total_materials ?? 0 }}
                             digest={{ todayCount: workspaceStats?.total_digests_today ?? 0, total: workspaceStats?.total_digests ?? 0 }}
@@ -129,14 +145,15 @@ const WorkspaceDetailPage: React.FC = () => {
                     {id && (
                         <div className='block'>
                             <div className='bg-neutral-200 block mb-0 text-lg ion-padding-start ion-padding-end !py-2 flex items-center justify-center'>
-                                <IonText>Notes in workspace</IonText>
+                                <IonText><u>{activeTabLabel}</u> in workspace</IonText>
                                 <div className='ml-auto flex items-center'>
                                     <IonButton shape='round' color="light" size="small">
                                         <IonIcon icon={filterOutline} slot='icon-only' />
                                     </IonButton>
                                 </div>
                             </div>
-                            <NoteList workspaceId={id} />
+
+                            {activeTab == 'note' && (<NoteList workspaceId={id} />)}
                         </div>
                     )}
                 </div>

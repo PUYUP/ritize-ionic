@@ -75,8 +75,20 @@ export const notesAPI = createApi({
                     .select(`
                         *
                         , user!inner(id, name)
-                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
+                        , documents:workspace_notes_documents(
+                            id
+                            , similarity_score
+                            , document_content
+                            , paper_id
+                            , paper:paper_id(
+                                title
+                                , pdf_url
+                            )
+                        )
+                        , chunks:workspace_notes_chunks(clustered_date)
                     `)
+                    .limit(2, { foreignTable: "documents" })
+                    .limit(1, { foreignTable: "workspace_notes_chunks" })
                     .single();
 
                 if (error) return { error: { message: error.message } };
@@ -144,8 +156,20 @@ export const notesAPI = createApi({
                     .select(`
                         *
                         , user!inner(id, name)
-                        , documents:workspace_notes_documents(document_content, paper:paper_id(title, pdf_url))
+                        , documents:workspace_notes_documents(
+                            id
+                            , similarity_score
+                            , document_content
+                            , paper_id
+                            , paper:paper_id(
+                                title
+                                , pdf_url
+                            )
+                        )
+                        , chunks:workspace_notes_chunks(clustered_date)
                     `)
+                    .limit(2, { foreignTable: "documents" })
+                    .limit(1, { foreignTable: "workspace_notes_chunks" })
                     .single();
 
                 if (error) return { error: { message: error.message } };
@@ -279,7 +303,7 @@ export const notesAPI = createApi({
                 if (!id) return { error: { message: "Note ID is required" } };
                 if (!workspace_id) return { error: { message: "Workspace ID is required" } };
 
-                const { data, error } = await supabase
+                let { data, error } = await supabase
                     .from("workspace_notes_list")
                     .select(`
                         *
@@ -296,24 +320,29 @@ export const notesAPI = createApi({
                                 , pdf_url
                             )
                         )
+                        , chunks:workspace_notes_chunks(clustered_date)
                     `)
                     .eq("id", id)
                     .eq("workspace_id", workspace_id)
                     .limit(2, { foreignTable: "documents" })
+                    .limit(1, { foreignTable: "workspace_notes_chunks" })
                     .single();
 
                 if (error) return { error: { message: error.message } };
 
                 if (data) {
                     const seen = new Set<string>();
-                    data.documents = (data.documents ?? [])
-                        .filter((doc: any) => {
-                            if (seen.has(doc.paper_id)) return false;
-                            seen.add(doc.paper_id);
-                            return true;
-                        })
-                        .slice(0, 2);
-
+                    data = {
+                        ...data,
+                        clustered_date: data.chunks?.[0]?.clustered_date ?? null,
+                        documents: (data.documents ?? [])
+                            .filter((doc: any) => {
+                                if (seen.has(doc.paper_id)) return false;
+                                seen.add(doc.paper_id);
+                                return true;
+                            })
+                            .slice(0, 2)
+                    }
                 }
 
                 return { data };

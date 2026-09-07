@@ -286,7 +286,16 @@ export const notesAPI = createApi({
                         , page_count:workspace_notes_pages(count)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
-                        , documents:workspace_notes_documents(id, document_content, paper_id, paper:paper_id(title, pdf_url))
+                        , documents:workspace_notes_documents(
+                            id
+                            , similarity_score
+                            , document_content
+                            , paper_id
+                            , paper:paper_id(
+                                title
+                                , pdf_url
+                            )
+                        )
                     `)
                     .eq("id", id)
                     .eq("workspace_id", workspace_id)
@@ -372,11 +381,22 @@ export const notesAPI = createApi({
                         , page_count:workspace_notes_pages(count)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
-                        , documents:workspace_notes_documents(id, document_content, paper_id, paper:paper_id(title, pdf_url))
+                        , documents:workspace_notes_documents(
+                            id
+                            , similarity_score
+                            , document_content
+                            , paper_id
+                            , paper:paper_id(
+                                title
+                                , pdf_url
+                            )
+                        )
+                        , chunks:workspace_notes_chunks(clustered_date)
                     `, { count: "exact" })
                     .eq("workspace_id", workspace_id)
                     .order("created_at", { ascending: false })
                     .limit(2, { foreignTable: "documents" })
+                    .limit(1, { foreignTable: "workspace_notes_chunks" })
                     .range(from, to);
 
                 if (error) {
@@ -393,14 +413,17 @@ export const notesAPI = createApi({
                     data = (data ?? [])
                         .map((note: any) => {
                             if (!note.documents) return note;
-                            note.documents = note.documents
-                                .filter((doc: any) => {
-                                    if (seen.has(doc.paper_id)) return false;
-                                    seen.add(doc.paper_id);
-                                    return true;
-                                })
-                                .slice(0, 2);
-                            return note;
+                            return {
+                                ...note,
+                                clustered_date: note.chunks?.[0]?.clustered_date ?? null,
+                                documents: note.documents
+                                    .filter((doc: any) => {
+                                        if (seen.has(doc.paper_id)) return false;
+                                        seen.add(doc.paper_id);
+                                        return true;
+                                    })
+                                    .slice(0, 2),
+                            }
                         });
                 }
 

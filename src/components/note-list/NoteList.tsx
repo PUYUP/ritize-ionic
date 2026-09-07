@@ -1,7 +1,7 @@
 import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { attachOutline, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { attachOutline, checkmarkCircleSharp, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -91,91 +91,99 @@ const NoteItem: React.FC<{
         }
 
         return (
-            <IonItem lines={isLast ? "none" : "full"} className='note-item'>
-                <div className='w-full py-3'>
-                    <div className='flex'>
-                        <Link to={linkTo} className='block w-full flex-1'>
-                            <p className='flex gap-2 !m-0 items-center'>
-                                <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
-                                <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
-                                <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                <span className='flex gap-1 items-center'>
-                                    {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
-                                    {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
-                                    {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
-                                    <IonText className='text-sm text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
-                                </span>
-                            </p>
-                            <IonText color="dark font-semibold">{item.user.name}</IonText>
+            <>
+                {item.clustered_date && (
+                    <div className='flex items-center gap-2 bg-lime-100 ion-padding-start ion-padding-end py-1'>
+                        <IonIcon icon={checkmarkCircleSharp} color="success"></IonIcon>
+                        <IonText className='text-xs text-lime-800'>Processed as Material</IonText>
+                    </div>
+                )}
+                <IonItem lines={isLast ? "none" : "full"} className='note-item'>
+                    <div className={`w-full py-3 ${item.clustered_date ? '!pt-1' : ''}`}>
+                        <div className='flex'>
+                            <Link to={linkTo} className='block w-full flex-1'>
+                                <p className='flex gap-2 !m-0 items-center'>
+                                    <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
+                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                    <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
+                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                    <span className='flex gap-1 items-center'>
+                                        {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
+                                        {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
+                                        {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
+                                        <IonText className='text-sm text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
+                                    </span>
+                                </p>
+                                <IonText color="dark font-semibold">{item.user.name}</IonText>
+                            </Link>
+
+                            {user.id === item.user.id && (
+                                <div className='ml-auto'>
+                                    <IonButton shape='round' color={'light'} onClick={async () => await optionsHandler(item)}>
+                                        <IonIcon icon={ellipsisVertical} slot='icon-only' />
+                                    </IonButton>
+                                </div>
+                            )}
+                        </div>
+
+                        <Link to={linkTo}>
+                            {content_preview && (
+                                <div
+                                    dangerouslySetInnerHTML={{ __html: content_preview }}
+                                    className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
+                                />
+                            )}
                         </Link>
 
-                        {user.id === item.user.id && (
-                            <div className='ml-auto'>
-                                <IonButton shape='round' color={'light'} onClick={async () => await optionsHandler(item)}>
-                                    <IonIcon icon={ellipsisVertical} slot='icon-only' />
-                                </IonButton>
+                        {content_preview && (
+                            <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
+                                <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
+                                    <IonItemDivider className='bg-neutral-100 ion-padding-start'>
+                                        <IonLabel className='!text-neutral-700 underline italic'>Relevant papers:</IonLabel>
+                                    </IonItemDivider>
+                                    {item.documents?.length > 0 && (
+                                        <>
+                                            {item.documents.map((doc: any, index: number, array: any) => {
+                                                const isLast = index === array.length - 1;
+                                                return (
+                                                    <IonItem
+                                                        key={doc.id}
+                                                        lines={isLast ? 'none' : 'full'}
+                                                        className='bg-neutral-100'
+                                                        style={{ '--background': 'none' }}
+                                                        button={true}
+                                                        mode="md"
+                                                        detail={false}
+                                                        href={doc.paper.pdf_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        <IonLabel className='py-1'>
+                                                            <p className='!text-blue-700'>{doc.paper.title}</p>
+                                                            <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
+                                                        </IonLabel>
+                                                    </IonItem>
+                                                )
+                                            })}
+                                        </>
+                                    )}
+                                    {item.documents?.length === 0 && (
+                                        <IonItem className='bg-neutral-100' style={{ '--background': 'none' }} button={true} mode="md" detail={false}>
+                                            <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
+                                            <IonLabel className='pl-2'>
+                                                <p className='text-neutral-500 !text-xs'>Discovering...</p>
+                                            </IonLabel>
+                                            <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
+                                                tap here to refresh
+                                            </IonButton>
+                                        </IonItem>
+                                    )}
+                                </IonList>
                             </div>
                         )}
                     </div>
-
-                    <Link to={linkTo}>
-                        {content_preview && (
-                            <div
-                                dangerouslySetInnerHTML={{ __html: content_preview }}
-                                className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
-                            />
-                        )}
-                    </Link>
-
-                    {content_preview && (
-                        <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
-                            <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
-                                <IonItemDivider className='bg-neutral-100 ion-padding-start'>
-                                    <IonLabel className='!text-neutral-700 underline italic'>Relevant papers:</IonLabel>
-                                </IonItemDivider>
-                                {item.documents?.length > 0 && (
-                                    <>
-                                        {item.documents.map((doc: any, index: number, array: any) => {
-                                            const isLast = index === array.length - 1;
-                                            return (
-                                                <IonItem
-                                                    key={doc.id}
-                                                    lines={isLast ? 'none' : 'full'}
-                                                    className='bg-neutral-100'
-                                                    style={{ '--background': 'none' }}
-                                                    button={true}
-                                                    mode="md"
-                                                    detail={false}
-                                                    href={doc.paper.pdf_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
-                                                    <IonLabel className='py-1'>
-                                                        <p className='!text-blue-700'>{doc.paper.title}</p>
-                                                        <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
-                                                    </IonLabel>
-                                                </IonItem>
-                                            )
-                                        })}
-                                    </>
-                                )}
-                                {item.documents?.length === 0 && (
-                                    <IonItem className='bg-neutral-100' style={{ '--background': 'none' }} button={true} mode="md" detail={false}>
-                                        <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
-                                        <IonLabel className='pl-2'>
-                                            <p className='text-neutral-500 !text-xs'>Discovering...</p>
-                                        </IonLabel>
-                                        <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
-                                            tap here to refresh
-                                        </IonButton>
-                                    </IonItem>
-                                )}
-                            </IonList>
-                        </div>
-                    )}
-                </div>
-            </IonItem>
+                </IonItem>
+            </>
         )
     }
 

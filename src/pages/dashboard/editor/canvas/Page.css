@@ -27,7 +27,8 @@
 .excalidraw button[data-testid="toolbar-hand--"],
 .excalidraw button[data-testid="toolbar-freedraw"]:is(.ToolIcon--checked)+div,
 .excalidraw button[data-testid="toolbar-selection"]:is(.ToolIcon--checked)+div,
-.excalidraw .compact-action-item:has(.FontPicker__container) {
+.excalidraw .compact-action-item:has(.FontPicker__container),
+.excalidraw .disable-view-mode {
     display: none !important;
 }
 

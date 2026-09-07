@@ -59,6 +59,7 @@ const RichTextEditorPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
     const noteId = searchParams.get('noteId');
+    const isProcessed = Boolean(searchParams.get('clusteredDate'));
 
     const ionContentRef = useRef<HTMLIonContentElement>(null);
     const quillRef = useRef<Quill | null>(null);
@@ -132,7 +133,7 @@ const RichTextEditorPage: React.FC = () => {
     // Persists whatever is currently in the editor for the currently selected page.
     const persistCurrentPage = useCallback(async () => {
         const quill = quillRef.current;
-        if (!quill || !selectedPage) return;
+        if (!quill || !selectedPage || isProcessed) return;
         await persistPageContent(selectedPage, quill.getContents());
         setIsDirty(false);
     }, [selectedPage, persistPageContent]);
@@ -318,10 +319,10 @@ const RichTextEditorPage: React.FC = () => {
         try {
             // Flush any unsaved edits on the OUTGOING page before touching
             // selectedPage / swapping the editor's content.
-            await flushPendingSave();
+            if (!isProcessed) await flushPendingSave();
 
             const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
-            await NotesRepository.updatePagesBulk(updatedPages);
+            if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
             setPages(updatedPages);
 
             if (selectedNote) {
@@ -404,7 +405,7 @@ const RichTextEditorPage: React.FC = () => {
                 console.log('load note from local database', note);
             } else {
                 // 2. note tidak ada di local, load dari server
-                const { data: serverNote } = await getNoteById({ id: noteId });
+                const { data: serverNote } = await getNoteById({ id: noteId, workspace_id: workspaceId });
                 console.log('load note from server', serverNote);
 
                 // 3. karena dari server, inject ke local db
@@ -550,27 +551,29 @@ const RichTextEditorPage: React.FC = () => {
                     </IonTitle>
 
                     {/* pages tools */}
-                    <div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
-                        <IonButton
-                            size='small'
-                            shape="round"
-                            color={'light'}
-                            disabled={!hasContent}
-                            onClick={() => setShowClearAlert(true)}
-                        >
-                            <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
-                        </IonButton>
+                    {!isProcessed && (
+                        <div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
+                            <IonButton
+                                size='small'
+                                shape="round"
+                                color={'light'}
+                                disabled={!hasContent || isProcessed}
+                                onClick={() => setShowClearAlert(true)}
+                            >
+                                <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
+                            </IonButton>
 
-                        <IonButton
-                            size='small'
-                            shape="round"
-                            color={'light'}
-                            disabled={pages.length <= 1 || !selectedPage}
-                            onClick={() => setShowRemoveAlert(true)}
-                        >
-                            <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
-                        </IonButton>
-                    </div>
+                            <IonButton
+                                size='small'
+                                shape="round"
+                                color={'light'}
+                                disabled={pages.length <= 1 || !selectedPage || isProcessed}
+                                onClick={() => setShowRemoveAlert(true)}
+                            >
+                                <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
+                            </IonButton>
+                        </div>
+                    )}
                 </IonToolbar>
             </IonHeader>
 
@@ -583,11 +586,12 @@ const RichTextEditorPage: React.FC = () => {
                     onImageUpload={handleImageUpload}
                     clearSignal={clearSignal}
                     onEnter={handleEnter}
+                    readOnly={isProcessed}
                     className="quill-editor-container"
                 />
             </IonContent>
 
-            <IonFooter>
+            <IonFooter className='ion-no-border'>
                 <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                     <div className='flex flex-row gap-2 items-center justify-between h-full px-2 py-2'>
                         <div className='flex-1 overflow-hidden'>
@@ -610,11 +614,19 @@ const RichTextEditorPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className='flex items-center pb-1 pr-2'>
-                            <IonButton size='small' shape="round" color={'light'} onClick={async () => await newPageHandler()}>
-                                <IonIcon icon={duplicateOutline} slot='icon-only'></IonIcon>
-                            </IonButton>
-                        </div>
+                        {!isProcessed && (
+                            <div className='flex items-center pb-1 pr-2'>
+                                <IonButton
+                                    size='small'
+                                    shape="round"
+                                    color={'light'}
+                                    disabled={isProcessed}
+                                    onClick={async () => await newPageHandler()}
+                                >
+                                    <IonIcon icon={duplicateOutline} slot='icon-only'></IonIcon>
+                                </IonButton>
+                            </div>
+                        )}
                     </div>
                 </div>
             </IonFooter>

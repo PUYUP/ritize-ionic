@@ -56,6 +56,7 @@ const CanvasEditorPage: React.FC = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const workspaceId = searchParams.get('workspaceId');
 	const noteId = searchParams.get('noteId');
+	const isProcessed = Boolean(searchParams.get('clusteredDate'));
 
 	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
 	const [isLoaded, setIsLoaded] = useState(false);
@@ -219,7 +220,7 @@ const CanvasEditorPage: React.FC = () => {
 	// Persists whatever is currently on the canvas for the currently
 	// selected page.
 	const persistCurrentPage = useCallback(async () => {
-		if (!excalidrawAPI || !selectedPage) return;
+		if (!excalidrawAPI || !selectedPage || isProcessed) return;
 		await persistPageContent(
 			selectedPage,
 			excalidrawAPI.getSceneElements(),
@@ -438,10 +439,10 @@ const CanvasEditorPage: React.FC = () => {
 		try {
 			// Flush any unsaved edits on the OUTGOING page before touching
 			// selectedPage / swapping the canvas' content.
-			await flushPendingSave();
+			if (!isProcessed) await flushPendingSave();
 
 			const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
-			await NotesRepository.updatePagesBulk(updatedPages);
+			if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
 			setPages(updatedPages);
 
 			if (selectedNote) {
@@ -526,7 +527,7 @@ const CanvasEditorPage: React.FC = () => {
 				console.log('load note from local database', note);
 			} else {
 				// 2. note tidak ada di local, load dari server
-				const { data: serverNote } = await getNoteById({ id: noteId });
+				const { data: serverNote } = await getNoteById({ id: noteId, workspace_id: workspaceId });
 				console.log('load note from server', serverNote);
 
 				// 3. karena dari server, inject ke local db
@@ -679,27 +680,29 @@ const CanvasEditorPage: React.FC = () => {
 					</IonTitle>
 
 					{/* pages tools */}
-					<div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
-						<IonButton
-							size='small'
-							shape="round"
-							color={'light'}
-							disabled={!hasContent}
-							onClick={() => setShowClearAlert(true)}
-						>
-							<IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
-						</IonButton>
+					{!isProcessed && (
+						<div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
+							<IonButton
+								size='small'
+								shape="round"
+								color={'light'}
+								disabled={!hasContent || isProcessed}
+								onClick={() => setShowClearAlert(true)}
+							>
+								<IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
+							</IonButton>
 
-						<IonButton
-							size='small'
-							shape="round"
-							color={'light'}
-							disabled={pages.length <= 1 || !selectedPage}
-							onClick={() => setShowRemoveAlert(true)}
-						>
-							<IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
-						</IonButton>
-					</div>
+							<IonButton
+								size='small'
+								shape="round"
+								color={'light'}
+								disabled={pages.length <= 1 || !selectedPage || isProcessed}
+								onClick={() => setShowRemoveAlert(true)}
+							>
+								<IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
+							</IonButton>
+						</div>
+					)}
 				</IonToolbar>
 			</IonHeader>
 
@@ -729,7 +732,7 @@ const CanvasEditorPage: React.FC = () => {
 						// onScrollChange={handleScrollChange}
 						gridModeEnabled={true}
 						zenModeEnabled={true}
-						viewModeEnabled={false}
+						viewModeEnabled={isProcessed}
 						UIOptions={{
 							// @ts-ignore
 							getFormFactor: () => 'phone',
@@ -774,11 +777,19 @@ const CanvasEditorPage: React.FC = () => {
 								</div>
 							</div>
 
-							<div>
-								<IonButton size='small' shape="round" color={'light'} onClick={async () => await newPageHandler()}>
-									<IonIcon icon={duplicateOutline} slot='icon-only'></IonIcon>
-								</IonButton>
-							</div>
+							{!isProcessed && (
+								<div>
+									<IonButton
+										size='small'
+										shape="round"
+										color={'light'}
+										onClick={async () => await newPageHandler()}
+										disabled={isProcessed}
+									>
+										<IonIcon icon={duplicateOutline} slot='icon-only'></IonIcon>
+									</IonButton>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>

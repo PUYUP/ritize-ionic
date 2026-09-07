@@ -75,7 +75,7 @@ const NoteItem: React.FC<{
             editor = 'files';
         }
 
-        let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}`;
+        let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}${item.clustered_date ? `&clusteredDate=${item.clustered_date}` : ''}`;
 
         // if not the creator, view the note as a normal viewer
         if (item.user.id !== user.id) {
@@ -119,7 +119,7 @@ const NoteItem: React.FC<{
 
                             {user.id === item.user.id && (
                                 <div className='ml-auto'>
-                                    <IonButton shape='round' color={'light'} onClick={async () => await optionsHandler(item)}>
+                                    <IonButton shape='round' color={'light'} disabled={Boolean(item.clustered_date)} onClick={async () => await optionsHandler(item)}>
                                         <IonIcon icon={ellipsisVertical} slot='icon-only' />
                                     </IonButton>
                                 </div>

@@ -55,6 +55,7 @@ const FilesEditorPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
     const noteId = searchParams.get('noteId');
+    const isProcessed = Boolean(searchParams.get('clusteredDate'));
 
     const [pages, setPages] = useState<FilePage[]>([]);
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -125,7 +126,7 @@ const FilesEditorPage: React.FC = () => {
 
     // Persists whatever is currently in the editor for the currently selected page.
     const persistCurrentPage = useCallback(async () => {
-        if (!selectedPage) return;
+        if (!selectedPage || isProcessed) return;
         await persistPageContent(selectedPage, null);
         setIsDirty(false);
     }, [selectedPage, persistPageContent]);
@@ -204,14 +205,14 @@ const FilesEditorPage: React.FC = () => {
         try {
             // Flush any unsaved edits on the OUTGOING page before touching
             // selectedPage / swapping the editor's content.
-            await flushPendingSave();
+            if (!isProcessed) await flushPendingSave();
 
             const updatedPages = pages.map((p) => {
                 delete p.uploadProgress;
                 delete p.uploadError;
                 return { ...p, isActive: p.id === page.id }
             });
-            await NotesRepository.updatePagesBulk(updatedPages);
+            if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
             setPages(updatedPages);
 
             if (selectedNote) {
@@ -350,7 +351,7 @@ const FilesEditorPage: React.FC = () => {
                 console.log('load note from local database', note);
             } else {
                 // 2. note tidak ada di local, load dari server
-                const { data: serverNote } = await getNoteById({ id: noteId });
+                const { data: serverNote } = await getNoteById({ id: noteId, workspace_id: workspaceId });
                 console.log('load note from server', serverNote);
 
                 // 3. karena dari server, inject ke local db
@@ -743,42 +744,44 @@ const FilesEditorPage: React.FC = () => {
                 )}
             </IonContent>
 
-            <IonFooter className="w-full py-3 ion-no-border">
-                <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
-                    <div className='px-3 text-center'>
-                        <IonText className="text-sm text-center w-full" color={'medium'}>Upload PDF, DOCX, TXT, Image and Audio Files</IonText>
-                        <div className='flex-1 mt-2'>
-                            <div className="flex justify-center gap-4">
-                                <div className="flex items-center gap-4">
-                                    <IonButton
-                                        shape="round"
-                                        color={'dark'}
-                                        onClick={selectFile}
-                                    >
-                                        <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
-                                        <IonText className="ml-2">Select File</IonText>
-                                    </IonButton>
-
-                                    <ImageCapture
-                                        resultType={CameraResultType.Uri}
-                                        onImageCaptured={handleImageCaptured}
-                                        onError={handleError}
-                                        quality={90}               // Optional: default is 90
-                                        allowEditing={true}        // Optional: allows cropping/editing (default false)
-                                    >
+            {!isProcessed && (
+                <IonFooter className="w-full py-3 ion-no-border">
+                    <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
+                        <div className='px-3 text-center'>
+                            <IonText className="text-sm text-center w-full" color={'medium'}>Upload PDF, DOCX, TXT, Image and Audio Files</IonText>
+                            <div className='flex-1 mt-2'>
+                                <div className="flex justify-center gap-4">
+                                    <div className="flex items-center gap-4">
                                         <IonButton
                                             shape="round"
                                             color={'dark'}
+                                            onClick={selectFile}
                                         >
-                                            <IonIcon icon={cameraOutline} slot="icon-only"></IonIcon>
+                                            <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
+                                            <IonText className="ml-2">Select File</IonText>
                                         </IonButton>
-                                    </ImageCapture>
+
+                                        <ImageCapture
+                                            resultType={CameraResultType.Uri}
+                                            onImageCaptured={handleImageCaptured}
+                                            onError={handleError}
+                                            quality={90}               // Optional: default is 90
+                                            allowEditing={true}        // Optional: allows cropping/editing (default false)
+                                        >
+                                            <IonButton
+                                                shape="round"
+                                                color={'dark'}
+                                            >
+                                                <IonIcon icon={cameraOutline} slot="icon-only"></IonIcon>
+                                            </IonButton>
+                                        </ImageCapture>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </IonFooter>
+                </IonFooter>
+            )}
 
             {/* remove page alert */}
             <IonAlert

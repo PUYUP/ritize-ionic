@@ -108,7 +108,7 @@ const QuillEditor = forwardRef<Quill, QuillEditorProps>(
                 placeholder,
                 readOnly,
                 modules: {
-                    toolbar: toolbarModule,
+                    toolbar: readOnly ? false : toolbarModule,
                     keyboard: {
                         bindings: {
                             enter: {

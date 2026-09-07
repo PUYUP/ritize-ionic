@@ -10,6 +10,7 @@ import WorkspacePage from "../pages/dashboard/workspace/Page";
 import FilesEditorPage from "../pages/dashboard/editor/files/Page";
 import NotesPage from "../pages/dashboard/notes/Page";
 import MaterialsPage from "../pages/dashboard/materials/Page";
+import DigestsPage from "../pages/dashboard/digests/Page";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -24,4 +25,5 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/workspace/:id/members", element: <WorkspaceMembersPage /> },
     { path: "/dashboard/notes", element: <NotesPage /> },
     { path: "/dashboard/materials", element: <MaterialsPage /> },
+    { path: "/dashboard/digests", element: <DigestsPage /> },
 ];

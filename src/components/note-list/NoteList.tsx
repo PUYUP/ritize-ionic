@@ -104,19 +104,19 @@ const NoteItem: React.FC<{
                     <div className={`w-full py-3 ${item.clustered_date ? '!pt-1' : ''}`}>
                         <div className='flex'>
                             <Link to={linkTo} className='block w-full flex-1'>
-                                <p className='flex gap-2 !m-0 items-center'>
-                                    <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
-                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                    <IonText className='text-sm text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
-                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                <p className='flex gap-2 !m-0 items-center !text-sm'>
+                                    <IonText className='text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
+                                    <IonText className='text-neutral-400'>&bull;</IonText>
+                                    <IonText className='text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
+                                    <IonText className='text-neutral-400'>&bull;</IonText>
                                     <span className='flex gap-1 items-center'>
                                         {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
                                         {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
                                         {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
-                                        <IonText className='text-sm text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
+                                        <IonText className='text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
                                     </span>
                                 </p>
-                                <IonText color="dark font-semibold text-sm -mt-0.5 block">{item.user.name}</IonText>
+                                <IonText color="dark font-semibold text-sm block">{item.user.name}</IonText>
                             </Link>
 
                             {user.id === item.user.id && (

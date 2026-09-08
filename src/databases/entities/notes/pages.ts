@@ -31,6 +31,9 @@ export class Page {
     @Column('uuid', { nullable: true })
     syncedId!: string | null;
 
+    @Column('simple-json', { nullable: true })
+    metadata!: Record<string, any> | null;
+
     @Column({
         type: 'blob', // Gunakan 'bytea' jika menggunakan PostgreSQL
         nullable: true, // Set true jika halaman bisa tidak memiliki file/blob
@@ -42,6 +45,9 @@ export class Page {
         },
     })
     contentData!: Buffer | null;
+
+    @Column('varchar', { nullable: true })
+    contentText!: string | null;
 
     @ManyToOne(() => Note, note => note.pages, {
         eager: false,

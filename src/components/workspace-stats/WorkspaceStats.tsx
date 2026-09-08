@@ -1,4 +1,4 @@
-import { bulbOutline, chevronForwardOutline, folderOpenOutline, readerOutline } from 'ionicons/icons';
+import { bulbOutline, chevronForwardOutline, folderOpenOutline, readerOutline, sparklesOutline } from 'ionicons/icons';
 import './WorkspaceStats.css';
 import { IonCard, IonCardContent, IonIcon, IonText } from '@ionic/react';
 import { NumericFormat } from 'react-number-format';
@@ -99,7 +99,7 @@ const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSet
                                     {digest.todayCount}
                                 </div>
                                 <div className='ml-auto flex items-center'>
-                                    <IonIcon icon={bulbOutline} className='text-2xl text-[#E5A000]' />
+                                    <IonIcon icon={sparklesOutline} className='text-2xl text-[#E5A000]' />
                                 </div>
                             </div>
 

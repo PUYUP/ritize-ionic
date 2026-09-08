@@ -44,12 +44,12 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                             </div>
 
                             <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700">Freehand</IonText>
+                                <IonText className="font-semibold text-sm text-neutral-700">Canvas</IonText>
                             </div>
 
                             <div className='block leading-2'>
                                 <IonText className='text-xs line-clamp-1'>
-                                    Stylus or finger
+                                    Use stylus or finger
                                 </IonText>
                             </div>
                         </IonCardContent>

@@ -228,7 +228,13 @@ const CanvasEditorPage: React.FC = () => {
 				.select('*')
 				.single();
 
-			console.log(attachmentData);
+			const metadata = {
+				file: fileData,
+				attachment: attachmentData,
+			}
+
+			await NotesRepository.updatePage(page.id as string, { metadata }, false);
+			console.log('selected page id: ', page.id, ' is updated');
 		} catch (err) {
 			console.error('Failed to save canvas', err);
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave

@@ -34,4 +34,7 @@ export class Note {
     @Column('uuid', { nullable: true })
     syncedId!: string | null;
 
+    @Column('simple-json', { nullable: true })
+    metadata!: Record<string, any> | null;
+
 }

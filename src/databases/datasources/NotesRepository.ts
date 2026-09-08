@@ -284,6 +284,8 @@ class NotesRepository {
                                 synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
                                 synced_id: savedPage.syncedId,
                                 content_data: objString,
+                                content_text: savedPage.contentText as string,
+                                metadata: savedPage.metadata,
                                 page_num: savedPage.pageNum,
                                 title: savedPage.title,
                                 is_active: savedPage.isActive,

@@ -31,6 +31,8 @@ export type NotePageTypes = {
     synced_id?: string | null;
     is_active: boolean;
     content_data: Blob;
+    content_text?: string;
+    metadata?: any;
 }
 
 export type PaginatedNotesResponse = {

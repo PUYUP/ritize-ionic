@@ -49,6 +49,9 @@ export class Page {
     @Column('varchar', { nullable: true })
     contentText!: string | null;
 
+    @Column('simple-json', { nullable: true })
+    contentExtracted!: Record<string, any> | Array<any> | null;
+
     @ManyToOne(() => Note, note => note.pages, {
         eager: false,
         cascade: ['insert'],

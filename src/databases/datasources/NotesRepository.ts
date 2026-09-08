@@ -285,6 +285,7 @@ class NotesRepository {
                                 synced_id: savedPage.syncedId,
                                 content_data: objString,
                                 content_text: savedPage.contentText as string,
+                                content_extracted: savedPage.contentExtracted,
                                 metadata: savedPage.metadata,
                                 page_num: savedPage.pageNum,
                                 title: savedPage.title,

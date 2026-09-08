@@ -32,6 +32,7 @@ export type NotePageTypes = {
     is_active: boolean;
     content_data: Blob;
     content_text?: string;
+    content_extracted?: Record<string, any> | Array<any> | null;
     metadata?: any;
 }
 

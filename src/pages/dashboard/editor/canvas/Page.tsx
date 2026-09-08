@@ -13,12 +13,13 @@ import {
 	useIonToast,
 	useIonViewDidEnter,
 	useIonViewDidLeave,
+	useIonViewWillEnter,
 	useIonViewWillLeave,
 } from '@ionic/react';
 import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import './Page.css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
 import { useDeviceWidth } from '../../../../utils/sizing';
 import { menuController } from '@ionic/core/components';
@@ -61,6 +62,7 @@ const CanvasEditorPage: React.FC = () => {
 	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
 	const [isLoaded, setIsLoaded] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
+	const isDirtyRef = useRef(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [hasContent, setHasContent] = useState(false);
 	const [pages, setPages] = useState<Page[]>([]);
@@ -77,6 +79,15 @@ const CanvasEditorPage: React.FC = () => {
 	// no-op autosave (e.g. triggered right after loading content into the
 	// canvas) can be skipped instead of writing an identical row again.
 	const lastSavedDataRef = useRef<string | null>(null);
+	// Menyimpan backup data Excalidraw secara real-time
+	const latestCanvasStateRef = useRef<{
+		elements: readonly ExcalidrawElement[];
+		appState: AppState;
+		files: BinaryFiles;
+	} | null>(null);
+
+	// Menyimpan halaman yang sedang aktif agar tidak menjadi null saat unmount
+	const selectedPageRef = useRef<Partial<Page> | null>(null);
 
 	const width = useDeviceWidth();
 
@@ -84,18 +95,24 @@ const CanvasEditorPage: React.FC = () => {
 	const pagesSwiperRef = useRef<Swiper | null>(null);
 	const prevPagesLengthRef = useRef(pages.length);
 	const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
+	const isPageActiveRef = useRef(true);
 
 	// RTK Query
 	const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
 	const [upsertNote] = useUpsertNoteMutation();
 	const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
 
+	const updateIsDirty = useCallback((value: boolean) => {
+		setIsDirty(value);
+		isDirtyRef.current = value;
+	}, []);
+
 	// excalidraw setups
-	const excalidrawAppProps = {
+	const excalidrawAppProps = useMemo(() => ({
 		appState: {
 			currentItemStrokeWidth: 0.5,
 			currentItemStrokeColor: '#1e1e1e',
-			gridStep: width,
+			gridStep: width, // Pastikan 'width' masuk ke dependency array di bawah
 			activeTool: {
 				type: 'freedraw' as const,
 				customType: null,
@@ -105,7 +122,7 @@ const CanvasEditorPage: React.FC = () => {
 			},
 			penMode: false,
 		} as any
-	}
+	}), [width]); // <-- re-create hanya jika width layar berubah
 
 	const handleUpdateUrlWithNoteId = (newNoteId: string) => {
 		prevNoteIdRef.current = newNoteId;
@@ -125,7 +142,8 @@ const CanvasEditorPage: React.FC = () => {
 		appState: AppState,
 		files: BinaryFiles,
 	) => {
-		setIsSaving(true);
+		// Hanya update state UI jika halaman masih aktif
+		if (isPageActiveRef.current) setIsSaving(true);
 		try {
 			const contentEmpty = isElementsEmpty(elements);
 			const json = contentEmpty ? null : serializeAsJSON(elements, appState, files, 'local');
@@ -141,9 +159,11 @@ const CanvasEditorPage: React.FC = () => {
 			await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
 			console.log('selected page id: ', page.id, ' is updated');
 
-			setPages((prevPages) =>
-				prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
-			);
+			if (isPageActiveRef.current) {
+				setPages((prevPages) =>
+					prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
+				);
+			}
 
 			// extract as image
 			const blob = await exportToBlob({
@@ -211,24 +231,37 @@ const CanvasEditorPage: React.FC = () => {
 			console.log(attachmentData);
 		} catch (err) {
 			console.error('Failed to save canvas', err);
-			presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
+			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
+			if (isPageActiveRef.current) {
+				presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
+			}
 		} finally {
-			setIsSaving(false);
+			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
+			if (isPageActiveRef.current) setIsSaving(false);
 		}
 	}, [presentToast, workspaceId]);
 
 	// Persists whatever is currently on the canvas for the currently
 	// selected page.
 	const persistCurrentPage = useCallback(async () => {
-		if (!excalidrawAPI || !selectedPage || isProcessed) return;
-		await persistPageContent(
-			selectedPage,
-			excalidrawAPI.getSceneElements(),
-			excalidrawAPI.getAppState(),
-			excalidrawAPI.getFiles(),
-		);
-		setIsDirty(false);
-	}, [excalidrawAPI, selectedPage, persistPageContent]);
+		// Ambil data dari Ref, bukan dari state yang mungkin sudah hilang
+		const page = selectedPageRef.current;
+		const canvasData = latestCanvasStateRef.current;
+
+		if (!canvasData || !page || isProcessed) return;
+
+		const elements = canvasData.elements;
+		const appState = canvasData.appState;
+		const files = canvasData.files;
+
+		// Set false agar tidak terpicu dua kali
+		updateIsDirty(false);
+
+		// Eksekusi API secara asynchronous
+		await persistPageContent(page, elements, appState, files);
+
+		// HAPUS excalidrawAPI dan selectedPage dari array di bawah ini 👇
+	}, [isProcessed, persistPageContent, updateIsDirty]);
 
 	// Cancels any pending debounced autosave and, if there are unsaved
 	// changes, saves them immediately for the CURRENT page.
@@ -250,19 +283,33 @@ const CanvasEditorPage: React.FC = () => {
 		const visibleElements = elements.filter((el) => !el.isDeleted);
 		setHasContent(visibleElements.length > 0);
 
-		setIsDirty(true);
+		updateIsDirty(true);
+
+		// SIMPAN DATA KANVAS KE MEMORI
+		if (excalidrawAPI) {
+			latestCanvasStateRef.current = {
+				elements,
+				appState,
+				files: excalidrawAPI.getFiles() // Tangkap files (gambar, dll)
+			};
+		}
 
 		if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
 		autosaveTimer.current = setTimeout(() => {
 			void persistCurrentPage();
 		}, AUTOSAVE_DELAY_MS);
-	}, [persistCurrentPage]);
+	}, [updateIsDirty, excalidrawAPI, persistCurrentPage]); // Pastikan dependencies sesuai
 
 	// Ionic's router outlet keeps pages mounted in its history stack, so plain
 	// unmount isn't a reliable "user is leaving" signal — flush explicitly.
+	useIonViewWillEnter(() => {
+		isPageActiveRef.current = true;
+	});
+
 	useIonViewWillLeave(() => {
-		void flushPendingSave();
-	}, [flushPendingSave]);
+		isPageActiveRef.current = false;
+		flushPendingSave();
+	});
 
 	useIonViewDidEnter(() => {
 		window.dispatchEvent(new Event('resize'));
@@ -283,6 +330,10 @@ const CanvasEditorPage: React.FC = () => {
 	useEffect(() => () => {
 		if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
 	}, []);
+
+	useEffect(() => {
+		selectedPageRef.current = selectedPage;
+	}, [selectedPage]);
 
 	useEffect(() => {
 		menuController.swipeGesture(false);
@@ -654,14 +705,30 @@ const CanvasEditorPage: React.FC = () => {
 	// Reset state & canvas saat berpindah antar note (mengatasi isu cache/stale data)
 	useEffect(() => {
 		if (prevNoteIdRef.current !== noteId) {
+
+			// 1. SELAMATKAN DATA SEBELUMNYA!
+			// Jika kanvas masih kotor (belum disave), paksa save sekarang
+			// ke background menggunakan data note yang lama (dari Ref).
+			if (isDirtyRef.current) {
+				console.log("Menyimpan note lama sebelum berpindah ke note baru...");
+				flushPendingSave();
+			}
+
+			// 2. Lakukan Reset State
 			setPages([]);
 			setSelectedPage(null);
 			setSelectedNote(null);
 			lastSavedDataRef.current = null;
+
+			// 3. Update penanda
 			prevNoteIdRef.current = noteId;
 
+			// 4. Bersihkan Kanvas Excalidraw
 			if (excalidrawAPI) {
-				excalidrawAPI.updateScene({ elements: [], appState: excalidrawAppProps.appState });
+				excalidrawAPI.updateScene({
+					elements: [],
+					appState: excalidrawAppProps.appState
+				});
 			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps

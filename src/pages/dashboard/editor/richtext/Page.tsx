@@ -15,6 +15,7 @@ import {
     useIonToast,
     useIonViewDidEnter,
     useIonViewDidLeave,
+    useIonViewWillEnter,
     useIonViewWillLeave,
 } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,11 +30,11 @@ import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
-import { NoteFormatTypes, NotePageTypes, NoteTypes, useGetNoteByIdQuery, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
+import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 import { generateUUID } from '../../../../utils/generator';
 
-const AUTOSAVE_DELAY_MS = 1500;
+const AUTOSAVE_DELAY_MS = 5000;
 
 /**
  * A delta is "empty" only if it has no text AND no embeds (images, formulas,
@@ -65,6 +66,7 @@ const RichTextEditorPage: React.FC = () => {
     const quillRef = useRef<Quill | null>(null);
     const autosaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const [isDirty, setIsDirty] = useState(false);
+    const isDirtyRef = useRef(false);
     const [isSaving, setIsSaving] = useState(false);
     const [hasContent, setHasContent] = useState(false);
     const [pages, setPages] = useState<Page[]>([]);
@@ -80,16 +82,28 @@ const RichTextEditorPage: React.FC = () => {
     const pagesSwiperRef = useRef<Swiper | null>(null);
     const prevPagesLengthRef = useRef(pages.length);
     const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
+    const isPageActiveRef = useRef(true);
 
     // Tracks the JSON we last wrote to the DB for the active page, so a
     // no-op autosave (e.g. triggered right after loading content into the
     // canvas) can be skipped instead of writing an identical row again.
     const lastSavedDataRef = useRef<string | null>(null);
 
+    // Menyimpan backup data Excalidraw secara real-time
+    const latestQuillStateRef = useRef<Quill | null>(null);
+
+    // Menyimpan halaman yang sedang aktif agar tidak menjadi null saat unmount
+    const selectedPageRef = useRef<Partial<Page> | null>(null);
+
     // RTK Query
     const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
     const [upsertNote] = useUpsertNoteMutation();
     const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
+
+    const updateIsDirty = useCallback((value: boolean) => {
+        setIsDirty(value);
+        isDirtyRef.current = value;
+    }, []);
 
     const handleUpdateUrlWithNoteId = (newNoteId: string) => {
         prevNoteIdRef.current = newNoteId;
@@ -103,7 +117,8 @@ const RichTextEditorPage: React.FC = () => {
     // exactly what gets written where — this is what makes it safe to call
     // right before switching pages (see flushPendingSave / persistCurrentPage).
     const persistPageContent = useCallback(async (page: Partial<Page>, delta: Delta) => {
-        setIsSaving(true);
+        // Hanya update state UI jika halaman masih aktif
+        if (isPageActiveRef.current) setIsSaving(true);
         try {
             const contentEmpty = isDeltaEmpty(delta);
             const json = contentEmpty ? null : JSON.stringify(delta);
@@ -119,24 +134,36 @@ const RichTextEditorPage: React.FC = () => {
             await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
             console.log('selected page id: ', page.id, ' is updated');
 
-            setPages((prevPages) =>
-                prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
-            );
+            // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
+            if (isPageActiveRef.current) {
+                setPages((prevPages) =>
+                    prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
+                );
+            }
         } catch (err) {
             console.error('Failed to save document', err);
-            presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
+            // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
+            if (isPageActiveRef.current) {
+                presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
+            }
         } finally {
-            setIsSaving(false);
+            // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
+            if (isPageActiveRef.current) setIsSaving(false);
         }
     }, [presentToast, workspaceId]);
 
     // Persists whatever is currently in the editor for the currently selected page.
     const persistCurrentPage = useCallback(async () => {
-        const quill = quillRef.current;
-        if (!quill || !selectedPage || isProcessed) return;
-        await persistPageContent(selectedPage, quill.getContents());
-        setIsDirty(false);
-    }, [selectedPage, persistPageContent]);
+        // Ambil data dari Ref, bukan dari state yang mungkin sudah hilang
+        const page = selectedPageRef.current;
+        const quill = latestQuillStateRef.current;
+
+        if (!quill || !page || isProcessed) return;
+        await persistPageContent(page, quill.getContents());
+
+        // Set false agar tidak terpicu dua kali
+        updateIsDirty(false);
+    }, [isProcessed, persistPageContent, updateIsDirty]);
 
     // Cancels any pending debounced autosave and, if there are unsaved
     // changes, saves them immediately for the CURRENT page.
@@ -145,13 +172,21 @@ const RichTextEditorPage: React.FC = () => {
     // the editor. Without it, a pending autosave (scheduled while page A was
     // active) can fire after page B's content has already been swapped into
     // the editor, saving page B's content under page A's id.
-    const flushPendingSave = useCallback(async () => {
+    const flushPendingSave = useCallback(() => {
+        // Bersihkan timer
         if (autosaveTimer.current) {
             clearTimeout(autosaveTimer.current);
             autosaveTimer.current = undefined;
         }
-        if (!isDirty) return;
-        await persistCurrentPage();
+
+        if (!isDirtyRef.current) return Promise.resolve();
+
+        // Jalankan tanpa 'await'. Ini akan membuat proses simpan 
+        // dilempar ke background (background promise) sehingga
+        // router bisa pindah halaman dengan mulus tanpa memutus request.
+        return persistCurrentPage().catch((err) => {
+            console.error("Background save failed:", err);
+        });
     }, [isDirty, persistCurrentPage]);
 
     const handleTextChange = useCallback((
@@ -165,7 +200,11 @@ const RichTextEditorPage: React.FC = () => {
         // real user edits should mark the document dirty / trigger a save.
         if (source !== 'user') return;
 
-        setIsDirty(true);
+        updateIsDirty(true);
+
+        // SIMPAN DATA KANVAS KE MEMORI
+        latestQuillStateRef.current = quill;
+
         // Base "has content" on the full document, not the incremental
         // delta diff — a diff of a deletion can have >1 ops and a diff of
         // an insertion can look "non-empty" while the document as a whole
@@ -176,7 +215,7 @@ const RichTextEditorPage: React.FC = () => {
         autosaveTimer.current = setTimeout(() => {
             void persistCurrentPage();
         }, AUTOSAVE_DELAY_MS);
-    }, [persistCurrentPage]);
+    }, [persistCurrentPage, updateIsDirty]);
 
     const handleEnter = useCallback((quill: Quill) => {
         ionContentRef.current?.scrollToBottom(0);
@@ -184,9 +223,14 @@ const RichTextEditorPage: React.FC = () => {
 
     // Ionic's router outlet keeps pages mounted in its history stack, so plain
     // unmount isn't a reliable "user is leaving" signal — flush explicitly.
+    useIonViewWillEnter(() => {
+        isPageActiveRef.current = true;
+    });
+
     useIonViewWillLeave(() => {
-        void flushPendingSave();
-    }, [flushPendingSave]);
+        isPageActiveRef.current = false;
+        flushPendingSave();
+    });
 
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));
@@ -207,6 +251,10 @@ const RichTextEditorPage: React.FC = () => {
     useEffect(() => () => {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     }, []);
+
+    useEffect(() => {
+        selectedPageRef.current = selectedPage;
+    }, [selectedPage]);
 
     const handleImageUpload: ImageUploadHandler = useCallback(async (file) => {
         // TODO: upload to real storage (S3, Cloudinary, your API…) and return the URL.
@@ -310,7 +358,7 @@ const RichTextEditorPage: React.FC = () => {
         };
 
         loadContentData();
-    }, [selectedPage]);
+    }, [selectedPage, quillRef]);
 
     // select page
     const selectPageHandler = async (page: Page) => {
@@ -525,6 +573,14 @@ const RichTextEditorPage: React.FC = () => {
 
     // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
     useEffect(() => {
+        // 1. SELAMATKAN DATA SEBELUMNYA!
+        // Jika kanvas masih kotor (belum disave), paksa save sekarang
+        // ke background menggunakan data note yang lama (dari Ref).
+        if (isDirtyRef.current) {
+            console.log("Menyimpan note lama sebelum berpindah ke note baru...");
+            flushPendingSave();
+        }
+
         if (prevNoteIdRef.current !== noteId) {
             setPages([]);
             setSelectedPage(null);

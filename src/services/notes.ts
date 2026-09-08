@@ -544,16 +544,7 @@ export const notesAPI = createApi({
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")
-                    .insert({
-                        user_id: user.id,
-                        workspace_id: body.workspace_id,
-                        workspace_note_id: body.workspace_note_id,
-                        page_num: body.page_num,
-                        is_active: body.is_active ?? true,
-                        content_data: body.content_data,
-                        synced_id: body.synced_id,
-                        synced_at: body.synced_at,
-                    })
+                    .insert(body)
                     .select()
                     .single();
 

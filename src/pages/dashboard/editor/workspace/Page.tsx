@@ -99,7 +99,7 @@ const WorkspaceEditorPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
-                        Workspace Editor
+                        Course Editor
                     </IonTitle>
                 </IonToolbar>
             </IonHeader>
@@ -119,8 +119,8 @@ const WorkspaceEditorPage: React.FC = () => {
                                     onIonInput={(e) => onChange(e.detail.value)}
                                     onIonBlur={onBlur}
                                     color="dark"
-                                    label="Workspace name"
-                                    placeholder="Enter workspace name"
+                                    label="Course name"
+                                    placeholder="Enter course name"
                                     labelPlacement="floating"
                                     fill="outline"
                                     rows={1}
@@ -199,7 +199,7 @@ const WorkspaceEditorPage: React.FC = () => {
                                     <span className='ion-margin-start'>Processing...</span>
                                 </>
                             ) : (
-                                !workspace ? 'Create Workspace' : 'Update Workspace'
+                                !workspace ? 'Create Course' : 'Update Course'
                             )}
                         </IonButton>
                     </div>

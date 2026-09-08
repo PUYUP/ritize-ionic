@@ -98,7 +98,7 @@ const HomePage: React.FC = () => {
 
                 <div className='block ion-padding-top ion-padding-bottom'>
                     <div className='block mb-3 text-lg flex items-center justify-between ion-padding-start ion-padding-end'>
-                        <IonText>My Workspaces</IonText>
+                        <IonText>My Courses</IonText>
                         <div className='ml-auto'>
                             <IonButton fill="outline" size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
                                 <IonIcon icon={add} slot='icon-only' className='text-xl' />
@@ -115,8 +115,8 @@ const HomePage: React.FC = () => {
                         !workspaces || workspaces.length === 0 ? (
                             <div className='ion-padding-start ion-padding-end'>
                                 <div className='flex flex-col items-center justify-center gap-4 bg-red-100 rounded-lg border border-red-200 ion-padding'>
-                                    <IonText className='text-center text-base block'>No workspaces found. Create one to get started.</IonText>
-                                    <IonButton mode='ios' routerLink={'/dashboard/editor/workspace'} shape="round">Create Workspace</IonButton>
+                                    <IonText className='text-center text-base block'>No courses found. Create one to get started.</IonText>
+                                    <IonButton mode='ios' routerLink={'/dashboard/editor/workspace'} shape="round">Create Course</IonButton>
                                 </div>
                             </div>
                         ) : (

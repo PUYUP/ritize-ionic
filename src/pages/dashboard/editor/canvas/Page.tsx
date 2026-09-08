@@ -40,7 +40,7 @@ import { getUser } from '../../../../utils/authState';
 import { generateUUID } from '../../../../utils/generator';
 import { supabase } from '../../../../lib/supabase';
 
-const AUTOSAVE_DELAY_MS = 500;
+const AUTOSAVE_DELAY_MS = 5000;
 
 /**
  * A scene is "empty" only if it has no visible (non-deleted) elements.
@@ -215,7 +215,7 @@ const CanvasEditorPage: React.FC = () => {
 		} finally {
 			setIsSaving(false);
 		}
-	}, [presentToast]);
+	}, [presentToast, workspaceId]);
 
 	// Persists whatever is currently on the canvas for the currently
 	// selected page.
@@ -262,7 +262,7 @@ const CanvasEditorPage: React.FC = () => {
 	// unmount isn't a reliable "user is leaving" signal — flush explicitly.
 	useIonViewWillLeave(() => {
 		void flushPendingSave();
-	});
+	}, [flushPendingSave]);
 
 	useIonViewDidEnter(() => {
 		window.dispatchEvent(new Event('resize'));

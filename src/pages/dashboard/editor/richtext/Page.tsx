@@ -128,7 +128,7 @@ const RichTextEditorPage: React.FC = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [presentToast]);
+    }, [presentToast, workspaceId]);
 
     // Persists whatever is currently in the editor for the currently selected page.
     const persistCurrentPage = useCallback(async () => {
@@ -186,7 +186,7 @@ const RichTextEditorPage: React.FC = () => {
     // unmount isn't a reliable "user is leaving" signal — flush explicitly.
     useIonViewWillLeave(() => {
         void flushPendingSave();
-    });
+    }, [flushPendingSave]);
 
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));

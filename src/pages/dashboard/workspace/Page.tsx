@@ -61,7 +61,7 @@ const WorkspacePage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
-                        My Workspaces
+                        My Courses
                     </IonTitle>
                     <IonButtons slot="end" className="ion-padding-end">
                         <IonButton fill="outline" color={'primary'} size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>

@@ -76,7 +76,7 @@ const WorkspaceDetailPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center flex items-center justify-center fixed left-14 right-14 top-0 bottom-0 text-lg line-clamp-1">
-                        Workspace
+                        Course
                     </IonTitle>
                     <IonButtons slot="end" className='ion-padding-end'>
                         <IonButton className='!w-auto !h-auto' id="workspace-actions">
@@ -92,7 +92,7 @@ const WorkspaceDetailPage: React.FC = () => {
                         <div className='flex items-start'>
                             <div className='block ion-padding-end'>
                                 <div className='block mb-1'>
-                                    <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Workspace Detail'}</IonText>
+                                    <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Course Detail'}</IonText>
                                 </div>
 
                                 <div className='flex items-center gap-2 text-base text-neutral-700'>

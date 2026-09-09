@@ -13,10 +13,10 @@ export class Note {
     @Column()
     workspaceId!: string;
 
-    @Column()
+    @Column({ nullable: true })
     title!: string;
 
-    @Column()
+    @Column({ nullable: true })
     content!: string;
 
     @Column()
@@ -36,5 +36,8 @@ export class Note {
 
     @Column('simple-json', { nullable: true })
     metadata!: Record<string, any> | null;
+
+    @Column('varchar', { nullable: true, default: 'draft' })
+    status!: 'draft' | 'published';
 
 }

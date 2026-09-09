@@ -30,7 +30,7 @@ ion-toolbar ion-button {
 }
 
 ion-back-button::part(native),
-ion-toolbar ion-button::part(native) {
+ion-toolbar ion-button:not(.normal-button)::part(native) {
     width: 28px;
     height: 28px;
     padding: 0;
@@ -38,6 +38,6 @@ ion-toolbar ion-button::part(native) {
 }
 
 ion-back-button::part(icon),
-ion-toolbar ion-button::part(icon) {
+ion-toolbar ion-button:not(.normal-button)::part(icon) {
     font-size: 18px !important;
 }

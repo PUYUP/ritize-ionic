@@ -22,7 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type Quill from 'quill';
 import { Delta, EmitterSource } from 'quill';
 import QuillEditor, { type ImageUploadHandler } from '../../../../components/richtext/QuillEditor';
-import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
+import { checkmarkDoneOutline, checkmarkOutline, copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
 import { Note, Page } from '../../../../databases/entities/notes';
 import Swiper from 'swiper';
 import { FreeMode, Mousewheel } from 'swiper/modules';
@@ -131,7 +131,7 @@ const RichTextEditorPage: React.FC = () => {
 
             const bufferData = json ? Buffer.from(json, 'utf-8') : null;
 
-            await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
+            await NotesRepository.updatePage(page.id as string, { contentData: bufferData, status: 'draft' }, false);
             console.log('selected page id: ', page.id, ' is updated');
 
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
@@ -139,6 +139,12 @@ const RichTextEditorPage: React.FC = () => {
                 setPages((prevPages) =>
                     prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
                 );
+            }
+
+            // everything page changed update note status as draft
+            if (selectedNote?.status === 'published') {
+                const updatedNote = await NotesRepository.updateNote({ id: selectedNote.id, status: 'draft' });
+                setSelectedNote(updatedNote);
             }
         } catch (err) {
             console.error('Failed to save document', err);
@@ -150,7 +156,7 @@ const RichTextEditorPage: React.FC = () => {
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
             if (isPageActiveRef.current) setIsSaving(false);
         }
-    }, [presentToast, workspaceId]);
+    }, [presentToast, workspaceId, selectedNote]);
 
     // Persists whatever is currently in the editor for the currently selected page.
     const persistCurrentPage = useCallback(async () => {
@@ -405,6 +411,7 @@ const RichTextEditorPage: React.FC = () => {
                 workspaceId: selectedNote.workspaceId,
                 workspaceNoteId: selectedNote.id,
                 isActive: true,
+                status: 'draft',
                 syncedAt: new Date(),
                 syncedId: generateUUID(),
             });
@@ -432,6 +439,7 @@ const RichTextEditorPage: React.FC = () => {
             contentType: "text",
             syncedId: generateUUID(),
             syncedAt: new Date(),
+            status: 'draft',
         });
         return entity;
     }
@@ -464,6 +472,7 @@ const RichTextEditorPage: React.FC = () => {
                         workspaceId: workspaceId,
                         title: serverNote.title || "Untitled Note",
                         content: serverNote.content,
+                        status: serverNote.status,
                         noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
                         contentType: serverNote.content_type as NoteFormatTypes,
                         syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
@@ -498,6 +507,7 @@ const RichTextEditorPage: React.FC = () => {
                                     contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
                                     userId: p.user_id,
                                     pageNum: p.page_num,
+                                    status: p.status,
                                     isActive: p.is_active,
                                     syncedId: p.synced_id ? p.synced_id : generateUUID(),
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
@@ -517,6 +527,7 @@ const RichTextEditorPage: React.FC = () => {
                             workspaceId: workspaceId,
                             workspaceNoteId: note.id,
                             isActive: true,
+                            status: 'draft',
                             syncedAt: new Date(),
                             syncedId: generateUUID(),
                         });
@@ -539,6 +550,7 @@ const RichTextEditorPage: React.FC = () => {
                 workspaceId: workspaceId,
                 workspaceNoteId: note.id,
                 isActive: true,
+                status: 'draft',
                 syncedAt: new Date(),
                 syncedId: generateUUID(),
             });
@@ -594,6 +606,25 @@ const RichTextEditorPage: React.FC = () => {
         }
     }, [noteId]);
 
+    // save notes and entire pages related to it
+    const saveHandler = async () => {
+        if (!selectedNote) return;
+
+        // update note status from 'draft' to 'published'
+        const note = await NotesRepository.updateNote({
+            id: selectedNote.id,
+            status: 'published'
+        });
+
+        setSelectedNote(note);
+
+        presentToast({
+            message: 'Note saved successfully',
+            duration: 1500,
+            color: 'success'
+        });
+    }
+
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -602,32 +633,32 @@ const RichTextEditorPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
 
-                    <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>
+                    <IonTitle className='text-sm ion-padding-start ion-padding-end line-clamp-1'>
                         {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
 
                     {/* pages tools */}
                     {!isProcessed && (
                         <div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
-                            <IonButton
-                                size='small'
-                                shape="round"
-                                color={'light'}
-                                disabled={!hasContent || isProcessed}
-                                onClick={() => setShowClearAlert(true)}
-                            >
-                                <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
-                            </IonButton>
+                            {selectedNote?.status == 'draft' && (
+                                <IonButton
+                                    size='small'
+                                    shape="round"
+                                    color={'success'}
+                                    disabled={!selectedPage || isProcessed}
+                                    onClick={() => saveHandler()}
+                                    className='normal-button'
+                                >
+                                    <IonIcon icon={checkmarkDoneOutline} slot='start'></IonIcon>
+                                    <IonText className='pl-2'>Finish</IonText>
+                                </IonButton>
+                            )}
 
-                            <IonButton
-                                size='small'
-                                shape="round"
-                                color={'light'}
-                                disabled={pages.length <= 1 || !selectedPage || isProcessed}
-                                onClick={() => setShowRemoveAlert(true)}
-                            >
-                                <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
-                            </IonButton>
+                            {selectedNote?.status == 'published' && (
+                                <IonText color='success' className='flex items-center'>
+                                    <IonIcon icon={checkmarkOutline} className='text-xl mr-2' /> Finished
+                                </IonText>
+                            )}
                         </div>
                     )}
                 </IonToolbar>
@@ -671,7 +702,27 @@ const RichTextEditorPage: React.FC = () => {
                         </div>
 
                         {!isProcessed && (
-                            <div className='flex items-center pb-1 pr-2'>
+                            <div className='flex items-center pb-1 pr-2 gap-3'>
+                                <IonButton
+                                    size='small'
+                                    shape="round"
+                                    color={'light'}
+                                    disabled={pages.length <= 1 || !selectedPage || isProcessed}
+                                    onClick={() => setShowRemoveAlert(true)}
+                                >
+                                    <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
+                                </IonButton>
+
+                                <IonButton
+                                    size='small'
+                                    shape="round"
+                                    color={'light'}
+                                    disabled={!hasContent || isProcessed}
+                                    onClick={() => setShowClearAlert(true)}
+                                >
+                                    <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
+                                </IonButton>
+
                                 <IonButton
                                     size='small'
                                     shape="round"

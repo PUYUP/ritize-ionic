@@ -20,7 +20,7 @@ import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON } from '@excalidraw
 import '@excalidraw/excalidraw/index.css';
 import './Page.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
+import { checkmarkDoneOutline, checkmarkOutline, copyOutline, duplicateOutline, saveOutline, trashOutline } from 'ionicons/icons';
 import { useDeviceWidth } from '../../../../utils/sizing';
 import { menuController } from '@ionic/core/components';
 
@@ -155,9 +155,7 @@ const CanvasEditorPage: React.FC = () => {
 			lastSavedDataRef.current = json;
 
 			const bufferData = json ? Buffer.from(json, 'utf-8') : null;
-
-			await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
-			console.log('selected page id: ', page.id, ' is updated');
+			let metadata = null;
 
 			if (isPageActiveRef.current) {
 				setPages((prevPages) =>
@@ -230,15 +228,25 @@ const CanvasEditorPage: React.FC = () => {
 					.select('*')
 					.single();
 
-				const metadata = {
+				metadata = {
 					file: fileData,
 					attachment: attachmentData,
 				}
-
-				await NotesRepository.updatePage(page.id as string, { metadata }, false);
 			}
 
+			await NotesRepository.updatePage(page.id as string, {
+				contentData: bufferData,
+				metadata: metadata,
+				status: 'draft',
+			}, false);
+
 			console.log('selected page id: ', page.id, ' is updated');
+
+			// everything page changed update note status as draft
+			if (selectedNote?.status === 'published') {
+				const updatedNote = await NotesRepository.updateNote({ id: selectedNote.id, status: 'draft' });
+				setSelectedNote(updatedNote);
+			}
 		} catch (err) {
 			console.error('Failed to save canvas', err);
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
@@ -249,7 +257,7 @@ const CanvasEditorPage: React.FC = () => {
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
 			if (isPageActiveRef.current) setIsSaving(false);
 		}
-	}, [presentToast, workspaceId]);
+	}, [presentToast, workspaceId, selectedNote]);
 
 	// Persists whatever is currently on the canvas for the currently
 	// selected page.
@@ -538,6 +546,7 @@ const CanvasEditorPage: React.FC = () => {
 				workspaceId: selectedNote.workspaceId,
 				workspaceNoteId: selectedNote.id,
 				isActive: true,
+				status: 'draft',
 				syncedAt: new Date(),
 				syncedId: generateUUID(),
 			});
@@ -567,6 +576,7 @@ const CanvasEditorPage: React.FC = () => {
 			contentType: "canvas",
 			syncedId: generateUUID(),
 			syncedAt: new Date(),
+			status: 'draft',
 		});
 		return entity;
 	}
@@ -599,6 +609,7 @@ const CanvasEditorPage: React.FC = () => {
 						workspaceId: workspaceId,
 						title: serverNote.title || "Untitled Note",
 						content: serverNote.content,
+						status: serverNote.status,
 						noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
 						contentType: serverNote.content_type as NoteFormatTypes,
 						syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
@@ -633,6 +644,7 @@ const CanvasEditorPage: React.FC = () => {
 									contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
 									userId: p.user_id,
 									pageNum: p.page_num,
+									status: p.status,
 									isActive: p.is_active,
 									syncedId: p.synced_id ? p.synced_id : generateUUID(),
 									syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
@@ -652,6 +664,7 @@ const CanvasEditorPage: React.FC = () => {
 							workspaceId: workspaceId,
 							workspaceNoteId: note.id,
 							isActive: true,
+							status: 'draft',
 							syncedAt: new Date(),
 							syncedId: generateUUID(),
 						});
@@ -674,6 +687,7 @@ const CanvasEditorPage: React.FC = () => {
 				workspaceId: workspaceId,
 				workspaceNoteId: note.id,
 				isActive: true,
+				status: 'draft',
 				syncedAt: new Date(),
 				syncedId: generateUUID(),
 			});
@@ -744,40 +758,59 @@ const CanvasEditorPage: React.FC = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [noteId]);
 
+	// save notes and entire pages related to it
+	const saveHandler = async () => {
+		if (!selectedNote) return;
+
+		// update note status from 'draft' to 'published'
+		const note = await NotesRepository.updateNote({
+			id: selectedNote.id,
+			status: 'published'
+		});
+
+		setSelectedNote(note);
+
+		presentToast({
+			message: 'Note saved successfully',
+			duration: 1500,
+			color: 'success'
+		});
+	}
+
 	return (
 		<IonPage>
-			<IonHeader className='ion-no-border'>
-				<IonToolbar className='fixed'>
+			<IonHeader>
+				<IonToolbar>
 					<IonButtons slot="start" className='ion-padding-start'>
 						<IonBackButton defaultHref='/dashboard' />
 					</IonButtons>
 
-					<IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>
+					<IonTitle className='text-sm ion-padding-start ion-padding-end line-clamp-1'>
 						{workspaceData?.title ?? 'Untitled Note'}
 					</IonTitle>
 
 					{/* pages tools */}
 					{!isProcessed && (
 						<div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
-							<IonButton
-								size='small'
-								shape="round"
-								color={'light'}
-								disabled={!hasContent || isProcessed}
-								onClick={() => setShowClearAlert(true)}
-							>
-								<IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
-							</IonButton>
+							{selectedNote?.status == 'draft' && (
+								<IonButton
+									size='small'
+									shape="round"
+									color={'success'}
+									disabled={!selectedPage || isProcessed}
+									onClick={() => saveHandler()}
+									className='normal-button'
+								>
+									<IonIcon icon={checkmarkDoneOutline} slot='start'></IonIcon>
+									<IonText className='pl-2'>Finish</IonText>
+								</IonButton>
+							)}
 
-							<IonButton
-								size='small'
-								shape="round"
-								color={'light'}
-								disabled={pages.length <= 1 || !selectedPage || isProcessed}
-								onClick={() => setShowRemoveAlert(true)}
-							>
-								<IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
-							</IonButton>
+							{selectedNote?.status == 'published' && (
+								<IonText color='success' className='flex items-center'>
+									<IonIcon icon={checkmarkOutline} className='text-xl mr-2' /> Finished
+								</IonText>
+							)}
 						</div>
 					)}
 				</IonToolbar>
@@ -809,7 +842,7 @@ const CanvasEditorPage: React.FC = () => {
 						// onScrollChange={handleScrollChange}
 						gridModeEnabled={true}
 						zenModeEnabled={true}
-						viewModeEnabled={isProcessed}
+						viewModeEnabled={isProcessed || selectedNote?.status == 'published'}
 						UIOptions={{
 							// @ts-ignore
 							getFormFactor: () => 'phone',
@@ -830,10 +863,10 @@ const CanvasEditorPage: React.FC = () => {
 					</Excalidraw>
 
 					<div
-						className='fixed w-[42px] right-2 bottom-[120px] z-10'
+						className={`fixed w-[42px] right-2 bottom-[120px] z-10 ${!isProcessed && selectedNote?.status == 'draft' && 'bg-white border border-neutral-100 rounded-full shadow'}`}
 						style={{ 'top': 'calc(60px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
 					>
-						<div className='flex flex-col gap-3 items-center justify-between h-full'>
+						<div className='flex flex-col gap-3 items-center justify-between h-full pb-2'>
 							<div className='flex-1 pt-2 overflow-hidden'>
 								<div ref={pagesSwiperElRef} className='swiper h-full w-full'>
 									<div id="pages-list" className='swiper-wrapper flex flex-col'>
@@ -854,8 +887,28 @@ const CanvasEditorPage: React.FC = () => {
 								</div>
 							</div>
 
-							{!isProcessed && (
-								<div>
+							{(!isProcessed && selectedNote?.status == 'draft') && (
+								<div className='mt-auto flex flex-col gap-3 justify-center'>
+									<IonButton
+										size='small'
+										shape="round"
+										color={'light'}
+										disabled={!hasContent || isProcessed}
+										onClick={() => setShowClearAlert(true)}
+									>
+										<IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
+									</IonButton>
+
+									<IonButton
+										size='small'
+										shape="round"
+										color={'light'}
+										disabled={pages.length <= 1 || !selectedPage || isProcessed}
+										onClick={() => setShowRemoveAlert(true)}
+									>
+										<IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
+									</IonButton>
+
 									<IonButton
 										size='small'
 										shape="round"

@@ -1,7 +1,7 @@
 import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { attachOutline, briefcaseOutline, checkmarkCircleSharp, closeOutline, ellipsisVertical, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { alarm, alarmOutline, arrowForwardCircleOutline, arrowForwardOutline, attachOutline, bookmarkOutline, bookmarkSharp, bookSharp, briefcaseOutline, checkmarkCircleOutline, checkmarkCircleSharp, closeOutline, ellipsisVertical, pencil, pencilOutline, pencilSharp, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -94,38 +94,53 @@ const NoteItem: React.FC<{
 
         return (
             <>
-                {item.clustered_date && (
-                    <div className='flex items-center gap-2 bg-lime-100 ion-padding-start ion-padding-end py-1'>
-                        <IonIcon icon={checkmarkCircleSharp} color="success"></IonIcon>
-                        <IonText className='text-xs text-lime-800'>Processed as Material</IonText>
-                    </div>
-                )}
                 <IonItem lines={isLast ? "none" : "full"} className='note-item'>
-                    <div className={`w-full py-3 ${item.clustered_date ? '!pt-1' : ''}`}>
+                    <div className={`w-full py-3`}>
+                        <div className='flex mb-2 gap-2.5'>
+                            {item.clustered_date && (
+                                <div className='inline-block'>
+                                    <div className='flex items-center gap-1.5 bg-yellow-100 px-1 pr-1.5 py-0.5 pl-1.5 rounded-xl shadow'>
+                                        <IonIcon icon={bookmarkSharp} color="warning"></IonIcon>
+                                        <IonText className='text-xs text-yellow-800'>Materialized</IonText>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <div className='flex'>
                             <Link to={linkTo} className='block w-full flex-1'>
-                                <p className='flex gap-2 !m-0 items-center !text-sm'>
-                                    <IonText className='text-neutral-500 uppercase'>{format(item.created_at, 'MMM dd, yy')}</IonText>
+                                <div className='flex gap-2 !m-0 items-center !text-sm'>
+                                    <div className={`flex items-center gap-1.5`}>
+                                        <IonIcon
+                                            icon={item.status === 'published' ? checkmarkCircleOutline : alarmOutline}
+                                            color={item.status === 'published' ? 'success' : 'primary'}
+                                        ></IonIcon>
+                                        <IonText className={`text-xs ${item.status === 'published' ? 'text-lime-800' : 'text-blue-800'}`}>
+                                            {item.status == 'published' ? 'Finished' : 'Draft'} ({item.page_count?.[0]?.count || 0})
+                                        </IonText>
+                                    </div>
                                     <IonText className='text-neutral-400'>&bull;</IonText>
-                                    <IonText className='text-neutral-500 uppercase'>{format(item.created_at, 'HH:mm')}</IonText>
+                                    <IonText className='text-neutral-500'>{format(item.created_at, 'MMM dd, yy')}</IonText>
                                     <IonText className='text-neutral-400'>&bull;</IonText>
-                                    <span className='flex gap-1 items-center'>
+                                    <IonText className='text-neutral-500'>{format(item.created_at, 'HH:mm')}</IonText>
+                                    {/* <IonText className='text-neutral-400'>&bull;</IonText>
+                                    <span className='flex gap-2 items-center'>
                                         {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
                                         {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
                                         {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
-                                        <IonText className='text-neutral-500'>{item.page_count?.[0]?.count || 0} page</IonText>
-                                    </span>
-                                </p>
+                                        <IonText className='text-neutral-500'>{item.page_count?.[0]?.count || 0}</IonText>
+                                    </span> */}
+                                </div>
                                 <IonText color="dark font-semibold text-sm block">{item.user.name}</IonText>
                             </Link>
 
-                            {user.id === item.user.id && (
-                                <div className='ml-auto'>
+                            <div className='ml-auto'>
+                                {user.id === item.user.id && (
                                     <IonButton shape='round' color={'light'} disabled={Boolean(item.clustered_date)} onClick={async () => await optionsHandler(item)}>
-                                        <IonIcon icon={ellipsisVertical} slot='icon-only' />
+                                        <IonIcon icon={pencil} slot='icon-only' />
                                     </IonButton>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
 
                         {content_preview && (
@@ -252,7 +267,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
 
     return (
         <>
-            <IonList id="notelist" className='flex flex-col gap-6 !pt-0'>
+            <IonList id="notelist" className='flex flex-col gap-6 !pt-0 notes-list'>
                 {groupedNotes.map(({ dateKey, notes }) => (
                     <IonItemGroup key={dateKey}>
                         <IonItemDivider sticky color="light">

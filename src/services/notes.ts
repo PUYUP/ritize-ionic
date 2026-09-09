@@ -17,6 +17,7 @@ export type NoteTypes = {
     synced_at?: string | null;
     user?: any;
     pages?: NotePageTypes[];
+    status?: 'draft' | 'published';
     [key: string]: any;
 }
 
@@ -34,6 +35,7 @@ export type NotePageTypes = {
     content_text?: string;
     content_extracted?: Record<string, any> | Array<any> | null;
     metadata?: any;
+    status?: 'draft' | 'published';
 }
 
 export type PaginatedNotesResponse = {
@@ -158,7 +160,9 @@ export const notesAPI = createApi({
                     .upsert(body, { onConflict: "id,synced_id" })
                     .select(`
                         *
+                        , page_count:workspace_notes_pages(count)
                         , user!inner(id, name)
+                        , pages:workspace_notes_pages(*)
                         , documents:workspace_notes_documents(
                             id
                             , similarity_score

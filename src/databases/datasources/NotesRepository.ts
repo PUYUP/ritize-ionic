@@ -45,6 +45,12 @@ class NotesRepository {
         }
     }
 
+    private removeEmpty<T extends Record<string, unknown>>(obj: T): Partial<T> {
+        return Object.fromEntries(
+            Object.entries(obj).filter(([, v]) => v !== undefined && v !== null && v !== '')
+        ) as Partial<T>;
+    }
+
     // --------------------------------------------------
     // CRUD UNTUK NOTE
     // --------------------------------------------------
@@ -75,7 +81,7 @@ class NotesRepository {
             if (note) {
                 store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
-                        body: {
+                        body: this.removeEmpty({
                             id: note.id,
                             user_id: user.id,
                             workspace_id: note.workspaceId,
@@ -85,7 +91,8 @@ class NotesRepository {
                             content: note.content,
                             note_datetime: note.noteDatetime.toDateString(),
                             title: note.title,
-                        }
+                            status: note.status,
+                        })
                     }))
                     .unwrap();
             }
@@ -97,7 +104,7 @@ class NotesRepository {
     async upsertNote(data: Partial<Note>, conflictPaths: string[] = ['id']): Promise<Note | null> {
         return this.enqueueWrite(async () => {
             const user = await getUser();
-            const result = await this.noteRepo.upsert(data as any, conflictPaths);
+            const result = await this.noteRepo.upsert(this.removeEmpty(data as any), conflictPaths);
             await this.saveWebStore();
             const insertedId = result.identifiers?.[0]?.id;
             if (insertedId === undefined) return null;
@@ -107,7 +114,7 @@ class NotesRepository {
             if (note) {
                 store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
-                        body: {
+                        body: this.removeEmpty({
                             id: note.id,
                             user_id: user.id,
                             workspace_id: note.workspaceId,
@@ -117,7 +124,39 @@ class NotesRepository {
                             content: note.content,
                             note_datetime: note.noteDatetime.toDateString(),
                             title: note.title,
-                        }
+                            status: note.status,
+                        })
+                    }))
+                    .unwrap();
+            }
+
+            return note;
+        });
+    }
+
+    async updateNote(data: Partial<Note>): Promise<Note | null> {
+        return this.enqueueWrite(async () => {
+            const user = await getUser();
+            await this.noteRepo.update(data.id as string, this.removeEmpty(data as any));
+            await this.saveWebStore();
+
+            const note = await this.getNoteById(data.id as string);
+
+            if (note) {
+                store
+                    .dispatch(notesAPI.endpoints.upsertNote.initiate({
+                        body: this.removeEmpty({
+                            id: note.id,
+                            user_id: user.id,
+                            workspace_id: note.workspaceId,
+                            synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
+                            synced_id: note.syncedId,
+                            content_type: note.contentType as NoteFormatTypes,
+                            content: note.content,
+                            note_datetime: note.noteDatetime.toDateString(),
+                            title: note.title,
+                            status: note.status,
+                        })
                     }))
                     .unwrap();
             }
@@ -167,7 +206,7 @@ class NotesRepository {
 
                 store
                     .dispatch(notesAPI.endpoints.insertNotePage.initiate({
-                        body: {
+                        body: this.removeEmpty({
                             id: savedPage.id,
                             user_id: savedPage.userId,
                             workspace_id: savedPage.workspaceId,
@@ -176,9 +215,10 @@ class NotesRepository {
                             synced_id: savedPage.syncedId,
                             content_data: objString,
                             page_num: savedPage.pageNum,
-                            title: page.title,
+                            title: savedPage.title,
                             is_active: savedPage.isActive,
-                        }
+                            status: savedPage.status,
+                        })
                     }))
                     .unwrap();
             }
@@ -223,6 +263,7 @@ class NotesRepository {
                 page_num: savedPage.pageNum,
                 title: savedPage.title,
                 is_active: savedPage.isActive,
+                status: savedPage.status,
             };
         });
 
@@ -276,7 +317,7 @@ class NotesRepository {
 
                     store
                         .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
-                            body: {
+                            body: this.removeEmpty({
                                 id: savedPage.id,
                                 user_id: savedPage.userId,
                                 workspace_id: savedPage.workspaceId,
@@ -290,7 +331,8 @@ class NotesRepository {
                                 page_num: savedPage.pageNum,
                                 title: savedPage.title,
                                 is_active: savedPage.isActive,
-                            }
+                                status: savedPage.status,
+                            })
                         }))
                         .unwrap();
                 }
@@ -330,6 +372,7 @@ class NotesRepository {
             page_num: p.pageNum,
             title: p.title,
             is_active: p.isActive,
+            status: p.status,
         }));
 
         store.dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages })).unwrap();

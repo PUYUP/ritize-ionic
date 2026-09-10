@@ -170,7 +170,7 @@ const NoteItem: React.FC<{
                                         </div>
                                         {item.documents?.length > 0 && (
                                             <div className='flex flex-col gap-2 ion-padding-start ion-padding-end'>
-                                                {item.documents.map((doc: any, index: number, array: any) => {
+                                                {item.documents.slice(0, 2).map((doc: any, index: number, array: any) => {
                                                     return (
                                                         <Link key={doc.id} to={doc.paper.pdf_url} target="_blank" rel="noopener noreferrer">
                                                             <div className='flex flex-col gap-0.5'>

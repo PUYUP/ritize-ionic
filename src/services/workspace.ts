@@ -15,6 +15,9 @@ export type WorkspaceTypes = {
     // placeholder only, may join from another table
     member_count?: number;
     today_note_count?: number;
+    total_note_count?: number;
+    total_material_count?: number;
+    today_material_count?: number;
 }
 
 export type MemberTypes = {
@@ -146,13 +149,12 @@ export const workspaceAPI = createApi({
             queryFn: async ({ from = 0, to = 10 }) => {
                 const user = await getUser();
                 const { data, error } = await supabase
-                    .from('workspaces')
+                    .from('workspaces_with_stats')
                     .select(`
-                        *,
-                        membersInside:workspace_members!inner(*),
-                        member_count:workspace_members(count)
+                        *
+                        , members:workspace_members!inner(*)
                     `)
-                    .in('membersInside.user_id', [user.id])
+                    .in('members.user_id', [user.id])
                     .order('created_at', { ascending: false })
                     .range(from, to);
 
@@ -161,7 +163,6 @@ export const workspaceAPI = createApi({
                 const serialized = data.map((org) => {
                     return {
                         ...org,
-                        member_count: org.member_count?.[0]?.count || 0,
                     };
                 });
 

@@ -17,22 +17,26 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
         >
             <IonCardHeader className="ion-padding flex flex-row">
                 <div className="flex-1">
-                    <IonCardTitle className="text-base">{item.title}</IonCardTitle>
-                    <IonCardSubtitle className="mt-1">
-                        <div className="flex items-center flex-wrap gap-3">
+                    <IonCardTitle className="text-lg">{item.title}</IonCardTitle>
+                    {/* <IonCardSubtitle className="mt-1 font-normal">
+                        <div className="flex items-center flex-wrap gap-1.5">
                             <span className="text-sm">
                                 {item.scope === 'personal' ? 'Personal' : 'Group'}
                             </span>
                             <IonText className='text-xs text-neutral-400'>&bull;</IonText>
                             {item.scope === 'group' && <span className="text-sm">{item.member_count} members</span>}
-                            {item.today_note_count && item.today_note_count > 0 && (
+
+                            <IonText className='text-xs text-neutral-400'>&bull;</IonText>
+                            <span className="text-sm">{item.total_note_count} notes</span>
+
+                            {item?.today_note_count != 0 && (
                                 <>
                                     <IonText className='text-xs text-neutral-400'>&bull;</IonText>
-                                    <span className="text-sm text-green-700">{item.today_note_count} today's notes</span>
+                                    <span className="text-sm text-green-700">{item.today_note_count} today's</span>
                                 </>
                             )}
                         </div>
-                    </IonCardSubtitle>
+                    </IonCardSubtitle> */}
                 </div>
 
                 <div className="ml-auto">
@@ -41,6 +45,47 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                     </IonButton>
                 </div>
             </IonCardHeader>
+
+            <IonCardContent className="ion-padding !px-4 !pt-0 -mt-2">
+                <table className="table text-sm w-full">
+                    <tr className="border-b border-neutral-200">
+                        <td className="w-26 !py-1">Type :</td>
+                        <td>{item.scope === 'personal' ? 'Personal' : 'Group'}</td>
+                    </tr>
+                    <tr className="border-b border-neutral-200">
+                        <td className="w-26 !py-1">Members :</td>
+                        <td>{item.member_count}</td>
+                    </tr>
+                    <tr className="border-b border-neutral-200">
+                        <td className="w-26 !py-1">Notes :</td>
+                        <td>
+                            <div className="flex gap-2 items-center">
+                                <IonText className="text-sm min-w-6">{item.total_note_count}</IonText>
+                                {item.today_note_count != 0 &&
+                                    <>
+                                        <IonText className='text-xs text-neutral-400'>&bull;</IonText>
+                                        <IonText className="text-green-700 text-xs font-semibold">{item.today_note_count} today</IonText>
+                                    </>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td className="w-26 !py-1">Materials :</td>
+                        <td>
+                            <div className="flex gap-2 items-center">
+                                <IonText className="text-sm min-w-6">{item.total_material_count}</IonText>
+                                {item.today_material_count != 0 &&
+                                    <>
+                                        <IonText className='text-xs text-neutral-400'>&bull;</IonText>
+                                        <IonText className="text-green-700 text-xs font-semibold">{item.today_material_count} today</IonText>
+                                    </>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </IonCardContent>
         </IonCard>
     );
 }

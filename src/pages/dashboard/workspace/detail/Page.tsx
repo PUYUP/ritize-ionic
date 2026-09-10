@@ -70,7 +70,7 @@ const WorkspaceDetailPage: React.FC = () => {
 
     return (
         <IonPage>
-            <IonHeader className='ion-no-border'>
+            <IonHeader className="ion-no-border">
                 <IonToolbar>
                     <IonButtons slot="start" className="ion-padding-start">
                         <IonBackButton defaultHref="/dashboard" />
@@ -86,7 +86,7 @@ const WorkspaceDetailPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent role="feed">
+            <IonContent color="light" role="feed">
                 <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                     <div className='ion-padding'>
                         <div className='flex items-start'>
@@ -105,7 +105,7 @@ const WorkspaceDetailPage: React.FC = () => {
                                 <div className='ml-auto flex items-start'>
                                     <div
                                         onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}
-                                        className='flex flex-col items-start justify-start bg-[#F1F1F1] rounded-xl p-2 pr-1 pt-1 shadow-sm min-w-20'
+                                        className='flex flex-col items-start justify-start bg-white rounded-xl p-2 pr-1 pt-1 shadow-sm min-w-20'
                                     >
                                         <div className='flex items-center justify-between w-full'>
                                             <div className='flex items-center gap-1'>
@@ -155,7 +155,7 @@ const WorkspaceDetailPage: React.FC = () => {
                             </div>
 
                             {activeTab == 'note' && <NoteList workspaceId={id} />}
-                            {activeTab == 'material' && <MaterialList workspaceId={id} />}
+                            {activeTab == 'material' && <div className="ion-padding"><MaterialList workspaceId={id} /></div>}
                         </div>
                     )}
                 </div>

@@ -204,7 +204,8 @@ export const workspaceAPI = createApi({
                             title
                             , workspace_members!inner(user_id)
                         )
-                    `, { count: "exact" });
+                    `, { count: "exact" })
+                    .order('created_at', { ascending: false });
 
                 if (workspace_id) {
                     query = query.eq("workspace_id", workspace_id);

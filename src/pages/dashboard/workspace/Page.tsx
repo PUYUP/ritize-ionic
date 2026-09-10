@@ -71,7 +71,7 @@ const WorkspacePage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent className="ion-padding-top">
+            <IonContent color="light" className="ion-padding-top">
                 <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
                     <IonRefresherContent />
                 </IonRefresher>

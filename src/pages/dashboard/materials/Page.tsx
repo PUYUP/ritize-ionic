@@ -19,7 +19,7 @@ const MaterialsPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent>
+            <IonContent color={'light'} className='ion-padding'>
                 <MaterialList />
             </IonContent>
         </IonPage>

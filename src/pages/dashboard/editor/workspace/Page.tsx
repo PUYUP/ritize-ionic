@@ -104,7 +104,7 @@ const WorkspaceEditorPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent className='ion-padding'>
+            <IonContent color="light" className='ion-padding'>
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <div className='block ion-margin-bottom'>
                         <Controller
@@ -124,6 +124,7 @@ const WorkspaceEditorPage: React.FC = () => {
                                     labelPlacement="floating"
                                     fill="outline"
                                     rows={1}
+                                    className='!bg-white'
                                 >
                                     <IonIcon slot="start" icon={briefcaseOutline} aria-hidden="true"></IonIcon>
                                 </IonTextarea>
@@ -138,8 +139,11 @@ const WorkspaceEditorPage: React.FC = () => {
                             control={control}
                             rules={{ required: true }}
                             render={({ field: { onChange, value } }) => (
-                                <IonRadioGroup value={value} onIonChange={(e) => onChange(e.detail.value)}>
-                                    <IonList className='ion-no-padding'>
+                                <IonRadioGroup className='ion-no-background' value={value} onIonChange={(e) => onChange(e.detail.value)}>
+                                    <IonList
+                                        className='ion-no-padding'
+                                        style={{ '--ion-item-background': 'transparent', '--ion-background-color': 'transparent', 'background': 'none' }}
+                                    >
                                         <IonItemDivider>
                                             <IonLabel>Select a workspace scope</IonLabel>
                                         </IonItemDivider>
@@ -163,7 +167,7 @@ const WorkspaceEditorPage: React.FC = () => {
                             rules={{ required: true }}
                             render={({ field: { onChange, value } }) => (
                                 <div className='block'>
-                                    <IonItemDivider>
+                                    <IonItemDivider style={{ '--ion-item-background': 'transparent', '--ion-background-color': 'transparent', 'background': 'none' }}>
                                         <IonLabel>Main language for workspace content</IonLabel>
                                     </IonItemDivider>
                                     <IonSelect

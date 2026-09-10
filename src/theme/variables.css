@@ -7,6 +7,12 @@ ion-toolbar {
     --ion-padding: 12px;
 }
 
+ion-card {
+    box-shadow:
+        rgba(0, 0, 0, 0.12) 0px 1px 2px 0px,
+        rgba(0, 0, 0, 0.08) 0px 1px 3px 0px;
+}
+
 ion-card-content {
     -webkit-padding-start: 12px !important;
     padding-inline-start: 12px !important;
@@ -40,4 +46,12 @@ ion-toolbar ion-button:not(.normal-button)::part(native) {
 ion-back-button::part(icon),
 ion-toolbar ion-button:not(.normal-button)::part(icon) {
     font-size: 18px !important;
+}
+
+ion-header.ion-no-border ion-toolbar::part(container) {
+    border-bottom: 1px solid var(--color-neutral-200);
+}
+
+.split-pane-visible ion-header.home-header {
+    display: none !important;
 }

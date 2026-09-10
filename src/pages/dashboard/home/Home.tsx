@@ -48,7 +48,7 @@ const HomePage: React.FC = () => {
 
     return (
         <IonPage>
-            <IonHeader className='ion-no-border'>
+            <IonHeader className="ion-no-border home-header">
                 <IonToolbar className='bg-white'>
                     <IonButtons slot="start">
                         <IonMenuButton />
@@ -57,7 +57,7 @@ const HomePage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent fullscreen>
+            <IonContent color={'light'} fullscreen>
                 <div className='ion-padding'>
                     <div className='flex items-center gap-3 mb-6'>
                         <div className='w-14 h-14 flex items-center justify-center bg-amber-300 rounded-full shadow'>

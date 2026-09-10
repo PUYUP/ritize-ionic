@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useGetLearningMaterialsQuery } from '../../services/workspace';
 import './MaterialList.css';
-import { IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonList, IonSpinner, IonText } from '@ionic/react';
+import { IonButton, IonCard, IonCardHeader, IonCardSubtitle, IonCardTitle, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonList, IonSpinner, IonText } from '@ionic/react';
 import { format } from 'date-fns';
+import { chevronForwardOutline } from 'ionicons/icons';
 
 type Props = {
     workspaceId?: string;
@@ -59,31 +60,44 @@ const MaterialList: React.FC<Props> = ({ workspaceId }) => {
 
     return (
         <>
-            <IonList lines="full">
+            <div className='block w-full flex flex-col gap-4'>
                 {data?.results?.map((item: any, index: number, array) => {
-                    const isLast = index === array.length - 1;
-
                     return (
-                        <IonItem
+                        <IonCard
                             key={item.id}
-                            lines={isLast ? "none" : "full"}
-                            detail={true}
+                            className='rounded-xl'
                             href={item?.attributes?.file?.media_link}
                             target='_blank'
-                            button
                         >
-                            <div className='py-3'>
+                            <IonCardHeader className="ion-padding flex flex-row">
                                 {item?.attributes?.file && (
-                                    <IonLabel>
-                                        {format(new Date(item.generated_date), 'dd MMMM yyyy')}
-                                        <p>{item.attributes.file.extension?.toUpperCase()} • {(item.attributes.file.size_bytes / 1024).toFixed(1)} KB</p>
-                                    </IonLabel>
+                                    <>
+                                        <div className="flex-1">
+                                            <IonCardTitle className='text-lg'>
+                                                {format(new Date(item.generated_date), 'dd MMMM yyyy')}
+                                            </IonCardTitle>
+
+                                            <IonCardSubtitle className="mt-1">
+                                                <div className="flex items-center flex-wrap gap-3">
+                                                    <span className="text-sm">{item.attributes.file.extension?.toUpperCase()}</span>
+                                                    <IonText className='text-xs text-neutral-400'>&bull;</IonText>
+                                                    <span className="text-sm">{(item.attributes.file.size_bytes / 1024).toFixed(1)} KB</span>
+                                                </div>
+                                            </IonCardSubtitle>
+                                        </div>
+
+                                        <div className="ml-auto">
+                                            <IonButton shape='round' size='small' color={'light'} routerDirection='none'>
+                                                <IonIcon icon={chevronForwardOutline} slot='icon-only' />
+                                            </IonButton>
+                                        </div>
+                                    </>
                                 )}
-                            </div>
-                        </IonItem>
+                            </IonCardHeader>
+                        </IonCard>
                     )
                 })}
-            </IonList>
+            </div>
 
             <IonInfiniteScroll
                 disabled={isError || !hasMore}

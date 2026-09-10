@@ -1,4 +1,4 @@
-import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonPage, IonSelect, IonSelectOption, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from "@ionic/react";
+import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonPage, IonSelect, IonSelectOption, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from "@ionic/react";
 import { add, checkmarkOutline, close, closeOutline, logOutOutline, mailOutline, pencilOutline, settingsOutline, shieldOutline, trashOutline } from "ionicons/icons";
 import { useParams } from "react-router";
 import { useEffect, useRef, useState } from "react";
@@ -237,54 +237,63 @@ const WorkspaceMembersPage: React.FC = () => {
                         Course Members
                     </IonTitle>
                     <IonButtons slot="end" className="ion-padding-end">
-                        <IonButton fill='clear' shape="round" disabled={addingMembers} onClick={() => setShowAddMembersModal(true)}>
+                        <IonButton fill='clear' shape="round" color="primary" disabled={addingMembers} onClick={() => setShowAddMembersModal(true)}>
                             <IonIcon icon={add} className='text-2xl' />
                         </IonButton>
                     </IonButtons>
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent>
+            <IonContent color="light" className="ion-padding">
                 {isLoading || !currentUser ? (
                     <div className='h-full w-full flex items-center justify-center'>
                         <IonSpinner />
                     </div>
                 ) : (
-                    <IonList lines="full">
+                    <div className="flex flex-col gap-4">
                         {memberData?.results?.map((member, index: number, array: any) => {
-                            const isLast = index === array.length - 1;
                             return (
-                                <IonItem key={member?.id} lines={isLast ? "none" : "full"} style={{ '--inner-padding-end': isLast ? '8px' : '0px', '--min-height': '68px' }}>
-                                    <IonLabel>
-                                        {member?.user?.name}
-                                        <span className={`px-2 py-1 text-sm font-semibold ${member?.role === 'owner' ? 'text-blue-600' : member?.role === 'admin' ? 'text-purple-600' : 'text-orange-600'} leading-3`}>{member?.role}</span>
-                                        <p>{member?.user?.email}</p>
-                                    </IonLabel>
-                                    <div slot="end" className="flex items-center gap-2">
-                                        <IonButtons className="gap-2">
-                                            {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.user_id === member.user_id && (
-                                                <IonButton fill="clear" shape="round" onClick={() => {
-                                                    setEditMember(member);
-                                                    setShowLeaveAlert(true);
-                                                }}>
-                                                    <IonIcon icon={logOutOutline} color="danger" slot="icon-only" />
-                                                </IonButton>
-                                            )}
+                                <IonCard key={member?.id} className="rounded-xl">
+                                    <IonCardHeader className="ion-padding">
+                                        <div className="flex w-full">
+                                            <div className="flex-1">
+                                                <IonCardTitle className="text-lg">{member?.user?.name}</IonCardTitle>
+                                                <IonCardSubtitle className="mt-1">
+                                                    <div className="flex items-center flex-wrap gap-2">
+                                                        <span className={`text-sm font-semibold ${member?.role === 'owner' ? 'text-blue-600' : member?.role === 'admin' ? 'text-purple-600' : 'text-orange-600'} leading-3`}>{member?.role}</span>
+                                                        <IonText className='text-xs text-neutral-400'>&bull;</IonText>
+                                                        <span className="text-sm">{member?.user?.email}</span>
+                                                    </div>
+                                                </IonCardSubtitle>
+                                            </div>
 
-                                            {(currentUser.role === 'owner' || currentUser.role === 'admin') && currentUser.user_id !== member.user_id && member.role !== 'owner' && (
-                                                <IonButton fill="clear" shape="round" onClick={() => {
-                                                    setEditMember(member);
-                                                    setShowMemberActionSheet(true);
-                                                }}>
-                                                    <IonIcon icon={settingsOutline} slot="icon-only" />
-                                                </IonButton>
-                                            )}
-                                        </IonButtons>
-                                    </div>
-                                </IonItem>
+                                            <div className="ml-auto">
+                                                <IonButtons className="gap-2">
+                                                    {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.user_id === member.user_id && (
+                                                        <IonButton fill="clear" size="small" shape="round" onClick={() => {
+                                                            setEditMember(member);
+                                                            setShowLeaveAlert(true);
+                                                        }}>
+                                                            <IonIcon icon={logOutOutline} color="danger" slot="icon-only" />
+                                                        </IonButton>
+                                                    )}
+
+                                                    {(currentUser.role === 'owner' || currentUser.role === 'admin') && currentUser.user_id !== member.user_id && member.role !== 'owner' && (
+                                                        <IonButton fill="clear" size="small" shape="round" onClick={() => {
+                                                            setEditMember(member);
+                                                            setShowMemberActionSheet(true);
+                                                        }}>
+                                                            <IonIcon icon={settingsOutline} slot="icon-only" />
+                                                        </IonButton>
+                                                    )}
+                                                </IonButtons>
+                                            </div>
+                                        </div>
+                                    </IonCardHeader>
+                                </IonCard>
                             )
                         })}
-                    </IonList>
+                    </div>
                 )}
             </IonContent>
 
@@ -318,7 +327,7 @@ const WorkspaceMembersPage: React.FC = () => {
                         </IonButtons>
                     </IonToolbar>
                 </IonHeader>
-                <IonContent className="ion-padding">
+                <IonContent color={'light'} className="ion-padding">
                     <form ref={formRef} onSubmit={handleSubmit(onSubmit)}>
                         {fields.map((field, index) => (
                             <IonCard key={field.id} className="rounded-xl p-2 !mb-4">

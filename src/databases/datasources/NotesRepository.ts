@@ -134,7 +134,7 @@ class NotesRepository {
         });
     }
 
-    async updateNote(data: Partial<Note>): Promise<Note | null> {
+    async updateNote(data: Partial<Note>, syncToServer: boolean = true): Promise<Note | null> {
         return this.enqueueWrite(async () => {
             const user = await getUser();
             await this.noteRepo.update(data.id as string, this.removeEmpty(data as any));
@@ -142,7 +142,7 @@ class NotesRepository {
 
             const note = await this.getNoteById(data.id as string);
 
-            if (note) {
+            if (note && syncToServer) {
                 store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
                         body: this.removeEmpty({
@@ -297,7 +297,7 @@ class NotesRepository {
     }
 
     /** Update properti Page (misal update isActive / JSON Canvas) */
-    async updatePage(pageId: string, data: Partial<Page>, directToSupabase: boolean = true): Promise<Page | null> {
+    async updatePage(pageId: string, data: Partial<Page>, syncToServer: boolean = true): Promise<Page | null> {
         return this.enqueueWrite(async () => {
             // remove property note related to this model
             await this.pageRepo.update(pageId, data as any);
@@ -306,7 +306,7 @@ class NotesRepository {
             const savedPage = await this.getPageById(pageId);
 
             // Update bulk langsung ke supabase jangan 1 per 1
-            if (!directToSupabase) {
+            if (syncToServer) {
                 if (savedPage) {
                     let objString = null;
                     if (savedPage.contentData) {
@@ -345,14 +345,14 @@ class NotesRepository {
     /**
      * Bulk update untuk daftar pages
      */
-    async updatePagesBulk(pages: Partial<Page>[]): Promise<Page[]> {
+    async updatePagesBulk(pages: Partial<Page>[], syncToServer: boolean = true): Promise<Page[]> {
         // save() bisa menerima array objek.
         // Jika objek memiliki `id`, TypeORM otomatis melakukan UPDATE.
         const results: Page[] = [];
 
         for (let p of pages) {
             if (p.id) {
-                const res = await this.updatePage(p.id, p, true);
+                const res = await this.updatePage(p.id, p, false);
                 if (res) {
                     results.push(res);
                     // Simpan perubahan ke IndexedDB jika di platform web
@@ -362,20 +362,32 @@ class NotesRepository {
         }
 
         // langsung update ke supabase
-        const updatingPages = pages.map((p) => ({
-            id: p.id,
-            user_id: p.userId,
-            workspace_id: p.workspaceId,
-            workspace_note_id: p.workspaceNoteId,
-            synced_at: p.syncedAt ? p.syncedAt.toISOString() : new Date().toISOString(),
-            synced_id: p.syncedId,
-            page_num: p.pageNum,
-            title: p.title,
-            is_active: p.isActive,
-            status: p.status,
-        }));
+        const updatingPages = pages.map((p) => {
+            let objString = null;
+            if (p.contentData) {
+                const decoder = new TextDecoder('utf-8');
+                const jsonString = decoder.decode(p.contentData);
+                objString = jsonString ? JSON.parse(jsonString) : {};
+            }
 
-        store.dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages })).unwrap();
+            return {
+                id: p.id,
+                user_id: p.userId,
+                workspace_id: p.workspaceId,
+                workspace_note_id: p.workspaceNoteId,
+                synced_at: p.syncedAt ? p.syncedAt.toISOString() : new Date().toISOString(),
+                synced_id: p.syncedId,
+                page_num: p.pageNum,
+                title: p.title,
+                is_active: p.isActive,
+                status: p.status,
+                content_data: objString,
+            }
+        });
+
+        if (syncToServer) {
+            store.dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages })).unwrap();
+        }
 
         return results;
     }

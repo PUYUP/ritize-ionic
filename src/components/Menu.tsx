@@ -65,7 +65,7 @@ const Menu: React.FC = () => {
     }, []);
 
     return (
-        <IonMenu contentId="main" type="overlay">
+        <IonMenu contentId="main" type="overlay" className='border-r border-neutral-200' style={{ 'width': '250px' }}>
             <IonContent>
                 <IonList id="inbox-list" style={{ 'paddingTop': 'var(--ion-safe-area-top, 0)' }}>
                     <IonListHeader>{user?.name}</IonListHeader>

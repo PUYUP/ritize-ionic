@@ -1,7 +1,7 @@
-import { IonActionSheet, IonAlert, IonButton, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
+import { IonActionSheet, IonAlert, IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { alarm, alarmOutline, arrowForwardCircleOutline, arrowForwardOutline, attachOutline, bookmarkOutline, bookmarkSharp, bookSharp, briefcaseOutline, checkmarkCircleOutline, checkmarkCircleSharp, closeOutline, ellipsisVertical, pencil, pencilOutline, pencilSharp, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { alarm, alarmOutline, arrowForwardCircleOutline, arrowForwardOutline, attachOutline, bookmarkOutline, bookmarkSharp, bookSharp, briefcaseOutline, checkmarkCircleOutline, checkmarkCircleSharp, chevronForwardOutline, closeOutline, ellipsisVertical, pencil, pencilOutline, pencilSharp, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -93,105 +93,97 @@ const NoteItem: React.FC<{
         }
 
         return (
-            <>
-                <IonItem lines={isLast ? "none" : "full"} className='note-item'>
-                    <div className={`w-full py-3`}>
-                        <div className='flex mb-2 gap-2.5'>
+            <IonCard className='rounded-xl'>
+                <IonCardContent className='!p-0 h-full'>
+                    <div className="w-full h-full flex flex-col">
+                        <div className='ion-padding'>
                             {item.clustered_date && (
-                                <div className='inline-block'>
-                                    <div className='flex items-center gap-1.5 bg-yellow-100 px-1 pr-1.5 py-0.5 pl-1.5 rounded-xl shadow'>
-                                        <IonIcon icon={bookmarkSharp} color="warning"></IonIcon>
-                                        <IonText className='text-xs text-yellow-800'>Materialized</IonText>
+                                <div className='flex mb-2 gap-2.5'>
+                                    <div className='inline-block'>
+                                        <div className='flex items-center gap-1.5 bg-yellow-100 px-1 pr-1.5 py-0.5 pl-1.5 rounded-xl shadow'>
+                                            <IonIcon icon={bookmarkSharp} color="warning"></IonIcon>
+                                            <IonText className='text-xs text-yellow-800'>Materialized</IonText>
+                                        </div>
                                     </div>
                                 </div>
                             )}
-                        </div>
 
-                        <div className='flex'>
-                            <Link to={linkTo} className='block w-full flex-1'>
-                                <div className='flex gap-2 !m-0 items-center !text-sm'>
-                                    <div className={`flex items-center gap-1.5`}>
-                                        <IonIcon
-                                            icon={item.status === 'published' ? checkmarkCircleOutline : alarmOutline}
-                                            color={item.status === 'published' ? 'success' : 'primary'}
-                                        ></IonIcon>
-                                        <IonText className={`text-xs ${item.status === 'published' ? 'text-lime-800' : 'text-blue-800'}`}>
-                                            {item.status == 'published' ? 'Finished' : 'Draft'} ({item.page_count?.[0]?.count || 0})
-                                        </IonText>
+                            <div className='flex'>
+                                <Link to={linkTo} className='block w-full flex-1'>
+                                    <div className='flex gap-1.5 !m-0 items-center !text-sm'>
+                                        <div className={`flex items-center gap-1.5`}>
+                                            {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-base text-neutral-500' />}
+                                            {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-base text-neutral-500' />}
+                                            {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-base text-neutral-500' />}
+
+                                            <IonText className={`text-sm flex gap-1 ${item.status === 'published' ? 'text-lime-800' : 'text-blue-800'}`}>
+                                                <span className='font-semibold'>{item.page_count?.[0]?.count || 0}</span>
+                                                {item.status == 'published' ? 'finished' : 'draft'}
+                                            </IonText>
+                                        </div>
+                                        <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                        <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'MMM dd, yy')}</IonText>
+                                        <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                        <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'HH:mm')}</IonText>
                                     </div>
-                                    <IonText className='text-neutral-400'>&bull;</IonText>
-                                    <IonText className='text-neutral-500'>{format(item.created_at, 'MMM dd, yy')}</IonText>
-                                    <IonText className='text-neutral-400'>&bull;</IonText>
-                                    <IonText className='text-neutral-500'>{format(item.created_at, 'HH:mm')}</IonText>
-                                    {/* <IonText className='text-neutral-400'>&bull;</IonText>
-                                    <span className='flex gap-2 items-center'>
-                                        {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-sm text-neutral-500' />}
-                                        {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-sm text-neutral-500' />}
-                                        {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-sm text-neutral-500' />}
-                                        <IonText className='text-neutral-500'>{item.page_count?.[0]?.count || 0}</IonText>
-                                    </span> */}
-                                </div>
-                                <IonText color="dark font-semibold text-sm block">{item.user.name}</IonText>
-                            </Link>
+                                    <IonText color="dark font-semibold text-sm block mt-1">{item.user.name}</IonText>
+                                </Link>
 
-                            <div className='ml-auto'>
-                                {user.id === item.user.id && (
-                                    <IonButton shape='round' color={'light'} disabled={Boolean(item.clustered_date)} onClick={async () => await optionsHandler(item)}>
-                                        <IonIcon icon={pencil} slot='icon-only' />
-                                    </IonButton>
-                                )}
+                                <div className='ml-auto'>
+                                    <div className='flex gap-2'>
+                                        {(user.id === item.user.id && !item.clustered_date) && (
+                                            <IonButton shape='round' size='small' color={'light'} disabled={Boolean(item.clustered_date)} onClick={async () => await optionsHandler(item)}>
+                                                <IonIcon icon={ellipsisVertical} slot='icon-only' />
+                                            </IonButton>
+                                        )}
+
+                                        <IonButton shape='round' size='small' color={'light'} routerLink={linkTo} routerDirection='forward'>
+                                            <IonIcon icon={chevronForwardOutline} slot='icon-only' />
+                                        </IonButton>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {content_preview && (
                             <>
-                                {item.workspace && !workspaceId && (
-                                    <div className='flex items-center gap-2 mt-2 text-orange-700'>
-                                        <IonIcon icon={briefcaseOutline}></IonIcon>
-                                        <IonText className='text-xs'>{item.workspace.title}</IonText>
-                                    </div>
-                                )}
+                                <div className='ion-padding-start ion-padding-end'>
+                                    {item.workspace && !workspaceId && (
+                                        <div className='flex items-center gap-2 text-orange-700 mb-2'>
+                                            <IonIcon icon={briefcaseOutline}></IonIcon>
+                                            <IonText className='text-xs'>{item.workspace.title}</IonText>
+                                        </div>
+                                    )}
 
-                                <Link to={linkTo}>
-                                    <div
-                                        dangerouslySetInnerHTML={{ __html: content_preview }}
-                                        className='text-neutral-800 text-base leading-6 mt-1 line-clamp-4'
-                                    />
-                                </Link>
+                                    <Link to={linkTo}>
+                                        <div
+                                            dangerouslySetInnerHTML={{ __html: content_preview }}
+                                            className='text-neutral-800 text-base leading-6 line-clamp-4'
+                                        />
+                                    </Link>
+                                </div>
 
-                                <div className='block mb-2 py-1 bg-neutral-100 mt-3 rounded-xl shadow'>
-                                    <IonList lines="none" className='flex flex-col gap-6 !py-0 bg-neutral-100'>
-                                        <IonItemDivider className='bg-neutral-100 ion-padding-start'>
-                                            <IonLabel className='!text-neutral-700 underline italic'>Relevant papers:</IonLabel>
-                                        </IonItemDivider>
+                                <div className='block mt-auto pt-2.5'>
+                                    <div className='py-3'>
+                                        <div className='ion-padding-start mb-2'>
+                                            <IonText className='!text-neutral-700 underline italic'>Relevant papers:</IonText>
+                                        </div>
                                         {item.documents?.length > 0 && (
-                                            <>
+                                            <div className='flex flex-col gap-2 ion-padding-start ion-padding-end'>
                                                 {item.documents.map((doc: any, index: number, array: any) => {
-                                                    const isLast = index === array.length - 1;
                                                     return (
-                                                        <IonItem
-                                                            key={doc.id}
-                                                            lines={isLast ? 'none' : 'full'}
-                                                            className='bg-neutral-100'
-                                                            style={{ '--background': 'none' }}
-                                                            button={true}
-                                                            mode="md"
-                                                            detail={false}
-                                                            href={doc.paper.pdf_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <IonLabel className='py-1'>
-                                                                <p className='!text-blue-700'>{doc.paper.title}</p>
-                                                                <p className='line-clamp-2 !overflow-hidden'>{doc.document_content}</p>
-                                                            </IonLabel>
-                                                        </IonItem>
+                                                        <Link key={doc.id} to={doc.paper.pdf_url} target="_blank" rel="noopener noreferrer">
+                                                            <div className='flex flex-col gap-0.5'>
+                                                                <p className='!text-blue-700 mb-0 !text-xs'>{doc.paper.title}</p>
+                                                                <p className='line-clamp-2 !overflow-hidden !text-xs text-neutral-600'>{doc.document_content}</p>
+                                                            </div>
+                                                        </Link>
                                                     )
                                                 })}
-                                            </>
+                                            </div>
                                         )}
                                         {item.documents?.length === 0 && (
-                                            <IonItem className='bg-neutral-100' style={{ '--background': 'none' }} button={true} mode="md" detail={false}>
+                                            <IonItem style={{ '--background': 'none' }} button={true} mode="md" detail={false} lines='none'>
                                                 <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
                                                 <IonLabel className='pl-2'>
                                                     <p className='text-neutral-500 !text-xs'>Discovering...</p>
@@ -201,13 +193,13 @@ const NoteItem: React.FC<{
                                                 </IonButton>
                                             </IonItem>
                                         )}
-                                    </IonList>
+                                    </div>
                                 </div>
                             </>
                         )}
                     </div>
-                </IonItem>
-            </>
+                </IonCardContent>
+            </IonCard>
         )
     }
 
@@ -263,38 +255,44 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
         await getNoteById({ id: item.id, workspace_id: workspaceId as string });
     }
 
-    if (isLoading && page === 1) return <IonText className='text-center ion-padding'>Loading...</IonText>;
+    if (isLoading && page === 1) {
+        return (
+            <div className="ion-padding text-center">
+                <IonText className='text-center ion-padding'>Loading...</IonText>
+            </div>
+        );
+    }
 
     return (
         <>
-            <IonList id="notelist" className='flex flex-col gap-6 !pt-0 notes-list'>
+            <div id="notelist" className='flex flex-col gap-4 notes-list ion-padding'>
                 {groupedNotes.map(({ dateKey, notes }) => (
-                    <IonItemGroup key={dateKey}>
-                        <IonItemDivider sticky color="light">
-                            <IonLabel className='ion-padding-start ion-padding-end'>
-                                <IonText className='font-semibold text-orange-600 uppercase tracking-wide'>
-                                    {formatDateHeader(dateKey)}
-                                </IonText>
-                            </IonLabel>
-                        </IonItemDivider>
+                    <div key={dateKey} className='block flex flex-col w-full gap-4'>
+                        <div className='block ion-padding-start -mb-2'>
+                            <IonText className='font-semibold text-orange-600'>
+                                {formatDateHeader(dateKey)}
+                            </IonText>
+                        </div>
 
-                        {notes.map((item, index, array) => {
-                            const isLast = index === array.length - 1;
-                            return (
-                                <NoteItem
-                                    key={item.id}
-                                    item={item}
-                                    user={user}
-                                    isLast={isLast}
-                                    workspaceId={workspaceId}
-                                    onShowOptions={optionsHandler}
-                                    onRefreshPapers={refreshPapers}
-                                />
-                            )
-                        })}
-                    </IonItemGroup>
+                        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 xl:gap-5'>
+                            {notes.map((item, index, array) => {
+                                const isLast = index === array.length - 1;
+                                return (
+                                    <NoteItem
+                                        key={item.id}
+                                        item={item}
+                                        user={user}
+                                        isLast={isLast}
+                                        workspaceId={workspaceId}
+                                        onShowOptions={optionsHandler}
+                                        onRefreshPapers={refreshPapers}
+                                    />
+                                )
+                            })}
+                        </div>
+                    </div>
                 ))}
-            </IonList>
+            </div>
 
             <IonInfiniteScroll
                 disabled={isError || !hasMore}

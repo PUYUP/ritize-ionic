@@ -74,7 +74,7 @@ const App: React.FC = () => {
 		<IonApp>
 			<AuthProvider>
 				<IonReactRouter>
-					<IonSplitPane contentId="main" when={false}>
+					<IonSplitPane contentId="main" when={'lg'}>
 						<Menu />
 						<IonRouterOutlet id="main">
 							{mainRoutes.map((route) => (

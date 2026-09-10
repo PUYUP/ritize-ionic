@@ -2,7 +2,6 @@ import { IonApp, IonRouterOutlet, IonSplitPane, setupIonicReact } from '@ionic/r
 import { IonReactRouter } from '@ionic/react-router';
 import Menu from './components/Menu';
 
-
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
 
@@ -21,13 +20,7 @@ import '@ionic/react/css/display.css';
 
 /**
  * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
  */
-
-/* import '@ionic/react/css/palettes/dark.always.css'; */
-/* import '@ionic/react/css/palettes/dark.class.css'; */
 import '@ionic/react/css/palettes/dark.system.css';
 
 /* Theme variables */
@@ -36,11 +29,37 @@ import { useEffect, useState } from 'react';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { mainRoutes } from './routes/main.routes';
 import { SocialLogin } from '@capgo/capacitor-social-login';
-import { Route } from 'react-router';
+import { Route, useLocation } from 'react-router'; // Tambahkan useLocation
 import ProtectedRoute from './routes/ProtectedRoute';
 import { AuthProvider } from './utils/authContext';
 
 setupIonicReact({ mode: "md", animated: false });
+
+// Buat komponen layout terpisah agar bisa menggunakan useLocation
+const AppLayout: React.FC = () => {
+	const location = useLocation();
+	const isHome = location.pathname === '/'; // Cek apakah sedang di halaman '/'
+
+	return (
+		// Matikan efek SplitPane (when={false}) jika di halaman '/' agar tidak ada ruang kosong
+		<IonSplitPane contentId="main" when={isHome ? false : 'md'}>
+			{!isHome && <Menu />}
+			<IonRouterOutlet id="main">
+				{mainRoutes.map((route) => (
+					<Route key={route.path as string} {...route} />
+				))}
+
+				{dashboardRoutes.map((route) => (
+					<Route
+						key={route.path as string}
+						path={route.path}
+						element={<ProtectedRoute>{route.element}</ProtectedRoute>}
+					/>
+				))}
+			</IonRouterOutlet>
+		</IonSplitPane>
+	);
+};
 
 const App: React.FC = () => {
 	const [fontReady, setFontReady] = useState(false);
@@ -74,22 +93,7 @@ const App: React.FC = () => {
 		<IonApp>
 			<AuthProvider>
 				<IonReactRouter>
-					<IonSplitPane contentId="main" when={'md'}>
-						<Menu />
-						<IonRouterOutlet id="main">
-							{mainRoutes.map((route) => (
-								<Route key={route.path as string} {...route} />
-							))}
-
-							{dashboardRoutes.map((route) => (
-								<Route
-									key={route.path as string}
-									path={route.path}
-									element={<ProtectedRoute>{route.element}</ProtectedRoute>}
-								/>
-							))}
-						</IonRouterOutlet>
-					</IonSplitPane>
+					<AppLayout />
 				</IonReactRouter>
 			</AuthProvider>
 		</IonApp>

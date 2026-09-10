@@ -22,7 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type Quill from 'quill';
 import { Delta, EmitterSource } from 'quill';
 import QuillEditor, { type ImageUploadHandler } from '../../../../components/richtext/QuillEditor';
-import { checkmarkDoneOutline, checkmarkOutline, copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
+import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
 import { Note, Page } from '../../../../databases/entities/notes';
 import Swiper from 'swiper';
 import { FreeMode, Mousewheel } from 'swiper/modules';
@@ -34,7 +34,7 @@ import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteM
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 import { generateUUID } from '../../../../utils/generator';
 
-const AUTOSAVE_DELAY_MS = 5000;
+const AUTOSAVE_THROTTLE_MS = 1000;
 
 /**
  * A delta is "empty" only if it has no text AND no embeds (images, formulas,
@@ -77,7 +77,6 @@ const RichTextEditorPage: React.FC = () => {
 
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
     const [selectedPage, setSelectedPage] = useState<Partial<Page> | null>(null);
-    const [isDraft, setIsDraft] = useState<boolean>(false);
 
     const pagesSwiperElRef = useRef<HTMLDivElement>(null);
     const pagesSwiperRef = useRef<Swiper | null>(null);
@@ -90,11 +89,18 @@ const RichTextEditorPage: React.FC = () => {
     // canvas) can be skipped instead of writing an identical row again.
     const lastSavedDataRef = useRef<string | null>(null);
 
+    // Throttle bookkeeping: kapan terakhir kali benar-benar save, dan
+    // apakah ada save yang masih berjalan (mencegah dua write bertabrakan
+    // untuk page yang sama saat user mengetik cepat).
+    const lastPersistedAtRef = useRef(0);
+    const isSavingRef = useRef(false);
+
     // Menyimpan backup data Excalidraw secara real-time
     const latestQuillStateRef = useRef<Quill | null>(null);
 
     // Menyimpan halaman yang sedang aktif agar tidak menjadi null saat unmount
     const selectedPageRef = useRef<Partial<Page> | null>(null);
+    const selectedNoteRef = useRef<Partial<Note> | null>(null);
 
     // RTK Query
     const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
@@ -118,9 +124,7 @@ const RichTextEditorPage: React.FC = () => {
     // exactly what gets written where — this is what makes it safe to call
     // right before switching pages (see flushPendingSave / persistCurrentPage).
     const persistPageContent = useCallback(async (page: Partial<Page>, delta: Delta) => {
-        // hanya jika ada note
-        if (!selectedNote) return;
-
+        isSavingRef.current = true;
         // Hanya update state UI jika halaman masih aktif
         if (isPageActiveRef.current) setIsSaving(true);
         try {
@@ -135,19 +139,15 @@ const RichTextEditorPage: React.FC = () => {
 
             const bufferData = json ? Buffer.from(json, 'utf-8') : null;
 
-            await NotesRepository.updatePage(page.id as string, { contentData: bufferData, status: 'draft' });
+            await NotesRepository.microUpdatePage(page.id as string, { contentData: bufferData });
             console.log('selected page id: ', page.id, ' is updated');
 
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
             if (isPageActiveRef.current) {
-                const updatePages = pages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p));
-                setPages(updatePages);
+                setPages((prevPages) =>
+                    prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
+                );
             }
-
-            // everything page changed update note status as draft
-            // sync ke server
-            const updatedNote = await NotesRepository.updateNote({ id: selectedNote.id, status: 'draft' });
-            setSelectedNote(updatedNote);
         } catch (err) {
             console.error('Failed to save document', err);
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
@@ -155,30 +155,24 @@ const RichTextEditorPage: React.FC = () => {
                 presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
             }
         } finally {
+            isSavingRef.current = false;
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
             if (isPageActiveRef.current) setIsSaving(false);
         }
-    }, [presentToast, workspaceId, selectedNote, pages]);
+    }, [presentToast, workspaceId]);
 
     // Persists whatever is currently in the editor for the currently selected page.
-    const persistCurrentPage = useCallback(async (flushed: boolean = false, pages: Page[] = []) => {
+    const persistCurrentPage = useCallback(async () => {
         // Ambil data dari Ref, bukan dari state yang mungkin sudah hilang
         const page = selectedPageRef.current;
         const quill = latestQuillStateRef.current;
 
-        if (!quill || !page || isProcessed || !selectedNote) return;
-
-        if (flushed && pages.length > 0) {
-            // update all at once
-            await NotesRepository.updateNote({ id: selectedNote.id, status: selectedNote.status });
-            await NotesRepository.updatePagesBulk(pages);
-        } else {
-            await persistPageContent(page, quill.getContents());
-        }
+        if (!quill || !page || isProcessed) return;
+        await persistPageContent(page, quill.getContents());
 
         // Set false agar tidak terpicu dua kali
         updateIsDirty(false);
-    }, [isProcessed, persistPageContent, updateIsDirty, selectedNote]);
+    }, [isProcessed, persistPageContent, updateIsDirty]);
 
     // Cancels any pending debounced autosave and, if there are unsaved
     // changes, saves them immediately for the CURRENT page.
@@ -188,7 +182,6 @@ const RichTextEditorPage: React.FC = () => {
     // active) can fire after page B's content has already been swapped into
     // the editor, saving page B's content under page A's id.
     const flushPendingSave = useCallback(() => {
-        // Bersihkan timer
         if (autosaveTimer.current) {
             clearTimeout(autosaveTimer.current);
             autosaveTimer.current = undefined;
@@ -196,85 +189,50 @@ const RichTextEditorPage: React.FC = () => {
 
         if (!isDirtyRef.current) return Promise.resolve();
 
-        // Jalankan tanpa 'await'. Ini akan membuat proses simpan 
-        // dilempar ke background (background promise) sehingga
-        // router bisa pindah halaman dengan mulus tanpa memutus request.
-        return persistCurrentPage(true, pages).catch((err) => {
+        lastPersistedAtRef.current = Date.now();
+
+        return persistCurrentPage().catch((err) => {
             console.error("Background save failed:", err);
         });
-    }, [isDirty, persistCurrentPage, pages]);
+    }, [isDirty, persistCurrentPage]);
 
-    const decoder = new TextDecoder('utf-8');
-
-    const handleTextChange = useCallback(async (
+    const handleTextChange = useCallback((
         delta: Delta,
         oldDelta: Delta,
         source: EmitterSource,
         quill: Quill
     ) => {
-        // Ignore programmatic changes — e.g. quill.setContents(...) fired by
-        // the page-load effect below whenever `selectedPage` changes. Only
-        // real user edits should mark the document dirty / trigger a save.
         if (source !== 'user') return;
 
-        const page = selectedPageRef.current;
-        const contentEmpty = isDeltaEmpty(quill.getContents());
-        let contentChanged = false;
         updateIsDirty(true);
-
-        if (page) {
-            if (Boolean(page.contentData)) {
-                const jsonString = decoder.decode(page.contentData as AllowSharedBufferSource);
-                const objString = jsonString ? JSON.parse(jsonString) : null;
-                contentChanged = JSON.stringify(objString) !== JSON.stringify(quill.getContents());
-            }
-
-            if (!page.contentData && !contentEmpty) {
-                contentChanged = true;
-            }
-        }
-
-        // SIMPAN DATA KANVAS KE MEMORI
         latestQuillStateRef.current = quill;
+        setHasContent(!isDeltaEmpty(quill.getContents()));
 
-        // Base "has content" on the full document, not the incremental
-        // delta diff — a diff of a deletion can have >1 ops and a diff of
-        // an insertion can look "non-empty" while the document as a whole
-        // is empty (or vice versa).
-        setHasContent(contentEmpty);
-
-        if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-        autosaveTimer.current = setTimeout(() => {
-            void persistCurrentPage();
-        }, AUTOSAVE_DELAY_MS);
-
-        // instantly update note status
-        if (selectedNote?.status === 'published') {
-            setSelectedNote({
-                ...selectedNote,
-                status: 'draft'
-            });
+        if (autosaveTimer.current) {
+            clearTimeout(autosaveTimer.current);
+            autosaveTimer.current = undefined;
         }
 
-        // instantly update pages status
-        const json = contentEmpty ? null : JSON.stringify(quill.getContents());
-        const bufferData = json ? Buffer.from(json, 'utf-8') : null;
-        const updatePages = pages.map((p: any) =>
-            p.id === page?.id ? {
-                ...p,
-                status: 'draft',
-                contentData: bufferData
-            } : {
-                ...p,
-                isActive: false,
-            }
-        );
+        const elapsed = Date.now() - lastPersistedAtRef.current;
 
-        setPages(updatePages);
+        if (elapsed >= AUTOSAVE_THROTTLE_MS && !isSavingRef.current) {
+            // Leading edge — window sudah lewat & tidak ada save yang
+            // sedang berjalan, simpan sekarang juga.
+            lastPersistedAtRef.current = Date.now();
+            void persistCurrentPage();
+        } else {
+            // Trailing edge — jadwalkan satu save untuk penutup window ini.
+            const remaining = elapsed >= AUTOSAVE_THROTTLE_MS
+                ? AUTOSAVE_THROTTLE_MS
+                : AUTOSAVE_THROTTLE_MS - elapsed;
 
-        // only update local db
-        await NotesRepository.updatePagesBulk(updatePages, false);
-    }, [persistCurrentPage, updateIsDirty, selectedNote, pages]);
+            autosaveTimer.current = setTimeout(() => {
+                autosaveTimer.current = undefined;
+                lastPersistedAtRef.current = Date.now();
+                void persistCurrentPage();
+            }, remaining);
+        }
+    }, [persistCurrentPage, updateIsDirty]);
 
     const handleEnter = useCallback((quill: Quill) => {
         ionContentRef.current?.scrollToBottom(0);
@@ -287,8 +245,8 @@ const RichTextEditorPage: React.FC = () => {
     });
 
     useIonViewWillLeave(() => {
-        flushPendingSave();
         isPageActiveRef.current = false;
+        flushPendingSave();
     });
 
     useIonViewDidEnter(() => {
@@ -315,17 +273,9 @@ const RichTextEditorPage: React.FC = () => {
         selectedPageRef.current = selectedPage;
     }, [selectedPage]);
 
-    const handleImageUpload: ImageUploadHandler = useCallback(async (file) => {
-        // TODO: upload to real storage (S3, Cloudinary, your API…) and return the URL.
-        // This base64 fallback works out of the box for testing, but embedding
-        // images as base64 bloats the saved document — replace before shipping.
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }, []);
+    useEffect(() => {
+        selectedNoteRef.current = selectedNote;
+    }, [selectedNote]);
 
     // Initialize the pages Swiper once and clean it up on unmount.
     useEffect(() => {
@@ -362,7 +312,7 @@ const RichTextEditorPage: React.FC = () => {
     // Update/scroll the swiper whenever the page list changes.
     useEffect(() => {
         const swiper = pagesSwiperRef.current;
-        if (!swiper || !selectedNote) return;
+        if (!swiper) return;
 
         const isNewPageAdded = pages.length > prevPagesLengthRef.current;
         prevPagesLengthRef.current = pages.length;
@@ -374,20 +324,8 @@ const RichTextEditorPage: React.FC = () => {
             }
         });
 
-        // cek apakah di pages ada draft
-        const hasDraft = pages.some(p => p.status == 'draft' && p.contentData);
-        setIsDraft(hasDraft);
-
-        (async () => {
-            // only update local db
-            await NotesRepository.updateNote({
-                id: selectedNote.id,
-                status: 'draft'
-            }, false);
-        })();
-
         return () => cancelAnimationFrame(raf);
-    }, [pages, selectedNote]);
+    }, [pages]);
 
     // Load content data for the active page into the editor.
     useEffect(() => {
@@ -395,6 +333,10 @@ const RichTextEditorPage: React.FC = () => {
 
         const loadContentData = async () => {
             const contentData = selectedPage?.contentData;
+
+            // Halaman baru dibuka — biarkan edit pertama user langsung
+            // tersimpan, jangan mewarisi window throttle halaman sebelumnya.
+            lastPersistedAtRef.current = 0;
 
             if (contentData) {
                 try {
@@ -433,7 +375,8 @@ const RichTextEditorPage: React.FC = () => {
 
     // select page
     const selectPageHandler = async (page: Page) => {
-        if (selectedPage?.id === page.id) return;
+        if (!selectedNoteRef.current?.id || !selectedPageRef.current?.id) return;
+        if (selectedPageRef.current?.id === page.id) return;
 
         try {
             // Flush any unsaved edits on the OUTGOING page before touching
@@ -444,14 +387,12 @@ const RichTextEditorPage: React.FC = () => {
             if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
             setPages(updatedPages);
 
-            if (selectedNote) {
-                const currentPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
-                setPages(currentPages);
+            const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
+            setPages(currentPages);
 
-                const freshSelectedPage = currentPages.find((p) => p.id === page.id);
-                if (freshSelectedPage) {
-                    setSelectedPage(freshSelectedPage);
-                }
+            const freshSelectedPage = currentPages.find((p) => p.id === page.id);
+            if (freshSelectedPage) {
+                setSelectedPage(freshSelectedPage);
             }
         } catch (err) {
             console.error('Failed to switch page', err);
@@ -461,25 +402,27 @@ const RichTextEditorPage: React.FC = () => {
 
     // add new page
     const newPageHandler = async () => {
-        if (!selectedNote) return;
+        if (!selectedNoteRef.current?.id) return;
 
         try {
+            await flushPendingSave();
+
             const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
             if (prevPages.length > 0) {
                 await NotesRepository.updatePagesBulk(prevPages);
             }
 
-            await createPage(selectedNote, {
+            await createPage(selectedNoteRef.current, {
                 pageNum: pages.length + 1,
-                workspaceId: selectedNote.workspaceId,
-                workspaceNoteId: selectedNote.id,
+                workspaceId: selectedNoteRef.current.workspaceId,
+                workspaceNoteId: selectedNoteRef.current.id,
                 isActive: true,
                 status: 'draft',
                 syncedAt: new Date(),
                 syncedId: generateUUID(),
             });
 
-            const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
+            const updatedPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
             setPages(updatedPages);
 
             const activePage = updatedPages.find((p) => p.isActive);
@@ -631,9 +574,6 @@ const RichTextEditorPage: React.FC = () => {
             console.log('getting pages', savedPages);
             setPages([...savedPages]);
 
-            // set is draft
-            setIsDraft(savedPages.some((page) => page.status === 'draft'));
-
             // get active page
             const activePage = savedPages.find((p: Page) => p.isActive === true);
             if (activePage) {
@@ -672,40 +612,6 @@ const RichTextEditorPage: React.FC = () => {
         }
     }, [noteId]);
 
-    // save notes and entire pages related to it
-    const saveHandler = async () => {
-        if (!selectedNote) return;
-
-        // update note status from 'draft' to 'published'
-        const note = await NotesRepository.updateNote({
-            id: selectedNote.id,
-            status: 'published'
-        });
-
-        setSelectedNote(note);
-
-        // mark pages as published
-        const updatePages: Page[] = pages.map((p: any) => ({
-            ...p,
-            status: 'published',
-        }));
-
-        // force update pages status as published
-        setPages(updatePages);
-
-        // only update local db
-        await NotesRepository.updatePagesBulk(updatePages, false);
-
-        // cek apakah di pages ada draft
-        setIsDraft(updatePages.some((page) => page.status === 'draft'));
-
-        presentToast({
-            message: 'Note saved successfully',
-            duration: 1500,
-            color: 'success'
-        });
-    }
-
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -717,31 +623,6 @@ const RichTextEditorPage: React.FC = () => {
                     <IonTitle className='text-sm ion-padding-start ion-padding-end line-clamp-1'>
                         {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
-
-                    {/* pages tools */}
-                    {!isProcessed && (
-                        <div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
-                            {isDraft && (
-                                <IonButton
-                                    size='small'
-                                    shape="round"
-                                    color={'success'}
-                                    disabled={!selectedPage || isProcessed}
-                                    onClick={() => saveHandler()}
-                                    className='normal-button'
-                                >
-                                    <IonIcon icon={checkmarkDoneOutline} slot='start'></IonIcon>
-                                    <IonText className='pl-2'>Finish</IonText>
-                                </IonButton>
-                            )}
-
-                            {!isDraft && (
-                                <IonText color='success' className='flex items-center'>
-                                    <IonIcon icon={checkmarkOutline} className='text-xl mr-2' /> Finished
-                                </IonText>
-                            )}
-                        </div>
-                    )}
                 </IonToolbar>
             </IonHeader>
 
@@ -751,7 +632,6 @@ const RichTextEditorPage: React.FC = () => {
                     defaultValue={null}
                     placeholder="Tap here to start…"
                     onTextChange={handleTextChange}
-                    onImageUpload={handleImageUpload}
                     clearSignal={clearSignal}
                     onEnter={handleEnter}
                     readOnly={isProcessed}
@@ -783,7 +663,7 @@ const RichTextEditorPage: React.FC = () => {
                         </div>
 
                         {!isProcessed && (
-                            <div className='flex items-center pb-1 pr-2 gap-3'>
+                            <div className='flex items-center gap-3 pb-1 pr-2'>
                                 <IonButton
                                     size='small'
                                     shape="round"
@@ -793,7 +673,6 @@ const RichTextEditorPage: React.FC = () => {
                                 >
                                     <IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
                                 </IonButton>
-
                                 <IonButton
                                     size='small'
                                     shape="round"
@@ -803,6 +682,8 @@ const RichTextEditorPage: React.FC = () => {
                                 >
                                     <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
                                 </IonButton>
+
+
 
                                 <IonButton
                                     size='small'

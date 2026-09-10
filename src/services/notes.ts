@@ -697,6 +697,26 @@ export const notesAPI = createApi({
         }),
 
         // ...
+        // Update single page
+        // ...
+        microUpdateNotePage: builder.mutation<NotePageTypes, { id: string, data: Partial<NotePageTypes> }>({
+            queryFn: async ({ id, data }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "[Update Note Page] User not found" } };
+
+                const { data: updatedData, error } = await supabase
+                    .from("workspace_notes_pages")
+                    .update(data)
+                    .eq("id", id)
+                    .select()
+                    .single();
+
+                if (error) return { error: { message: error.message } };
+                return { data: updatedData };
+            },
+        }),
+
+        // ...
         // Delete note page
         // ...
         deleteNotePage: builder.mutation<void, { synced_id: string, workspace_id: string, workspace_note_id: string }>({

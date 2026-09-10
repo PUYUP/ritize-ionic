@@ -342,6 +342,44 @@ class NotesRepository {
         });
     }
 
+    /** Micro update for page only passing value will be procesed */
+    async microUpdatePage(pageId: string, data: Partial<Page>, syncToServer: boolean = true): Promise<Page | null> {
+        return this.enqueueWrite(async () => {
+            // remove property note related to this model
+            await this.pageRepo.update(pageId, data as any);
+            await this.saveWebStore();
+
+            const savedPage = await this.getPageById(pageId);
+
+            // Update bulk langsung ke supabase jangan 1 per 1
+            if (syncToServer) {
+                if (savedPage) {
+                    let objString = null;
+                    if (data.contentData) {
+                        const decoder = new TextDecoder('utf-8');
+                        const jsonString = decoder.decode(data.contentData);
+                        objString = jsonString ? JSON.parse(jsonString) : {};
+                    }
+
+                    store
+                        .dispatch(notesAPI.endpoints.microUpdateNotePage.initiate({
+                            id: pageId,
+                            data: this.removeEmpty({
+                                synced_at: data.syncedAt ? data.syncedAt.toISOString() : new Date().toISOString(),
+                                content_data: objString,
+                                page_num: data.pageNum,
+                                is_active: data.isActive,
+                                status: data.status,
+                            })
+                        }))
+                        .unwrap();
+                }
+            }
+
+            return savedPage;
+        });
+    }
+
     /**
      * Bulk update untuk daftar pages
      */

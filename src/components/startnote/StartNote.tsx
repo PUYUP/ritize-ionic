@@ -15,7 +15,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
 
     return (
         <div id="startnote">
-            <div className='grid grid-cols-3 gap-4'>
+            <div className='grid grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4'>
                 <div className='flex flex-col items-center justify-center gap-4'>
                     <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/richtext?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>

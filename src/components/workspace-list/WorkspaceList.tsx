@@ -96,12 +96,14 @@ const WorkspaceList: React.FC<WorkspaceListProps> = ({ items }) => {
     return (
         <div className="!py-0 ion-padding flex flex-col gap-4">
             {items.length === 0 && <div className="ion-no-padding text-center">No workspaces found</div>}
-            {items.map((item, index, array) => {
-                const isLast = index === array.length - 1;
-                return (
-                    <WorkspaceItem key={index} item={item} isLast={isLast} />
-                );
-            })}
+            <div className='grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 xl:gap-5'>
+                {items.map((item, index, array) => {
+                    const isLast = index === array.length - 1;
+                    return (
+                        <WorkspaceItem key={index} item={item} isLast={isLast} />
+                    );
+                })}
+            </div>
         </div>
     );
 }

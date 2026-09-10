@@ -24,7 +24,7 @@ interface WorkspaceStatsProps {
 const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSetActiveTab, note, material, digest }) => {
     return (
         <div id="today-workspace">
-            <div className='grid grid-cols-3 gap-4'>
+            <div className='grid grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4'>
                 <div className='flex flex-col items-center justify-center gap-4'>
                     <IonCard onClick={() => onSetActiveTab?.('note')} className={`relative w-full rounded-xl ${isTab && activeTab === 'note' ? 'bg-lime-50' : ''}`}>
                         <IonCardContent>

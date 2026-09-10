@@ -165,10 +165,23 @@ const RichTextEditorPage: React.FC = () => {
     const persistCurrentPage = useCallback(async () => {
         // Ambil data dari Ref, bukan dari state yang mungkin sudah hilang
         const page = selectedPageRef.current;
+        const note = selectedNoteRef.current;
         const quill = latestQuillStateRef.current;
 
-        if (!quill || !page || isProcessed) return;
+        if (!quill || !page || !note || isProcessed) return;
         await persistPageContent(page, quill.getContents());
+
+        // Hanya jalankan saat selected note statusnya 'published'
+        // paksa setiap kali ada perubahan maka statusnya menjadi 'draft'
+        if (note.status === 'published' && note.id) {
+            const res = await NotesRepository.updateNote({
+                id: note.id,
+                status: 'draft',
+            });
+
+            // set again with new status
+            setSelectedNote(res);
+        }
 
         // Set false agar tidak terpicu dua kali
         updateIsDirty(false);
@@ -612,6 +625,23 @@ const RichTextEditorPage: React.FC = () => {
         }
     }, [noteId]);
 
+    // ...
+    // save changes
+    // ...
+    const handleSaveChanges = async () => {
+        if (!selectedNoteRef.current) return;
+
+        // update note dari 'draft' ke 'publish'
+        // tujuannya untuk start embedding
+        const res = await NotesRepository.updateNote({
+            id: selectedNoteRef.current.id,
+            status: 'published',
+        });
+
+        setSelectedNote(res);
+        presentToast('Note saved successfully!', 1000);
+    }
+
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -623,6 +653,23 @@ const RichTextEditorPage: React.FC = () => {
                     <IonTitle className='text-sm ion-padding-start ion-padding-end line-clamp-1'>
                         {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
+
+                    {selectedNote?.status === 'draft' && (
+                        <IonButtons slot="end" className="ion-padding-end">
+                            <IonButton
+                                fill="solid"
+                                color="primary"
+                                size="small"
+                                mode="ios"
+                                shape="round"
+                                className="normal-button"
+                                style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
+                                onClick={handleSaveChanges}
+                            >
+                                Save Changes
+                            </IonButton>
+                        </IonButtons>
+                    )}
                 </IonToolbar>
             </IonHeader>
 

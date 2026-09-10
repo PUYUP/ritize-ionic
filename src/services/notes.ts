@@ -156,7 +156,7 @@ export const notesAPI = createApi({
                 if (!body.content_type) return { error: { message: "[Upsert Note] Content type is required" } };
 
                 const { data, error } = await supabase
-                    .from("workspace_notes")
+                    .from("workspace_notes_list")
                     .upsert(body, { onConflict: "id,synced_id" })
                     .select(`
                         *
@@ -204,6 +204,7 @@ export const notesAPI = createApi({
                                     draft.notes[noteIndex] = {
                                         ...draft.notes[noteIndex],
                                         ...data,
+                                        content_preview: data.content,
                                     };
                                 } else {
                                     // Add new note at the beginning (most recent)

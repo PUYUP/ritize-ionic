@@ -22,7 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type Quill from 'quill';
 import { Delta, EmitterSource } from 'quill';
 import QuillEditor, { type ImageUploadHandler } from '../../../../components/richtext/QuillEditor';
-import { copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
+import { checkmarkCircleOutline, copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
 import { Note, Page } from '../../../../databases/entities/notes';
 import Swiper from 'swiper';
 import { FreeMode, Mousewheel } from 'swiper/modules';
@@ -669,6 +669,13 @@ const RichTextEditorPage: React.FC = () => {
                                 Save Changes
                             </IonButton>
                         </IonButtons>
+                    )}
+
+                    {selectedNote?.status === 'published' && (
+                        <div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
+                            <IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
+                            <IonText color="success">All Saved</IonText>
+                        </div>
                     )}
                 </IonToolbar>
             </IonHeader>

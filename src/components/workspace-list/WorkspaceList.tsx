@@ -49,16 +49,17 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
             <IonCardContent className="ion-padding !px-4 !pt-0 -mt-2">
                 <table className="table text-sm w-full">
                     <tr className="border-b border-neutral-200">
-                        <td className="w-26 !py-1">Type :</td>
-                        <td>{item.scope === 'personal' ? 'Personal' : 'Group'}</td>
+                        <td className="w-26 !py-0.5">Type </td>
+                        <td>: {item.scope === 'personal' ? 'Personal' : 'Group'}</td>
                     </tr>
                     <tr className="border-b border-neutral-200">
-                        <td className="w-26 !py-1">Members :</td>
-                        <td>{item.member_count}</td>
+                        <td className="w-26 !py-0.5">Members </td>
+                        <td>: {item.member_count}</td>
                     </tr>
                     <tr className="border-b border-neutral-200">
-                        <td className="w-26 !py-1">Notes :</td>
-                        <td>
+                        <td className="w-26 !py-0.5">Notes</td>
+                        <td className="flex gap-1">
+                            :
                             <div className="flex gap-2 items-center">
                                 <IonText className="text-sm min-w-6">{item.total_note_count}</IonText>
                                 {item.today_note_count != 0 &&
@@ -71,8 +72,9 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                         </td>
                     </tr>
                     <tr>
-                        <td className="w-26 !py-1">Materials :</td>
-                        <td>
+                        <td className="w-26 !py-0.5">Materials</td>
+                        <td className="flex gap-1">
+                            :
                             <div className="flex gap-2 items-center">
                                 <IonText className="text-sm min-w-6">{item.total_material_count}</IonText>
                                 {item.today_material_count != 0 &&

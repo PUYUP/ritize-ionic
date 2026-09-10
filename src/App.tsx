@@ -38,12 +38,17 @@ setupIonicReact({ mode: "md", animated: false });
 // Buat komponen layout terpisah agar bisa menggunakan useLocation
 const AppLayout: React.FC = () => {
 	const location = useLocation();
-	const isHome = location.pathname === '/'; // Cek apakah sedang di halaman '/'
+
+	// Daftar path di mana menu harus disembunyikan
+	const hideMenuPaths = ['/', '/oauth-google'];
+
+	// Cek apakah pathname saat ini ada di dalam daftar hideMenuPaths
+	const hideMenu = hideMenuPaths.includes(location.pathname);
 
 	return (
-		// Matikan efek SplitPane (when={false}) jika di halaman '/' agar tidak ada ruang kosong
-		<IonSplitPane contentId="main" when={isHome ? false : 'md'}>
-			{!isHome && <Menu />}
+		// Matikan efek SplitPane (when={false}) jika hideMenu bernilai true
+		<IonSplitPane contentId="main" when={hideMenu ? false : 'md'}>
+			{!hideMenu && <Menu />}
 			<IonRouterOutlet id="main">
 				{mainRoutes.map((route) => (
 					<Route key={route.path as string} {...route} />

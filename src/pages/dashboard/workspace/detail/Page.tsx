@@ -105,7 +105,7 @@ const WorkspaceDetailPage: React.FC = () => {
                                 <div className='ml-auto flex items-start'>
                                     <div
                                         onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}
-                                        className='flex flex-col items-start justify-start bg-white rounded-xl p-2 pr-1 pt-1 shadow-sm min-w-20'
+                                        className='flex flex-col items-start justify-start bg-white rounded-xl p-2 pr-1 pt-1 shadow-sm min-w-20 cursor-pointer'
                                     >
                                         <div className='flex items-center justify-between w-full'>
                                             <div className='flex items-center gap-1'>

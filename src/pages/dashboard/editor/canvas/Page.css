@@ -40,10 +40,16 @@
     border-radius: 60px !important;
 }
 
-ion-button.page-active::part(native) {
+.tool-buttons ion-button.page-active::part(native) {
     border-width: 1px;
     border-style: solid;
-    border-color: #767676;
+    border-color: white;
+    background-color: #e0dfff;
+}
+
+.tool-buttons ion-button {
+    min-width: 36px !important;
+    min-height: 36px !important;
 }
 
 ion-toolbar::part(background) {

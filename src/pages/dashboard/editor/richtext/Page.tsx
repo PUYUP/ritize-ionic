@@ -761,8 +761,6 @@ const RichTextEditorPage: React.FC = () => {
                                     <IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
                                 </IonButton>
 
-
-
                                 <IonButton
                                     size='small'
                                     shape="round"

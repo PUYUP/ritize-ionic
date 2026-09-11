@@ -16,11 +16,11 @@ import {
 	useIonViewWillEnter,
 	useIonViewWillLeave,
 } from '@ionic/react';
-import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
+import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON, Footer } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import './Page.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { checkmarkDoneOutline, checkmarkOutline, copyOutline, duplicateOutline, saveOutline, trashOutline } from 'ionicons/icons';
+import { checkmarkCircleOutline, checkmarkDoneOutline, checkmarkOutline, copyOutline, duplicateOutline, saveOutline, trashOutline } from 'ionicons/icons';
 import { useDeviceWidth } from '../../../../utils/sizing';
 import { menuController } from '@ionic/core/components';
 
@@ -41,7 +41,7 @@ import { getUser } from '../../../../utils/authState';
 import { generateUUID } from '../../../../utils/generator';
 import { supabase } from '../../../../lib/supabase';
 
-const AUTOSAVE_DELAY_MS = 5000;
+const AUTOSAVE_THROTTLE_MS = 1000;
 
 /**
  * A scene is "empty" only if it has no visible (non-deleted) elements.
@@ -88,6 +88,7 @@ const CanvasEditorPage: React.FC = () => {
 
 	// Menyimpan halaman yang sedang aktif agar tidak menjadi null saat unmount
 	const selectedPageRef = useRef<Partial<Page> | null>(null);
+	const selectedNoteRef = useRef<Partial<Note> | null>(null);
 
 	const width = useDeviceWidth();
 
@@ -96,6 +97,12 @@ const CanvasEditorPage: React.FC = () => {
 	const prevPagesLengthRef = useRef(pages.length);
 	const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
 	const isPageActiveRef = useRef(true);
+
+	// Throttle bookkeeping: kapan terakhir kali benar-benar save, dan
+	// apakah ada save yang masih berjalan (mencegah dua write bertabrakan
+	// untuk page yang sama saat user mengetik cepat).
+	const lastPersistedAtRef = useRef(0);
+	const isSavingRef = useRef(false);
 
 	// RTK Query
 	const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
@@ -142,6 +149,7 @@ const CanvasEditorPage: React.FC = () => {
 		appState: AppState,
 		files: BinaryFiles,
 	) => {
+		isSavingRef.current = true;
 		// Hanya update state UI jika halaman masih aktif
 		if (isPageActiveRef.current) setIsSaving(true);
 		try {
@@ -157,6 +165,10 @@ const CanvasEditorPage: React.FC = () => {
 			const bufferData = json ? Buffer.from(json, 'utf-8') : null;
 			let metadata = null;
 
+			await NotesRepository.microUpdatePage(page.id as string, { contentData: bufferData });
+			console.log('selected page id: ', page.id, ' is updated');
+
+			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
 			if (isPageActiveRef.current) {
 				setPages((prevPages) =>
 					prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
@@ -164,89 +176,89 @@ const CanvasEditorPage: React.FC = () => {
 			}
 
 			// only if content not empty
-			if (!contentEmpty) {
-				// extract as image
-				const blob = await exportToBlob({
-					elements: elements,
-					appState: { exportBackground: true },
-					mimeType: "image/png",
-				});
+			// if (!contentEmpty) {
+			// 	// extract as image
+			// 	const blob = await exportToBlob({
+			// 		elements: elements,
+			// 		appState: { exportBackground: true },
+			// 		mimeType: "image/png",
+			// 	});
 
-				const file = new File([blob], 'canvas.png', { type: 'image/png' });
-				let progress = 0;
+			// 	const file = new File([blob], 'canvas.png', { type: 'image/png' });
+			// 	let progress = 0;
 
-				const user = await getUser();
-				const result = await uploadFileToGCS(
-					file,
-					{ onProgress: (p: UploadProgress) => { progress = p.percentage; } },
-					{
-						pageId: page.id,
-						workspaceId: workspaceId,
-					}
-				);
+			// 	const user = await getUser();
+			// 	const result = await uploadFileToGCS(
+			// 		file,
+			// 		{ onProgress: (p: UploadProgress) => { progress = p.percentage; } },
+			// 		{
+			// 			pageId: page.id,
+			// 			workspaceId: workspaceId,
+			// 		}
+			// 	);
 
-				// save the file
-				const filePayload = {
-					user_id: user.id,
-					disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
-					file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
-					mime_type: result.contentType,
-					original_filename: file.name,
-					size_bytes: result.size,
-					created_at: result.timeCreated,
-					updated_at: result.updated,
-					checksum_sha256: result.md5Hash,
-					path: result.name,
-					media_link: result.mediaLink
-				};
+			// 	// save the file
+			// 	const filePayload = {
+			// 		user_id: user.id,
+			// 		disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
+			// 		file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
+			// 		mime_type: result.contentType,
+			// 		original_filename: file.name,
+			// 		size_bytes: result.size,
+			// 		created_at: result.timeCreated,
+			// 		updated_at: result.updated,
+			// 		checksum_sha256: result.md5Hash,
+			// 		path: result.name,
+			// 		media_link: result.mediaLink
+			// 	};
 
-				// save file metadata
-				const { data: fileData, error: fileError } = await supabase.from("files")
-					.insert(filePayload)
-					.select('*')
-					.single();
+			// 	// save file metadata
+			// 	const { data: fileData, error: fileError } = await supabase.from("files")
+			// 		.insert(filePayload)
+			// 		.select('*')
+			// 		.single();
 
-				// create attachment
-				const attachmentPayload = {
-					file_id: fileData.id,
-					user_id: user.id,
-					entity_type: 'workspace_notes_pages',
-					entity_id: page.id,
-					purpose: 'canvas_image',
-				}
+			// 	// create attachment
+			// 	const attachmentPayload = {
+			// 		file_id: fileData.id,
+			// 		user_id: user.id,
+			// 		entity_type: 'workspace_notes_pages',
+			// 		entity_id: page.id,
+			// 		purpose: 'canvas_image',
+			// 	}
 
-				// delete attachment sebelumnya
-				await supabase.from("attachments")
-					.delete()
-					.eq('user_id', user.id)
-					.eq('entity_type', 'workspace_notes_pages')
-					.eq('entity_id', page.id)
-					.eq('purpose', 'canvas_image')
+			// 	// delete attachment sebelumnya
+			// 	await supabase.from("attachments")
+			// 		.delete()
+			// 		.eq('user_id', user.id)
+			// 		.eq('entity_type', 'workspace_notes_pages')
+			// 		.eq('entity_id', page.id)
+			// 		.eq('purpose', 'canvas_image')
 
-				const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
-					.insert(attachmentPayload)
-					.select('*')
-					.single();
+			// 	const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
+			// 		.insert(attachmentPayload)
+			// 		.select('*')
+			// 		.single();
 
-				metadata = {
-					file: fileData,
-					attachment: attachmentData,
-				}
-			}
+			// 	metadata = {
+			// 		file: fileData,
+			// 		attachment: attachmentData,
+			// 	}
+			// }
 
-			await NotesRepository.updatePage(page.id as string, {
-				contentData: bufferData,
-				metadata: metadata,
-				status: 'draft',
-			}, false);
+			// await NotesRepository.updatePage(page.id as string, {
+			// 	contentData: bufferData,
+			// 	metadata: metadata,
+			// 	status: 'draft',
+			// }, false);
 
-			console.log('selected page id: ', page.id, ' is updated');
+			// console.log('selected page id: ', page.id, ' is updated');
 
-			// everything page changed update note status as draft
-			if (selectedNote?.status === 'published') {
-				const updatedNote = await NotesRepository.updateNote({ id: selectedNote.id, status: 'draft' });
-				setSelectedNote(updatedNote);
-			}
+			// // everything page changed update note status as draft
+			// if (selectedNote?.status === 'published') {
+			// 	const updatedNote = await NotesRepository.updateNote({ id: selectedNote.id, status: 'draft' });
+			// 	setSelectedNote(updatedNote);
+			// }
 		} catch (err) {
 			console.error('Failed to save canvas', err);
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
@@ -254,6 +266,7 @@ const CanvasEditorPage: React.FC = () => {
 				presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
 			}
 		} finally {
+			isSavingRef.current = false;
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
 			if (isPageActiveRef.current) setIsSaving(false);
 		}
@@ -264,21 +277,32 @@ const CanvasEditorPage: React.FC = () => {
 	const persistCurrentPage = useCallback(async () => {
 		// Ambil data dari Ref, bukan dari state yang mungkin sudah hilang
 		const page = selectedPageRef.current;
+		const note = selectedNoteRef.current;
 		const canvasData = latestCanvasStateRef.current;
 
-		if (!canvasData || !page || isProcessed) return;
+		if (!canvasData || !page || !note || isProcessed) return;
 
 		const elements = canvasData.elements;
 		const appState = canvasData.appState;
 		const files = canvasData.files;
 
-		// Set false agar tidak terpicu dua kali
-		updateIsDirty(false);
-
 		// Eksekusi API secara asynchronous
 		await persistPageContent(page, elements, appState, files);
 
-		// HAPUS excalidrawAPI dan selectedPage dari array di bawah ini 👇
+		// Hanya jalankan saat selected note statusnya 'published'
+		// paksa setiap kali ada perubahan maka statusnya menjadi 'draft'
+		if (note.status === 'published' && note.id) {
+			const res = await NotesRepository.updateNote({
+				id: note.id,
+				status: 'draft',
+			});
+
+			// set again with new status
+			setSelectedNote(res);
+		}
+
+		// Set false agar tidak terpicu dua kali
+		updateIsDirty(false);
 	}, [isProcessed, persistPageContent, updateIsDirty]);
 
 	// Cancels any pending debounced autosave and, if there are unsaved
@@ -288,15 +312,24 @@ const CanvasEditorPage: React.FC = () => {
 	// leaving the editor. Without it, a pending autosave (scheduled while
 	// page A was active) can fire after page B's content has already been
 	// swapped into the canvas, saving page B's content under page A's id.
-	const flushPendingSave = useCallback(async () => {
+	const flushPendingSave = useCallback(() => {
 		if (autosaveTimer.current) {
 			clearTimeout(autosaveTimer.current);
 			autosaveTimer.current = undefined;
 		}
-		if (!isDirty) return;
-		await persistCurrentPage();
+
+		if (!isDirtyRef.current) return Promise.resolve();
+
+		lastPersistedAtRef.current = Date.now();
+
+		return persistCurrentPage().catch((err) => {
+			console.error("Background save failed:", err);
+		});
 	}, [isDirty, persistCurrentPage]);
 
+	// ...
+	// realtime content changed in the canvas
+	// ...
 	const handleSceneChange = useCallback((elements: readonly ExcalidrawElement[], appState: AppState) => {
 		const visibleElements = elements.filter((el) => !el.isDeleted);
 		setHasContent(visibleElements.length > 0);
@@ -312,10 +345,30 @@ const CanvasEditorPage: React.FC = () => {
 			};
 		}
 
-		if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-		autosaveTimer.current = setTimeout(() => {
+		if (autosaveTimer.current) {
+			clearTimeout(autosaveTimer.current);
+			autosaveTimer.current = undefined;
+		}
+
+		const elapsed = Date.now() - lastPersistedAtRef.current;
+
+		if (elapsed >= AUTOSAVE_THROTTLE_MS && !isSavingRef.current) {
+			// Leading edge — window sudah lewat & tidak ada save yang
+			// sedang berjalan, simpan sekarang juga.
+			lastPersistedAtRef.current = Date.now();
 			void persistCurrentPage();
-		}, AUTOSAVE_DELAY_MS);
+		} else {
+			// Trailing edge — jadwalkan satu save untuk penutup window ini.
+			const remaining = elapsed >= AUTOSAVE_THROTTLE_MS
+				? AUTOSAVE_THROTTLE_MS
+				: AUTOSAVE_THROTTLE_MS - elapsed;
+
+			autosaveTimer.current = setTimeout(() => {
+				autosaveTimer.current = undefined;
+				lastPersistedAtRef.current = Date.now();
+				void persistCurrentPage();
+			}, remaining);
+		}
 	}, [updateIsDirty, excalidrawAPI, persistCurrentPage]); // Pastikan dependencies sesuai
 
 	// Ionic's router outlet keeps pages mounted in its history stack, so plain
@@ -325,8 +378,8 @@ const CanvasEditorPage: React.FC = () => {
 	});
 
 	useIonViewWillLeave(() => {
-		isPageActiveRef.current = false;
 		flushPendingSave();
+		isPageActiveRef.current = false;
 	});
 
 	useIonViewDidEnter(() => {
@@ -352,6 +405,10 @@ const CanvasEditorPage: React.FC = () => {
 	useEffect(() => {
 		selectedPageRef.current = selectedPage;
 	}, [selectedPage]);
+
+	useEffect(() => {
+		selectedNoteRef.current = selectedNote;
+	}, [selectedNote]);
 
 	useEffect(() => {
 		menuController.swipeGesture(false);
@@ -409,7 +466,7 @@ const CanvasEditorPage: React.FC = () => {
 
 		pagesSwiperRef.current = new Swiper(containerEl, {
 			modules: [FreeMode, Mousewheel],
-			direction: 'vertical',
+			direction: 'horizontal',
 			slidesPerView: 'auto',
 			spaceBetween: 6,
 			freeMode: {
@@ -459,6 +516,10 @@ const CanvasEditorPage: React.FC = () => {
 		const loadContentData = async () => {
 			const contentData = selectedPage?.contentData;
 
+			// Halaman baru dibuka — biarkan edit pertama user langsung
+			// tersimpan, jangan mewarisi window throttle halaman sebelumnya.
+			lastPersistedAtRef.current = 0;
+
 			if (contentData) {
 				try {
 					const decoder = new TextDecoder('utf-8');
@@ -503,7 +564,8 @@ const CanvasEditorPage: React.FC = () => {
 
 	// select page
 	const selectPageHandler = async (page: Page) => {
-		if (selectedPage?.id === page.id) return;
+		if (!selectedNoteRef.current?.id || !selectedPageRef.current?.id) return;
+		if (selectedPageRef.current?.id === page.id) return;
 
 		try {
 			// Flush any unsaved edits on the OUTGOING page before touching
@@ -515,7 +577,7 @@ const CanvasEditorPage: React.FC = () => {
 			setPages(updatedPages);
 
 			if (selectedNote) {
-				const currentPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
+				const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
 				setPages(currentPages);
 
 				const freshSelectedPage = currentPages.find((p) => p.id === page.id);
@@ -531,7 +593,7 @@ const CanvasEditorPage: React.FC = () => {
 
 	// add new page
 	const newPageHandler = async () => {
-		if (!selectedNote) return;
+		if (!selectedNoteRef.current?.id) return;
 
 		try {
 			await flushPendingSave();
@@ -541,17 +603,17 @@ const CanvasEditorPage: React.FC = () => {
 				await NotesRepository.updatePagesBulk(prevPages);
 			}
 
-			await createPage(selectedNote, {
+			await createPage(selectedNoteRef.current, {
 				pageNum: pages.length + 1,
-				workspaceId: selectedNote.workspaceId,
-				workspaceNoteId: selectedNote.id,
+				workspaceId: selectedNoteRef.current.workspaceId,
+				workspaceNoteId: selectedNoteRef.current.id,
 				isActive: true,
 				status: 'draft',
 				syncedAt: new Date(),
 				syncedId: generateUUID(),
 			});
 
-			const updatedPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
+			const updatedPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
 			setPages(updatedPages);
 
 			const activePage = updatedPages.find((p) => p.isActive);
@@ -758,23 +820,45 @@ const CanvasEditorPage: React.FC = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [noteId]);
 
-	// save notes and entire pages related to it
-	const saveHandler = async () => {
-		if (!selectedNote) return;
+	// ...
+	// save changes
+	// ...
+	const handleSaveChanges = async () => {
+		if (!selectedNoteRef?.current?.id) return;
 
-		// update note status from 'draft' to 'published'
-		const note = await NotesRepository.updateNote({
-			id: selectedNote.id,
-			status: 'published'
+		// ambil semua pages yang ada di local db
+		// kumpulkan konten nya
+		const savedPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
+		const inserts = (savedPages ?? [])
+			.map((page: any) => {
+				// get content from ops
+				const decoder = new TextDecoder('utf-8');
+				const jsonString = decoder.decode(page.contentData);
+
+				if (!jsonString) return;
+
+				const json = JSON.parse(jsonString);
+				const pageContent = (json.ops ?? [])
+					.map((op: any) => op.insert ?? "")
+					.join("");
+
+				return pageContent;
+			})
+			.filter((content: string) => content.trim().length > 0);
+
+		// update lagi workspace_note content nya
+		const newContent = inserts.join("\n--------------------\n");
+
+		// update note dari 'draft' ke 'publish'
+		// tujuannya untuk start embedding
+		const res = await NotesRepository.updateNote({
+			id: selectedNoteRef.current.id,
+			status: 'published',
+			content: newContent,
 		});
 
-		setSelectedNote(note);
-
-		presentToast({
-			message: 'Note saved successfully',
-			duration: 1500,
-			color: 'success'
-		});
+		setSelectedNote(res);
+		presentToast('Note saved successfully!', 1000);
 	}
 
 	return (
@@ -790,27 +874,27 @@ const CanvasEditorPage: React.FC = () => {
 					</IonTitle>
 
 					{/* pages tools */}
-					{!isProcessed && (
-						<div slot="end" className='flex flex-row items-center gap-3 z-60 ion-padding-end'>
-							{selectedNote?.status == 'draft' && (
-								<IonButton
-									size='small'
-									shape="round"
-									color={'success'}
-									disabled={!selectedPage || isProcessed}
-									onClick={() => saveHandler()}
-									className='normal-button'
-								>
-									<IonIcon icon={checkmarkDoneOutline} slot='start'></IonIcon>
-									<IonText className='pl-2'>Finish</IonText>
-								</IonButton>
-							)}
+					{selectedNote?.status === 'draft' && (
+						<IonButtons slot="end" className="ion-padding-end">
+							<IonButton
+								fill="solid"
+								color="primary"
+								size="small"
+								mode="ios"
+								shape="round"
+								className="normal-button"
+								style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
+								onClick={handleSaveChanges}
+							>
+								Save Changes
+							</IonButton>
+						</IonButtons>
+					)}
 
-							{selectedNote?.status == 'published' && (
-								<IonText color='success' className='flex items-center'>
-									<IonIcon icon={checkmarkOutline} className='text-xl mr-2' /> Finished
-								</IonText>
-							)}
+					{selectedNote?.status === 'published' && (
+						<div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
+							<IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
+							<IonText color="success">All Saved</IonText>
 						</div>
 					)}
 				</IonToolbar>
@@ -862,64 +946,69 @@ const CanvasEditorPage: React.FC = () => {
 						</MainMenu>
 					</Excalidraw>
 
-					<div
-						className={`fixed w-[42px] right-2 bottom-[120px] z-10 ${!isProcessed && selectedNote?.status == 'draft' && 'bg-white border border-neutral-100 rounded-full shadow'}`}
-						style={{ 'top': 'calc(60px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
+					<div className='z-50 absolute left-[12px] right-[12px] max-w-[450px] mx-auto'
+						style={{ 'top': 'calc(16px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
 					>
-						<div className='flex flex-col gap-3 items-center justify-between h-full pb-2'>
-							<div className='flex-1 pt-2 overflow-hidden'>
-								<div ref={pagesSwiperElRef} className='swiper h-full w-full'>
-									<div id="pages-list" className='swiper-wrapper flex flex-col'>
-										{pages.map((page) => (
-											<div key={page.id} className='swiper-slide !h-auto !w-auto flex-none'>
-												<IonButton
-													size='small'
-													shape="round"
-													color={page.isActive ? 'light' : 'light'}
-													onClick={async () => await selectPageHandler(page)}
-													className={`mb-2 font-normal ${page.isActive ? 'font-semibold page-active' : ''}`}
-												>
-													<IonText slot='icon-only'>{page.pageNum}</IonText>
-												</IonButton>
-											</div>
-										))}
+						<div className={`w-full px-[2px] h-[40px] ${!isProcessed && selectedNote?.status == 'draft' && 'bg-white border border-neutral-100 rounded-full shadow'}`}>
+							<div className='flex flex-row gap-3 items-center justify-between h-full tool-buttons'>
+								<div className='flex-1 overflow-hidden'>
+									<div ref={pagesSwiperElRef} className='swiper h-[44px] w-full'>
+										<div id="pages-list" className='swiper-wrapper flex flex-row'>
+											{pages.map((page) => (
+												<div key={page.id} className='swiper-slide !flex items-center !h-auto !w-auto !mb-0'>
+													<IonButton
+														size='small'
+														shape="round"
+														fill='clear'
+														color={page.isActive ? 'primary' : 'dark'}
+														onClick={async () => await selectPageHandler(page)}
+														className={`font-normal ${page.isActive ? 'font-semibold page-active' : ''}`}
+													>
+														<IonText slot='icon-only'>{page.pageNum}</IonText>
+													</IonButton>
+												</div>
+											))}
+										</div>
 									</div>
 								</div>
+
+								{(!isProcessed && selectedNote?.status == 'draft') && (
+									<div className='flex flex-row gap-3 justify-center'>
+										<IonButton
+											size='small'
+											shape="round"
+											color={'dark'}
+											fill='clear'
+											disabled={!hasContent || isProcessed}
+											onClick={() => setShowClearAlert(true)}
+										>
+											<IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
+										</IonButton>
+
+										<IonButton
+											size='small'
+											shape="round"
+											color={'dark'}
+											fill='clear'
+											disabled={pages.length <= 1 || !selectedPage || isProcessed}
+											onClick={() => setShowRemoveAlert(true)}
+										>
+											<IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
+										</IonButton>
+
+										<IonButton
+											size='small'
+											shape="round"
+											color={'dark'}
+											fill='clear'
+											onClick={async () => await newPageHandler()}
+											disabled={isProcessed}
+										>
+											<IonIcon icon={duplicateOutline} slot='icon-only'></IonIcon>
+										</IonButton>
+									</div>
+								)}
 							</div>
-
-							{(!isProcessed && selectedNote?.status == 'draft') && (
-								<div className='mt-auto flex flex-col gap-3 justify-center'>
-									<IonButton
-										size='small'
-										shape="round"
-										color={'light'}
-										disabled={!hasContent || isProcessed}
-										onClick={() => setShowClearAlert(true)}
-									>
-										<IonIcon icon={copyOutline} slot='icon-only'></IonIcon>
-									</IonButton>
-
-									<IonButton
-										size='small'
-										shape="round"
-										color={'light'}
-										disabled={pages.length <= 1 || !selectedPage || isProcessed}
-										onClick={() => setShowRemoveAlert(true)}
-									>
-										<IonIcon icon={trashOutline} slot='icon-only'></IonIcon>
-									</IonButton>
-
-									<IonButton
-										size='small'
-										shape="round"
-										color={'light'}
-										onClick={async () => await newPageHandler()}
-										disabled={isProcessed}
-									>
-										<IonIcon icon={duplicateOutline} slot='icon-only'></IonIcon>
-									</IonButton>
-								</div>
-							)}
 						</div>
 					</div>
 				</div>

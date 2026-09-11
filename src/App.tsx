@@ -44,10 +44,11 @@ const AppLayout: React.FC = () => {
 
 	// Cek apakah pathname saat ini ada di dalam daftar hideMenuPaths
 	const hideMenu = hideMenuPaths.includes(location.pathname);
+	const hideOnCanvas = location.pathname == '/dashboard/editor/canvas';
 
 	return (
 		// Matikan efek SplitPane (when={false}) jika hideMenu bernilai true
-		<IonSplitPane contentId="main" when={hideMenu ? false : 'md'}>
+		<IonSplitPane contentId="main" when={hideMenu ? false : (hideOnCanvas ? false : 'md')}>
 			{!hideMenu && <Menu />}
 			<IonRouterOutlet id="main">
 				{mainRoutes.map((route) => (

@@ -250,24 +250,27 @@ const WorkspaceMembersPage: React.FC = () => {
                         <IonSpinner />
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-4">
+                    <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 xl:gap-5'>
                         {memberData?.results?.map((member, index: number, array: any) => {
                             return (
                                 <IonCard key={member?.id} className="rounded-xl">
                                     <IonCardHeader className="ion-padding">
                                         <div className="flex w-full">
                                             <div className="flex-1">
-                                                <IonCardTitle className="text-lg">{member?.user?.name}</IonCardTitle>
-                                                <IonCardSubtitle className="mt-1">
+                                                <IonCardSubtitle className="mb-1">
                                                     <div className="flex items-center flex-wrap gap-2">
                                                         <span className={`text-sm font-semibold ${member?.role === 'owner' ? 'text-blue-600' : member?.role === 'admin' ? 'text-purple-600' : 'text-orange-600'} leading-3`}>{member?.role}</span>
-                                                        <IonText className='text-xs text-neutral-400'>&bull;</IonText>
+                                                    </div>
+                                                </IonCardSubtitle>
+                                                <IonCardTitle className="text-lg">{member?.user?.name}</IonCardTitle>
+                                                <IonCardSubtitle className="mt-0">
+                                                    <div className="flex items-center flex-wrap gap-2">
                                                         <span className="text-sm">{member?.user?.email}</span>
                                                     </div>
                                                 </IonCardSubtitle>
                                             </div>
 
-                                            <div className="ml-auto">
+                                            <div className="ml-auto flex items-center">
                                                 <IonButtons className="gap-2">
                                                     {(currentUser.role === 'member' || currentUser.role === 'admin') && currentUser.user_id === member.user_id && (
                                                         <IonButton fill="clear" size="small" shape="round" onClick={() => {

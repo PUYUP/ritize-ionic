@@ -50,25 +50,35 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                 <table className="table text-sm w-full">
                     <tbody>
                         <tr className="border-b border-neutral-200">
-                            <td className="w-26 !py-0.5">Type </td>
-                            <td>: {item.scope === 'personal' ? 'Personal' : 'Group'}</td>
+                            <td className="w-26 !py-0.5">Type</td>
+                            <td className="flex gap-1">
+                                :
+                                <div className="flex gap-2 items-center w-full">
+                                    <IonText className="text-sm min-w-6">
+                                        {item.scope === 'personal' ? 'Personal' : 'Group'}
+                                    </IonText>
+                                    {item.scope === 'group' && (
+                                        <div className="ml-auto">
+                                            {item.member_count != 0 &&
+                                                <IonText className="text-neutral-500 text-xs font-semibold">{item.member_count} members</IonText>
+                                            }
+                                        </div>
+                                    )}
+                                </div>
+                            </td>
                         </tr>
-                        <tr className="border-b border-neutral-200">
-                            <td className="w-26 !py-0.5">Members </td>
-                            <td>: {item.member_count}</td>
-                        </tr>
+
                         <tr className="border-b border-neutral-200">
                             <td className="w-26 !py-0.5">Notes</td>
                             <td className="flex gap-1">
                                 :
-                                <div className="flex gap-2 items-center">
+                                <div className="flex gap-2 items-center w-full">
                                     <IonText className="text-sm min-w-6">{item.total_note_count}</IonText>
-                                    {item.today_note_count != 0 &&
-                                        <>
-                                            <IonText className='text-xs text-neutral-400'>&bull;</IonText>
-                                            <IonText className="text-green-700 text-xs font-semibold">{item.today_note_count} today</IonText>
-                                        </>
-                                    }
+                                    <div className="ml-auto">
+                                        {item.today_note_count != 0 &&
+                                            <IonText className="text-green-500 text-xs font-semibold">{item.today_note_count} today</IonText>
+                                        }
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -76,14 +86,13 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                             <td className="w-26 !py-0.5">Materials</td>
                             <td className="flex gap-1">
                                 :
-                                <div className="flex gap-2 items-center">
+                                <div className="flex gap-2 items-center w-full">
                                     <IonText className="text-sm min-w-6">{item.total_material_count}</IonText>
-                                    {item.today_material_count != 0 &&
-                                        <>
-                                            <IonText className='text-xs text-neutral-400'>&bull;</IonText>
-                                            <IonText className="text-green-700 text-xs font-semibold">{item.today_material_count} today</IonText>
-                                        </>
-                                    }
+                                    <div className="ml-auto">
+                                        {item.today_material_count != 0 &&
+                                            <IonText className="text-green-500 text-xs font-semibold">{item.today_material_count} today</IonText>
+                                        }
+                                    </div>
                                 </div>
                             </td>
                         </tr>

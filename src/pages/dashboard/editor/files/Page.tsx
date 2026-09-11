@@ -523,24 +523,24 @@ const FilesEditorPage: React.FC = () => {
         try {
             result = await FilePicker.pickFiles({
                 types: [
-                    'application/pdf',
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'text/plain',
+                    // 'application/pdf',
+                    // 'application/msword',
+                    // 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    // 'text/plain',
                     'image/png',
                     'image/jpeg',
                     'image/jpg',
                     'image/gif',
                     'image/webp',
-                    'audio/mpeg',      // .mp3
-                    'audio/wav',       // .wav
-                    'audio/x-wav',     // .wav (varian beberapa browser)
-                    'audio/ogg',       // .ogg
-                    'audio/webm',      // .webm audio
-                    'audio/mp4',       // .m4a
-                    'audio/x-m4a',     // .m4a (varian Safari/iOS)
-                    'audio/aac',       // .aac
-                    'audio/flac',      // .flac
+                    // 'audio/mpeg',      // .mp3
+                    // 'audio/wav',       // .wav
+                    // 'audio/x-wav',     // .wav (varian beberapa browser)
+                    // 'audio/ogg',       // .ogg
+                    // 'audio/webm',      // .webm audio
+                    // 'audio/mp4',       // .m4a
+                    // 'audio/x-m4a',     // .m4a (varian Safari/iOS)
+                    // 'audio/aac',       // .aac
+                    // 'audio/flac',      // .flac
                 ],
                 limit: 0,
             });
@@ -717,7 +717,7 @@ const FilesEditorPage: React.FC = () => {
 
                                         {page.uploadError && (
                                             <IonNote color="danger" className="block !text-xs mt-1">
-                                                Gagal diunggah
+                                                Upload failed
                                             </IonNote>
                                         )}
                                     </IonLabel>
@@ -748,7 +748,9 @@ const FilesEditorPage: React.FC = () => {
                 <IonFooter className="w-full py-3 ion-no-border">
                     <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                         <div className='px-3 text-center'>
-                            <IonText className="text-sm text-center w-full" color={'medium'}>Upload PDF, DOCX, TXT, Image and Audio Files</IonText>
+                            <IonText className="text-sm text-center w-full" color={'medium'}>
+                                Upload your current notes from the book.
+                            </IonText>
                             <div className='flex-1 mt-2'>
                                 <div className="flex justify-center gap-4">
                                     <div className="flex items-center gap-4">

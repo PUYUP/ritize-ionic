@@ -131,7 +131,7 @@ const WorkspaceDetailPage: React.FC = () => {
 
                     <div className='ion-padding'>
                         <div className='block mb-3 text-lg'>
-                            <IonText>Today's in workspace</IonText>
+                            <IonText>Today's in Courses</IonText>
                         </div>
                         <WorkspaceStats
                             isTab={true}
@@ -146,7 +146,7 @@ const WorkspaceDetailPage: React.FC = () => {
                     {id && (
                         <div className='block'>
                             <div className='bg-neutral-200 block mb-0 text-lg ion-padding-start ion-padding-end !py-2 flex items-center justify-center'>
-                                <IonText><u>{activeTabLabel}</u> in workspace</IonText>
+                                <IonText><u>{activeTabLabel}</u> in Courses</IonText>
                                 <div className='ml-auto flex items-center'>
                                     <IonButton shape='round' color="light" size="small">
                                         <IonIcon icon={filterOutline} slot='icon-only' />

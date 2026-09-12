@@ -116,9 +116,9 @@ const NoteItem: React.FC<{
                                             {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-base text-neutral-500' />}
                                             {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-base text-neutral-500' />}
 
-                                            <IonText className={`text-sm flex gap-1 ${item.status === 'published' ? 'text-lime-800' : 'text-blue-800'}`}>
-                                                <span className='font-semibold'>{item.page_count?.[0]?.count || 0}</span>
-                                                {item.status == 'published' ? 'finished' : 'draft'}
+                                            <IonText className={`text-sm flex gap-1 ${item.pages_status === 'published' ? 'text-lime-800' : 'text-blue-800'}`}>
+                                                <span className='font-semibold'>{item.page_count || 0}</span>
+                                                {item.pages_status == 'published' ? 'finished' : 'draft'}
                                             </IonText>
                                         </div>
                                         <IonText className='text-sm text-neutral-400'>&bull;</IonText>

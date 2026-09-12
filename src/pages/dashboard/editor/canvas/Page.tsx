@@ -93,6 +93,7 @@ const CanvasEditorPage: React.FC = () => {
 	const prevPagesLengthRef = useRef(pages.length);
 	const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
 	const isPageActiveRef = useRef(true);
+	const isDeletedRef = useRef(false);
 
 	// Throttle bookkeeping: kapan terakhir kali benar-benar save, dan
 	// apakah ada save yang masih berjalan (mencegah dua write bertabrakan
@@ -185,7 +186,7 @@ const CanvasEditorPage: React.FC = () => {
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
 			if (isPageActiveRef.current) {
 				setPages((prevPages) =>
-					prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
+					prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData, status: 'draft' } : p))
 				);
 			}
 		} catch (err) {
@@ -215,18 +216,6 @@ const CanvasEditorPage: React.FC = () => {
 
 		// Eksekusi API secara asynchronous
 		await persistPageContent(page, elements, appState, files);
-
-		// Hanya jalankan saat selected note statusnya 'published'
-		// paksa setiap kali ada perubahan maka statusnya menjadi 'draft'
-		if (note.status === 'published' && note.id) {
-			const res = await NotesRepository.updateNote({
-				id: note.id,
-				status: 'draft',
-			});
-
-			// set again with new status
-			setSelectedNote(res);
-		}
 
 		// Set false agar tidak terpicu dua kali
 		updateIsDirty(false);
@@ -775,14 +764,37 @@ const CanvasEditorPage: React.FC = () => {
 		if (!selectedNoteRef?.current?.id) return;
 		isProgrammaticUpdateRef.current = false;
 
+		// update semua pages as published
+		await NotesRepository.updatePagesBulk(
+			pages.map(p => {
+				return {
+					...p,
+					status: 'published',
+				}
+			})
+		);
+
+		setPages(prev => {
+			return prev.map(p => ({
+				...p,
+				status: 'published',
+			}));
+		});
+
 		// update note dari 'draft' ke 'publish'
 		// tujuannya untuk start embedding
-		const res = await NotesRepository.updateNote({
+		await NotesRepository.updateNote({
 			id: selectedNoteRef.current.id,
 			status: 'published',
 		});
 
-		setSelectedNote(res);
+		setSelectedNote((prev: Note | null) => {
+			if (!prev) return prev;
+			return {
+				...prev,
+				status: 'published',
+			};
+		});
 		presentToast('Note saved successfully!', 1000);
 	}
 
@@ -799,7 +811,7 @@ const CanvasEditorPage: React.FC = () => {
 					</IonTitle>
 
 					{/* pages tools */}
-					{selectedNote?.status === 'draft' && (
+					{(pages.some(p => p.status === 'draft')) && (
 						<IonButtons slot="end" className="ion-padding-end">
 							<IonButton
 								fill="solid"
@@ -816,7 +828,7 @@ const CanvasEditorPage: React.FC = () => {
 						</IonButtons>
 					)}
 
-					{selectedNote?.status === 'published' && (
+					{(!pages.some(p => p.status === 'draft')) && (
 						<div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
 							<IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
 							<IonText color="success">All Saved</IonText>
@@ -850,7 +862,7 @@ const CanvasEditorPage: React.FC = () => {
 							// }, 5000)
 						}}
 						onChange={(elements, appState, files) => {
-							if (!excalidrawAPI) return;
+							if (!excalidrawAPI || !isDeletedRef) return;
 
 							if (isProgrammaticUpdateRef.current == true) {
 								handleSceneChange(elements, appState, files);
@@ -1025,6 +1037,9 @@ const CanvasEditorPage: React.FC = () => {
 							const activeIndex = pages.findIndex((p) => p.id === selectedPage.id);
 							if (activeIndex === -1) return;
 
+							// tandai sebagai aksi hapus
+							isDeletedRef.current = true;
+
 							// Don't let a pending autosave resurrect the
 							// page we're about to delete.
 							if (autosaveTimer.current) {
@@ -1075,7 +1090,7 @@ const CanvasEditorPage: React.FC = () => {
 									isActive: idx === nextActiveIndex,
 								})));
 
-								setPages(reAssign);
+								setPages([...reAssign]);
 								updateIsDirty(false);
 
 								// Set directly from the data we already have
@@ -1084,6 +1099,11 @@ const CanvasEditorPage: React.FC = () => {
 								// (state hasn't re-rendered with `reindexed`
 								// yet) and write incomplete data back to the DB.
 								setSelectedPage(reAssign[nextActiveIndex]);
+
+								// unlock delete ref
+								setTimeout(() => {
+									isDeletedRef.current = false;
+								}, 250);
 							} catch (err) {
 								console.error('Failed to remove page', err);
 								presentToast({ message: 'Could not remove this page.', duration: 2500, color: 'danger' });

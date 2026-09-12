@@ -160,9 +160,8 @@ export const notesAPI = createApi({
                     .upsert(body, { onConflict: "id,synced_id" })
                     .select(`
                         *
-                        , page_count:workspace_notes_pages(count)
+                        , pages:workspace_notes_pages(status)
                         , user!inner(id, name)
-                        , pages:workspace_notes_pages(*)
                         , documents:workspace_notes_documents(
                             id
                             , similarity_score
@@ -205,6 +204,7 @@ export const notesAPI = createApi({
                                         ...draft.notes[noteIndex],
                                         ...data,
                                         content_preview: data.content,
+                                        pages_status: data?.pages?.some(p => p.status == 'draft') ? 'draft' : 'published',
                                     };
                                 } else {
                                     // Add new note at the beginning (most recent)
@@ -315,7 +315,7 @@ export const notesAPI = createApi({
                     .from("workspace_notes_list")
                     .select(`
                         *
-                        , page_count:workspace_notes_pages(count)
+                        , pages:workspace_notes_pages(status)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
                         , pages:workspace_notes_pages(*)
@@ -415,7 +415,7 @@ export const notesAPI = createApi({
                     .from("workspace_notes_list")
                     .select(`
                         *
-                        , page_count:workspace_notes_pages(count)
+                        , pages:workspace_notes_pages(status)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
                         , documents:workspace_notes_documents(
@@ -464,6 +464,8 @@ export const notesAPI = createApi({
                             if (!note.documents) return note;
                             return {
                                 ...note,
+                                page_count: note.pages.length || 0,
+                                pages_status: note.pages.some((page: any) => page.status === "draft") ? "draft" : "published",
                                 clustered_date: note.chunks?.[0]?.clustered_date ?? null,
                                 documents: note.documents
                                     .filter((doc: any) => {
@@ -705,7 +707,6 @@ export const notesAPI = createApi({
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Update Note Page] User not found" } };
 
-                console.log(data);
                 const { data: updatedData, error } = await supabase
                     .from("workspace_notes_pages")
                     .update(data)
@@ -715,6 +716,33 @@ export const notesAPI = createApi({
 
                 if (error) return { error: { message: error.message } };
                 return { data: updatedData };
+            },
+            async onQueryStarted({ id, data }, { dispatch, queryFulfilled }) {
+                // Manipulasi cache untuk query 'getNotesByWorkspaceId'
+                let patchResult: any;
+
+                try {
+                    const { data } = await queryFulfilled;
+
+                    patchResult = dispatch(
+                        notesAPI.util.updateQueryData(
+                            'getNotesByWorkspaceId',
+                            // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
+                            // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
+                            // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
+                            { workspace_id: data.workspace_id as string, page: 1, pageSize: 20 },
+                            (draft) => {
+                                // Cari note yang sedang diupdate di dalam array cache
+                                const noteIndex = draft.notes.findIndex((n) => n.id === data.workspace_note_id);
+                                draft.notes[noteIndex].pages_status = data.status;
+                            }
+                        )
+                    );
+
+                } catch {
+                    // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
+                    patchResult.undo();
+                }
             },
         }),
 
@@ -782,4 +810,5 @@ export const {
     useGetNotesByWorkspaceIdQuery,
     useGetNoteByIdQuery,
     useLazyGetNoteByIdQuery,
+    useMicroUpdateNotePageMutation,
 } = notesAPI;

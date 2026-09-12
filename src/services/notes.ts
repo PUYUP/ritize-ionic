@@ -160,7 +160,7 @@ export const notesAPI = createApi({
                     .upsert(body, { onConflict: "id,synced_id" })
                     .select(`
                         *
-                        , pages:workspace_notes_pages(status)
+                        , pages:workspace_notes_pages(*)
                         , user!inner(id, name)
                         , documents:workspace_notes_documents(
                             id
@@ -315,10 +315,9 @@ export const notesAPI = createApi({
                     .from("workspace_notes_list")
                     .select(`
                         *
-                        , pages:workspace_notes_pages(status)
+                        , pages:workspace_notes_pages(*)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
-                        , pages:workspace_notes_pages(*)
                         , documents:workspace_notes_documents(
                             id
                             , similarity_score
@@ -415,7 +414,7 @@ export const notesAPI = createApi({
                     .from("workspace_notes_list")
                     .select(`
                         *
-                        , pages:workspace_notes_pages(status)
+                        , pages:workspace_notes_pages(*)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
                         , documents:workspace_notes_documents(

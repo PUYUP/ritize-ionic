@@ -511,9 +511,10 @@ const CanvasEditorPage: React.FC = () => {
 				pageNum: p.pageNum,
 				isActive: p.id === page.id
 			}));
-			if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
-			// @ts-ignore
-			setPages(updatedPages);
+
+			if (!isProcessed) {
+				await NotesRepository.updatePagesBulk(updatedPages);
+			}
 
 			if (selectedNote) {
 				const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
@@ -537,7 +538,15 @@ const CanvasEditorPage: React.FC = () => {
 		try {
 			await flushPendingSave();
 
-			const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
+			const prevPages = pages.map((p: Page) => ({
+				id: p.id,
+				workspaceId: p.workspaceId,
+				syncedId: p.syncedId,
+				workspaceNoteId: p.workspaceNoteId,
+				pageNum: p.pageNum,
+				isActive: false
+			}));
+
 			if (prevPages.length > 0) {
 				await NotesRepository.updatePagesBulk(prevPages);
 			}
@@ -1012,7 +1021,7 @@ const CanvasEditorPage: React.FC = () => {
 						text: 'Yes',
 						role: 'destructive',
 						handler: async () => {
-							if (!selectedPage) return;
+							if (!selectedPage || !selectedNote) return;
 							const activeIndex = pages.findIndex((p) => p.id === selectedPage.id);
 							if (activeIndex === -1) return;
 
@@ -1051,15 +1060,22 @@ const CanvasEditorPage: React.FC = () => {
 
 								// pilih page berikutnya kalau ada, atau page sebelumnya kalau yang dihapus adalah terakhir
 								const nextActiveIndex = Math.min(activeIndex, remaining.length - 1);
-
-								const reindexed = remaining.map((p, idx) => ({
+								const reAssign = remaining.map((p, idx) => ({
 									...p,
 									pageNum: idx + 1,
 									isActive: idx === nextActiveIndex,
 								}));
 
-								await NotesRepository.updatePagesBulk(reindexed);
-								setPages(reindexed);
+								await NotesRepository.updatePagesBulk(remaining.map((p, idx) => ({
+									id: p.id,
+									workspaceId: p.workspaceId,
+									workspaceNoteId: p.workspaceNoteId,
+									syncedId: p.syncedId,
+									pageNum: idx + 1,
+									isActive: idx === nextActiveIndex,
+								})));
+
+								setPages(reAssign);
 								updateIsDirty(false);
 
 								// Set directly from the data we already have
@@ -1067,7 +1083,7 @@ const CanvasEditorPage: React.FC = () => {
 								// here would read a stale `pages` closure
 								// (state hasn't re-rendered with `reindexed`
 								// yet) and write incomplete data back to the DB.
-								setSelectedPage(reindexed[nextActiveIndex]);
+								setSelectedPage(reAssign[nextActiveIndex]);
 							} catch (err) {
 								console.error('Failed to remove page', err);
 								presentToast({ message: 'Could not remove this page.', duration: 2500, color: 'danger' });

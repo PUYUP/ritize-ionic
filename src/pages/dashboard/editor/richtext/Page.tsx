@@ -139,13 +139,23 @@ const RichTextEditorPage: React.FC = () => {
 
             const bufferData = json ? Buffer.from(json, 'utf-8') : null;
 
-            await NotesRepository.microUpdatePage(page.id as string, { contentData: bufferData });
+            await NotesRepository.microUpdatePage(page.id as string, {
+                contentData: bufferData,
+                status: 'draft',
+                processingStatus: 'pending',
+            });
+
             console.log('selected page id: ', page.id, ' is updated');
 
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
             if (isPageActiveRef.current) {
                 setPages((prevPages) =>
-                    prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
+                    prevPages.map((p) => (p.id === page.id ? {
+                        ...p,
+                        contentData: bufferData,
+                        processingStatus: 'pending',
+                        status: 'draft'
+                    } : p))
                 );
             }
         } catch (err) {
@@ -170,18 +180,6 @@ const RichTextEditorPage: React.FC = () => {
 
         if (!quill || !page || !note || isProcessed) return;
         await persistPageContent(page, quill.getContents());
-
-        // Hanya jalankan saat selected note statusnya 'published'
-        // paksa setiap kali ada perubahan maka statusnya menjadi 'draft'
-        if (note.status === 'published' && note.id) {
-            const res = await NotesRepository.updateNote({
-                id: note.id,
-                status: 'draft',
-            });
-
-            // set again with new status
-            setSelectedNote(res);
-        }
 
         // Set false agar tidak terpicu dua kali
         updateIsDirty(false);
@@ -431,6 +429,7 @@ const RichTextEditorPage: React.FC = () => {
                 workspaceNoteId: selectedNoteRef.current.id,
                 isActive: true,
                 status: 'draft',
+                processingStatus: 'pending',
                 syncedAt: new Date(),
                 syncedId: generateUUID(),
             });
@@ -459,6 +458,7 @@ const RichTextEditorPage: React.FC = () => {
             syncedId: generateUUID(),
             syncedAt: new Date(),
             status: 'draft',
+            processingStatus: 'pending',
         });
         return entity;
     }
@@ -492,6 +492,7 @@ const RichTextEditorPage: React.FC = () => {
                         title: serverNote.title || "Untitled Note",
                         content: serverNote.content,
                         status: serverNote.status,
+                        processingStatus: serverNote.processing_status,
                         noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
                         contentType: serverNote.content_type as NoteFormatTypes,
                         syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
@@ -527,6 +528,7 @@ const RichTextEditorPage: React.FC = () => {
                                     userId: p.user_id,
                                     pageNum: p.page_num,
                                     status: p.status,
+                                    processingStatus: p.processing_status,
                                     isActive: p.is_active,
                                     syncedId: p.synced_id ? p.synced_id : generateUUID(),
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
@@ -547,6 +549,7 @@ const RichTextEditorPage: React.FC = () => {
                             workspaceNoteId: note.id,
                             isActive: true,
                             status: 'draft',
+                            processingStatus: 'pending',
                             syncedAt: new Date(),
                             syncedId: generateUUID(),
                         });
@@ -570,6 +573,7 @@ const RichTextEditorPage: React.FC = () => {
                 workspaceNoteId: note.id,
                 isActive: true,
                 status: 'draft',
+                processingStatus: 'pending',
                 syncedAt: new Date(),
                 syncedId: generateUUID(),
             });
@@ -654,11 +658,24 @@ const RichTextEditorPage: React.FC = () => {
         // update lagi workspace_note content nya
         const newContent = inserts.join("\n--------------------\n");
 
+        // update page status menjadi published
+        const updatedPages = pages.map(p => {
+            return {
+                ...p,
+                status: 'published' as any,
+            };
+        });
+
+        // update semua pages as published
+        await NotesRepository.updatePagesBulk(updatedPages);
+        setPages(updatedPages);
+
         // update note dari 'draft' ke 'publish'
         // tujuannya untuk start embedding
         const res = await NotesRepository.updateNote({
             id: selectedNoteRef.current.id,
             status: 'published',
+            processingStatus: 'pending',
             content: newContent,
         });
 
@@ -678,7 +695,7 @@ const RichTextEditorPage: React.FC = () => {
                         {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
 
-                    {selectedNote?.status === 'draft' && (
+                    {pages.some(p => p.status === 'draft') && (
                         <IonButtons slot="end" className="ion-padding-end">
                             <IonButton
                                 fill="solid"
@@ -695,7 +712,7 @@ const RichTextEditorPage: React.FC = () => {
                         </IonButtons>
                     )}
 
-                    {selectedNote?.status === 'published' && (
+                    {!pages.some(p => p.status === 'draft') && (
                         <div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
                             <IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
                             <IonText color="success">All Saved</IonText>

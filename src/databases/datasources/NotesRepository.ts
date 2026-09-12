@@ -92,6 +92,7 @@ class NotesRepository {
                             note_datetime: note.noteDatetime.toDateString(),
                             title: note.title,
                             status: note.status,
+                            processing_status: note.processingStatus,
                         })
                     }))
                     .unwrap();
@@ -125,6 +126,7 @@ class NotesRepository {
                             note_datetime: note.noteDatetime.toDateString(),
                             title: note.title,
                             status: note.status,
+                            processing_status: note.processingStatus,
                         })
                     }))
                     .unwrap();
@@ -156,6 +158,7 @@ class NotesRepository {
                             note_datetime: note.noteDatetime.toDateString(),
                             title: note.title,
                             status: note.status,
+                            processing_status: note.processingStatus,
                         })
                     }))
                     .unwrap();
@@ -218,6 +221,7 @@ class NotesRepository {
                             title: savedPage.title,
                             is_active: savedPage.isActive,
                             status: savedPage.status,
+                            processing_status: savedPage.processingStatus,
                         })
                     }))
                     .unwrap();
@@ -264,6 +268,7 @@ class NotesRepository {
                 title: savedPage.title,
                 is_active: savedPage.isActive,
                 status: savedPage.status,
+                processing_status: savedPage.processingStatus,
             };
         });
 
@@ -332,6 +337,7 @@ class NotesRepository {
                                 title: savedPage.title,
                                 is_active: savedPage.isActive,
                                 status: savedPage.status,
+                                processing_status: savedPage.processingStatus,
                             })
                         }))
                         .unwrap();
@@ -371,6 +377,7 @@ class NotesRepository {
                                 page_num: data.pageNum,
                                 is_active: data.isActive,
                                 status: data.status,
+                                processing_status: data.processingStatus,
                             })
                         }))
                         .unwrap();
@@ -420,6 +427,7 @@ class NotesRepository {
                 title: p.title,
                 is_active: p.isActive,
                 status: p.status,
+                processing_status: p.processingStatus,
                 content_data: objString,
             })
         });

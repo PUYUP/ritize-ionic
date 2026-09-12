@@ -179,6 +179,7 @@ const CanvasEditorPage: React.FC = () => {
 				contentData: bufferData,
 				contentExtracted: { fileData: fileData },
 				status: 'draft', // karena edit jadi draft
+				processingStatus: 'pending', // kembali belum di proses AI
 			});
 
 			console.log('selected page id: ', page.id, ' is updated');
@@ -186,7 +187,12 @@ const CanvasEditorPage: React.FC = () => {
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
 			if (isPageActiveRef.current) {
 				setPages((prevPages) =>
-					prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData, status: 'draft' } : p))
+					prevPages.map((p) => (p.id === page.id ? {
+						...p,
+						contentData: bufferData,
+						status: 'draft',
+						processingStatus: 'pending'
+					} : p))
 				);
 			}
 		} catch (err) {
@@ -512,6 +518,7 @@ const CanvasEditorPage: React.FC = () => {
 				pageNum: p.pageNum,
 				isActive: p.id === page.id,
 				status: p.status,
+				processingStatus: p.processingStatus,
 			}));
 
 			if (!isProcessed) {
@@ -559,6 +566,7 @@ const CanvasEditorPage: React.FC = () => {
 				workspaceNoteId: selectedNoteRef.current.id,
 				isActive: true,
 				status: 'draft',
+				processingStatus: 'pending',
 				syncedAt: new Date(),
 				syncedId: generateUUID(),
 			});
@@ -589,6 +597,7 @@ const CanvasEditorPage: React.FC = () => {
 			syncedId: generateUUID(),
 			syncedAt: new Date(),
 			status: 'draft',
+			processingStatus: 'pending',
 		});
 		return entity;
 	}
@@ -622,6 +631,7 @@ const CanvasEditorPage: React.FC = () => {
 						title: serverNote.title || "Untitled Note",
 						content: serverNote.content,
 						status: serverNote.status,
+						processingStatus: serverNote.processing_status,
 						noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
 						contentType: serverNote.content_type as NoteFormatTypes,
 						syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
@@ -657,6 +667,7 @@ const CanvasEditorPage: React.FC = () => {
 									userId: p.user_id,
 									pageNum: p.page_num,
 									status: p.status,
+									processingStatus: p.processing_status,
 									isActive: p.is_active,
 									syncedId: p.synced_id ? p.synced_id : generateUUID(),
 									syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
@@ -677,6 +688,7 @@ const CanvasEditorPage: React.FC = () => {
 							workspaceNoteId: note.id,
 							isActive: true,
 							status: 'draft',
+							processingStatus: 'pending',
 							syncedAt: new Date(),
 							syncedId: generateUUID(),
 						});
@@ -700,6 +712,7 @@ const CanvasEditorPage: React.FC = () => {
 				workspaceNoteId: note.id,
 				isActive: true,
 				status: 'draft',
+				processingStatus: 'pending',
 				syncedAt: new Date(),
 				syncedId: generateUUID(),
 			});
@@ -819,7 +832,7 @@ const CanvasEditorPage: React.FC = () => {
 					</IonTitle>
 
 					{/* pages tools */}
-					{(pages.some(p => p.status === 'draft')) && (
+					{pages.some(p => p.status === 'draft') && (
 						<IonButtons slot="end" className="ion-padding-end">
 							<IonButton
 								fill="solid"
@@ -836,7 +849,7 @@ const CanvasEditorPage: React.FC = () => {
 						</IonButtons>
 					)}
 
-					{(!pages.some(p => p.status === 'draft')) && (
+					{!pages.some(p => p.status === 'draft') && (
 						<div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
 							<IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
 							<IonText color="success">All Saved</IonText>

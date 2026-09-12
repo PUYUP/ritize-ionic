@@ -40,4 +40,7 @@ export class Note {
     @Column('varchar', { nullable: true, default: 'draft' })
     status!: 'draft' | 'published';
 
+    @Column('varchar', { nullable: true, default: 'pending' })
+    processingStatus!: 'pending' | 'processed';
+
 }

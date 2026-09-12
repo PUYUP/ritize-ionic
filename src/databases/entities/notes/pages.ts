@@ -55,6 +55,9 @@ export class Page {
     @Column('varchar', { nullable: true, default: 'draft' })
     status!: 'draft' | 'published';
 
+    @Column('varchar', { nullable: true, default: 'pending' })
+    processingStatus!: 'pending' | 'processed';
+
     @ManyToOne(() => Note, note => note.pages, {
         eager: false,
         cascade: ['insert'],

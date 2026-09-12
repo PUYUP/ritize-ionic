@@ -18,6 +18,7 @@ export type NoteTypes = {
     user?: any;
     pages?: NotePageTypes[];
     status?: 'draft' | 'published';
+    processingStatus?: 'pending' | 'processed';
     [key: string]: any;
 }
 
@@ -36,6 +37,7 @@ export type NotePageTypes = {
     content_extracted?: Record<string, any> | Array<any> | null;
     attributes?: any;
     status?: 'draft' | 'published';
+    processing_status?: 'pending' | 'processed';
 }
 
 export type PaginatedNotesResponse = {
@@ -76,6 +78,8 @@ export const notesAPI = createApi({
                         note_datetime: body.note_datetime,
                         synced_id: body.synced_id,
                         synced_at: body.synced_at,
+                        status: body.status,
+                        processing_status: body.processing_status,
                     })
                     .select(`
                         *
@@ -97,7 +101,7 @@ export const notesAPI = createApi({
                     .single();
 
                 if (error) return { error: { message: error.message } };
-                return { data };
+                return { data: data };
             },
             async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
@@ -126,11 +130,7 @@ export const notesAPI = createApi({
                                     // Add new note at the beginning (most recent)
                                     draft.notes.unshift({
                                         ...data,
-                                        page_count: [
-                                            {
-                                                count: 1
-                                            }
-                                        ],
+                                        page_count: 1,
                                     });
                                 }
                             }
@@ -179,7 +179,7 @@ export const notesAPI = createApi({
                     .single();
 
                 if (error) return { error: { message: error.message } };
-                return { data };
+                return { data: data };
             },
             async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
@@ -204,17 +204,13 @@ export const notesAPI = createApi({
                                         ...draft.notes[noteIndex],
                                         ...data,
                                         content_preview: data.content,
-                                        pages_status: data?.pages?.some(p => p.status == 'draft') ? 'draft' : 'published',
+                                        pages_status: data.pages?.some(p => p.status == 'draft') ? 'draft' : 'published',
                                     };
                                 } else {
                                     // Add new note at the beginning (most recent)
                                     draft.notes.unshift({
                                         ...data,
-                                        page_count: [
-                                            {
-                                                count: 1
-                                            }
-                                        ],
+                                        page_count: 1,
                                     });
                                 }
                             }
@@ -382,11 +378,7 @@ export const notesAPI = createApi({
                                     // Add new note at the beginning (most recent)
                                     draft.notes.unshift({
                                         ...data,
-                                        page_count: [
-                                            {
-                                                count: 1
-                                            }
-                                        ],
+                                        page_count: 1,
                                     });
                                 }
                             }
@@ -414,7 +406,7 @@ export const notesAPI = createApi({
                     .from("workspace_notes_list")
                     .select(`
                         *
-                        , pages:workspace_notes_pages(*)
+                        , pages:workspace_notes_pages(status)
                         , user!inner(id, name)
                         , attachments(*, file:file_id(*))
                         , documents:workspace_notes_documents(
@@ -536,7 +528,7 @@ export const notesAPI = createApi({
                     .single();
 
                 if (error) return { error: { message: error.message } };
-                return { data };
+                return { data: data };
             },
         }),
 
@@ -559,7 +551,7 @@ export const notesAPI = createApi({
                     .single();
 
                 if (error) return { error: { message: error.message } };
-                return { data };
+                return { data: data };
             },
             async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
@@ -619,7 +611,7 @@ export const notesAPI = createApi({
                     .single();
 
                 if (error) return { error: { message: error.message } };
-                return { data };
+                return { data: data };
             },
             async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'

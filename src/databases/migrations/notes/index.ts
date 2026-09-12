@@ -12,6 +12,8 @@ import { AddFieldStatus1788915675731 } from "./1788915675731-AddFieldStatus";
 import { NullableContent1788925036146 } from "./1788925036146-NullableContent";
 import { PageAddStatusField1788926641499 } from "./1788926641499-PageAddStatusField";
 import { MetadataToAttributes1789113847556 } from "./1789113847556-MetadataToAttributes";
+import { AddProcessingStatusField1789214332042 } from "./1789214332042-AddProcessingStatusField";
+import { AddProcessingStatusField1789214572157 } from "./1789214572157-AddProcessingStatusField";
 
 export {
     InitialNotes1787674018377,
@@ -28,4 +30,6 @@ export {
     NullableContent1788925036146,
     PageAddStatusField1788926641499,
     MetadataToAttributes1789113847556,
+    AddProcessingStatusField1789214332042,
+    AddProcessingStatusField1789214572157,
 };

@@ -32,7 +32,7 @@ const appPages: AppPage[] = [
         mdIcon: homeOutline
     },
     {
-        title: 'Courses',
+        title: 'Workspaces',
         url: '/dashboard/workspace',
         iosIcon: briefcaseOutline,
         mdIcon: briefcaseOutline

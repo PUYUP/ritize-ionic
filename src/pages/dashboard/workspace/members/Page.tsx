@@ -234,7 +234,7 @@ const WorkspaceMembersPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
-                        Course Members
+                        Workspace Members
                     </IonTitle>
                     <IonButtons slot="end" className="ion-padding-end">
                         <IonButton fill='clear' shape="round" color="primary" disabled={addingMembers} onClick={() => setShowAddMembersModal(true)}>

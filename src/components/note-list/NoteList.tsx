@@ -110,7 +110,7 @@ const NoteItem: React.FC<{
 
                             <div className='flex'>
                                 <Link to={linkTo} className='block w-full flex-1'>
-                                    <div className='flex gap-1.5 !m-0 items-center !text-sm'>
+                                    <div className='flex gap-1 !m-0 items-center !text-sm flex-wrap'>
                                         <div className={`flex items-center gap-1.5`}>
                                             {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-base text-neutral-500' />}
                                             {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-base text-neutral-500' />}
@@ -122,7 +122,7 @@ const NoteItem: React.FC<{
                                             </IonText>
                                         </div>
                                         <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                        <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'MMM dd, yy')}</IonText>
+                                        <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'MM/dd/yy')}</IonText>
                                         <IonText className='text-sm text-neutral-400'>&bull;</IonText>
                                         <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'HH:mm')}</IonText>
                                     </div>

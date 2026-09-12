@@ -76,7 +76,7 @@ const WorkspaceDetailPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center flex items-center justify-center fixed left-14 right-14 top-0 bottom-0 text-lg line-clamp-1">
-                        Course
+                        Workspace
                     </IonTitle>
                     <IonButtons slot="end" className='ion-padding-end'>
                         <IonButton className='!w-auto !h-auto' id="workspace-actions">
@@ -92,7 +92,7 @@ const WorkspaceDetailPage: React.FC = () => {
                         <div className='flex items-start'>
                             <div className='block ion-padding-end'>
                                 <div className='block mb-1'>
-                                    <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Course Detail'}</IonText>
+                                    <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Workspace Detail'}</IonText>
                                 </div>
 
                                 <div className='flex items-center gap-2 text-base text-neutral-700'>
@@ -131,7 +131,7 @@ const WorkspaceDetailPage: React.FC = () => {
 
                     <div className='ion-padding'>
                         <div className='block mb-3 text-lg'>
-                            <IonText>Today's in Courses</IonText>
+                            <IonText>Today's in Workspaces</IonText>
                         </div>
                         <WorkspaceStats
                             isTab={true}
@@ -146,7 +146,7 @@ const WorkspaceDetailPage: React.FC = () => {
                     {id && (
                         <div className='block'>
                             <div className='bg-neutral-200 block mb-0 text-lg ion-padding-start ion-padding-end !py-2 flex items-center justify-center'>
-                                <IonText><u>{activeTabLabel}</u> in Courses</IonText>
+                                <IonText><u>{activeTabLabel}</u> in Workspaces</IonText>
                                 <div className='ml-auto flex items-center'>
                                     <IonButton shape='round' color="light" size="small">
                                         <IonIcon icon={filterOutline} slot='icon-only' />

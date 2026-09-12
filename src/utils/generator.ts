@@ -34,3 +34,12 @@ export function getInitials(name: string): string {
     const last = words[words.length - 1][0];
     return (first + last).toUpperCase();
 }
+
+export function blobToBase64(blob: Blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result); // Menghasilkan "data:image/png;base64,..."
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};

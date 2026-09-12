@@ -35,7 +35,7 @@ export class Note {
     syncedId!: string | null;
 
     @Column('simple-json', { nullable: true })
-    metadata!: Record<string, any> | null;
+    attributes!: Record<string, any> | null;
 
     @Column('varchar', { nullable: true, default: 'draft' })
     status!: 'draft' | 'published';

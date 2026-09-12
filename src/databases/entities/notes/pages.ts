@@ -32,7 +32,7 @@ export class Page {
     syncedId!: string | null;
 
     @Column('simple-json', { nullable: true })
-    metadata!: Record<string, any> | null;
+    attributes!: Record<string, any> | null;
 
     @Column({
         type: 'blob', // Gunakan 'bytea' jika menggunakan PostgreSQL

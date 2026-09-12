@@ -11,6 +11,7 @@ import { AddTextContentExtracted1788891679384 } from "./1788891679384-AddTextCon
 import { AddFieldStatus1788915675731 } from "./1788915675731-AddFieldStatus";
 import { NullableContent1788925036146 } from "./1788925036146-NullableContent";
 import { PageAddStatusField1788926641499 } from "./1788926641499-PageAddStatusField";
+import { MetadataToAttributes1789113847556 } from "./1789113847556-MetadataToAttributes";
 
 export {
     InitialNotes1787674018377,
@@ -26,4 +27,5 @@ export {
     AddFieldStatus1788915675731,
     NullableContent1788925036146,
     PageAddStatusField1788926641499,
+    MetadataToAttributes1789113847556,
 };

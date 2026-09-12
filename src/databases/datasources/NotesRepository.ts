@@ -327,7 +327,7 @@ class NotesRepository {
                                 content_data: objString,
                                 content_text: savedPage.contentText as string,
                                 content_extracted: savedPage.contentExtracted,
-                                metadata: savedPage.metadata,
+                                attributes: savedPage.attributes,
                                 page_num: savedPage.pageNum,
                                 title: savedPage.title,
                                 is_active: savedPage.isActive,
@@ -367,6 +367,7 @@ class NotesRepository {
                             data: this.removeEmpty({
                                 synced_at: data.syncedAt ? data.syncedAt.toISOString() : new Date().toISOString(),
                                 content_data: objString,
+                                content_extracted: data.contentExtracted,
                                 page_num: data.pageNum,
                                 is_active: data.isActive,
                                 status: data.status,
@@ -408,7 +409,7 @@ class NotesRepository {
                 objString = jsonString ? JSON.parse(jsonString) : {};
             }
 
-            return {
+            return this.removeEmpty({
                 id: p.id,
                 user_id: p.userId,
                 workspace_id: p.workspaceId,
@@ -420,7 +421,7 @@ class NotesRepository {
                 is_active: p.isActive,
                 status: p.status,
                 content_data: objString,
-            }
+            })
         });
 
         if (syncToServer) {

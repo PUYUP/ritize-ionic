@@ -34,7 +34,7 @@ export type NotePageTypes = {
     content_data: Blob;
     content_text?: string;
     content_extracted?: Record<string, any> | Array<any> | null;
-    metadata?: any;
+    attributes?: any;
     status?: 'draft' | 'published';
 }
 
@@ -705,6 +705,7 @@ export const notesAPI = createApi({
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Update Note Page] User not found" } };
 
+                console.log(data);
                 const { data: updatedData, error } = await supabase
                     .from("workspace_notes_pages")
                     .update(data)

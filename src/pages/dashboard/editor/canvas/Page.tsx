@@ -16,11 +16,11 @@ import {
 	useIonViewWillEnter,
 	useIonViewWillLeave,
 } from '@ionic/react';
-import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON, Footer } from '@excalidraw/excalidraw';
+import { Excalidraw, exportToBlob, MainMenu, serializeAsJSON } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import './Page.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { checkmarkCircleOutline, checkmarkDoneOutline, checkmarkOutline, copyOutline, duplicateOutline, saveOutline, trashOutline } from 'ionicons/icons';
+import { checkmarkCircleOutline, copyOutline, duplicateOutline, trashOutline } from 'ionicons/icons';
 import { useDeviceWidth } from '../../../../utils/sizing';
 import { menuController } from '@ionic/core/components';
 
@@ -35,13 +35,10 @@ import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
 import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
-import { getFileTypePure, uploadFileToGCS } from '../../../../utils/gcs-upload-client';
-import { UploadProgress } from '../../../../types/upload';
-import { getUser } from '../../../../utils/authState';
-import { generateUUID } from '../../../../utils/generator';
-import { supabase } from '../../../../lib/supabase';
+import { blobToBase64, generateUUID } from '../../../../utils/generator';
 
 const AUTOSAVE_THROTTLE_MS = 1000;
+const DEBOUNCE_DELAY = 300;
 
 /**
  * A scene is "empty" only if it has no visible (non-deleted) elements.
@@ -61,7 +58,6 @@ const CanvasEditorPage: React.FC = () => {
 
 	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
 	const [isLoaded, setIsLoaded] = useState(false);
-	const [isDirty, setIsDirty] = useState(false);
 	const isDirtyRef = useRef(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [hasContent, setHasContent] = useState(false);
@@ -103,6 +99,9 @@ const CanvasEditorPage: React.FC = () => {
 	// untuk page yang sama saat user mengetik cepat).
 	const lastPersistedAtRef = useRef(0);
 	const isSavingRef = useRef(false);
+	const isProgrammaticUpdateRef = useRef(true);
+	// Ref untuk menyimpan timer debounce
+	const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// RTK Query
 	const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
@@ -110,7 +109,6 @@ const CanvasEditorPage: React.FC = () => {
 	const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
 
 	const updateIsDirty = useCallback((value: boolean) => {
-		setIsDirty(value);
 		isDirtyRef.current = value;
 	}, []);
 
@@ -163,9 +161,25 @@ const CanvasEditorPage: React.FC = () => {
 			lastSavedDataRef.current = json;
 
 			const bufferData = json ? Buffer.from(json, 'utf-8') : null;
-			let metadata = null;
+			let fileData = null;
 
-			await NotesRepository.microUpdatePage(page.id as string, { contentData: bufferData });
+			if (!contentEmpty) {
+				// extract as image
+				const blobData = await exportToBlob({
+					elements: elements,
+					appState: { exportBackground: true },
+					mimeType: "image/png",
+				});
+
+				fileData = await blobToBase64(blobData);
+			}
+
+			await NotesRepository.microUpdatePage(page.id as string, {
+				contentData: bufferData,
+				contentExtracted: { fileData: fileData },
+				status: 'draft', // karena edit jadi draft
+			});
+
 			console.log('selected page id: ', page.id, ' is updated');
 
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
@@ -174,91 +188,6 @@ const CanvasEditorPage: React.FC = () => {
 					prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
 				);
 			}
-
-			// only if content not empty
-			// if (!contentEmpty) {
-			// 	// extract as image
-			// 	const blob = await exportToBlob({
-			// 		elements: elements,
-			// 		appState: { exportBackground: true },
-			// 		mimeType: "image/png",
-			// 	});
-
-			// 	const file = new File([blob], 'canvas.png', { type: 'image/png' });
-			// 	let progress = 0;
-
-			// 	const user = await getUser();
-			// 	const result = await uploadFileToGCS(
-			// 		file,
-			// 		{ onProgress: (p: UploadProgress) => { progress = p.percentage; } },
-			// 		{
-			// 			pageId: page.id,
-			// 			workspaceId: workspaceId,
-			// 		}
-			// 	);
-
-			// 	// save the file
-			// 	const filePayload = {
-			// 		user_id: user.id,
-			// 		disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
-			// 		file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
-			// 		mime_type: result.contentType,
-			// 		original_filename: file.name,
-			// 		size_bytes: result.size,
-			// 		created_at: result.timeCreated,
-			// 		updated_at: result.updated,
-			// 		checksum_sha256: result.md5Hash,
-			// 		path: result.name,
-			// 		media_link: result.mediaLink
-			// 	};
-
-			// 	// save file metadata
-			// 	const { data: fileData, error: fileError } = await supabase.from("files")
-			// 		.insert(filePayload)
-			// 		.select('*')
-			// 		.single();
-
-			// 	// create attachment
-			// 	const attachmentPayload = {
-			// 		file_id: fileData.id,
-			// 		user_id: user.id,
-			// 		entity_type: 'workspace_notes_pages',
-			// 		entity_id: page.id,
-			// 		purpose: 'canvas_image',
-			// 	}
-
-			// 	// delete attachment sebelumnya
-			// 	await supabase.from("attachments")
-			// 		.delete()
-			// 		.eq('user_id', user.id)
-			// 		.eq('entity_type', 'workspace_notes_pages')
-			// 		.eq('entity_id', page.id)
-			// 		.eq('purpose', 'canvas_image')
-
-			// 	const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
-			// 		.insert(attachmentPayload)
-			// 		.select('*')
-			// 		.single();
-
-			// 	metadata = {
-			// 		file: fileData,
-			// 		attachment: attachmentData,
-			// 	}
-			// }
-
-			// await NotesRepository.updatePage(page.id as string, {
-			// 	contentData: bufferData,
-			// 	metadata: metadata,
-			// 	status: 'draft',
-			// }, false);
-
-			// console.log('selected page id: ', page.id, ' is updated');
-
-			// // everything page changed update note status as draft
-			// if (selectedNote?.status === 'published') {
-			// 	const updatedNote = await NotesRepository.updateNote({ id: selectedNote.id, status: 'draft' });
-			// 	setSelectedNote(updatedNote);
-			// }
 		} catch (err) {
 			console.error('Failed to save canvas', err);
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
@@ -282,9 +211,7 @@ const CanvasEditorPage: React.FC = () => {
 
 		if (!canvasData || !page || !note || isProcessed) return;
 
-		const elements = canvasData.elements;
-		const appState = canvasData.appState;
-		const files = canvasData.files;
+		const { elements, appState, files } = canvasData;
 
 		// Eksekusi API secara asynchronous
 		await persistPageContent(page, elements, appState, files);
@@ -325,25 +252,27 @@ const CanvasEditorPage: React.FC = () => {
 		return persistCurrentPage().catch((err) => {
 			console.error("Background save failed:", err);
 		});
-	}, [isDirty, persistCurrentPage]);
+	}, [isDirtyRef, persistCurrentPage]);
 
 	// ...
 	// realtime content changed in the canvas
 	// ...
-	const handleSceneChange = useCallback((elements: readonly ExcalidrawElement[], appState: AppState) => {
+	const handleSceneChange = useCallback((
+		elements: readonly ExcalidrawElement[],
+		appState: AppState,
+		files: BinaryFiles
+	) => {
 		const visibleElements = elements.filter((el) => !el.isDeleted);
-		setHasContent(visibleElements.length > 0);
+		const hasElement = visibleElements.length > 0;
+		setHasContent(hasElement);
+
+		// tidak punya element jangan di proses
+		if (!hasElement) return;
 
 		updateIsDirty(true);
 
-		// SIMPAN DATA KANVAS KE MEMORI
-		if (excalidrawAPI) {
-			latestCanvasStateRef.current = {
-				elements,
-				appState,
-				files: excalidrawAPI.getFiles() // Tangkap files (gambar, dll)
-			};
-		}
+		// Simpan state terbaru ke Ref untuk backup
+		latestCanvasStateRef.current = { elements, appState, files };
 
 		if (autosaveTimer.current) {
 			clearTimeout(autosaveTimer.current);
@@ -369,7 +298,7 @@ const CanvasEditorPage: React.FC = () => {
 				void persistCurrentPage();
 			}, remaining);
 		}
-	}, [updateIsDirty, excalidrawAPI, persistCurrentPage]); // Pastikan dependencies sesuai
+	}, [updateIsDirty, persistCurrentPage]); // Pastikan dependencies sesuai
 
 	// Ionic's router outlet keeps pages mounted in its history stack, so plain
 	// unmount isn't a reliable "user is leaving" signal — flush explicitly.
@@ -378,8 +307,9 @@ const CanvasEditorPage: React.FC = () => {
 	});
 
 	useIonViewWillLeave(() => {
-		flushPendingSave();
 		isPageActiveRef.current = false;
+		isProgrammaticUpdateRef.current = false;
+		flushPendingSave();
 	});
 
 	useIonViewDidEnter(() => {
@@ -396,6 +326,7 @@ const CanvasEditorPage: React.FC = () => {
 		setSelectedPage(null);
 		setSelectedNote(null);
 		prevNoteIdRef.current = null;
+		isProgrammaticUpdateRef.current = false;
 	});
 
 	useEffect(() => () => {
@@ -570,10 +501,18 @@ const CanvasEditorPage: React.FC = () => {
 		try {
 			// Flush any unsaved edits on the OUTGOING page before touching
 			// selectedPage / swapping the canvas' content.
-			if (!isProcessed) await flushPendingSave();
+			// if (!isProcessed) await flushPendingSave();
 
-			const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
+			const updatedPages = pages.map((p) => ({
+				id: p.id,
+				syncedId: p.syncedId,
+				workspaceId: p.workspaceId,
+				workspaceNoteId: p.workspaceNoteId,
+				pageNum: p.pageNum,
+				isActive: p.id === page.id
+			}));
 			if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
+			// @ts-ignore
 			setPages(updatedPages);
 
 			if (selectedNote) {
@@ -825,36 +764,13 @@ const CanvasEditorPage: React.FC = () => {
 	// ...
 	const handleSaveChanges = async () => {
 		if (!selectedNoteRef?.current?.id) return;
-
-		// ambil semua pages yang ada di local db
-		// kumpulkan konten nya
-		const savedPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
-		const inserts = (savedPages ?? [])
-			.map((page: any) => {
-				// get content from ops
-				const decoder = new TextDecoder('utf-8');
-				const jsonString = decoder.decode(page.contentData);
-
-				if (!jsonString) return;
-
-				const json = JSON.parse(jsonString);
-				const pageContent = (json.ops ?? [])
-					.map((op: any) => op.insert ?? "")
-					.join("");
-
-				return pageContent;
-			})
-			.filter((content: string) => content.trim().length > 0);
-
-		// update lagi workspace_note content nya
-		const newContent = inserts.join("\n--------------------\n");
+		isProgrammaticUpdateRef.current = false;
 
 		// update note dari 'draft' ke 'publish'
 		// tujuannya untuk start embedding
 		const res = await NotesRepository.updateNote({
 			id: selectedNoteRef.current.id,
 			status: 'published',
-			content: newContent,
 		});
 
 		setSelectedNote(res);
@@ -915,18 +831,42 @@ const CanvasEditorPage: React.FC = () => {
 					<Excalidraw
 						autoFocus
 						aiEnabled={false}
-						onExcalidrawAPI={(api: ExcalidrawImperativeAPI | null) => {
+						onInitialize={(api: ExcalidrawImperativeAPI | null) => {
+							isProgrammaticUpdateRef.current = false;
 							setExcalidrawAPI(api);
 							if (api) setIsLoaded(true);
+
+							// setTimeout(() => {
+							// 	isProgrammaticUpdateRef.current = true;
+							// }, 5000)
 						}}
-						onChange={(elements, appState) => {
+						onChange={(elements, appState, files) => {
 							if (!excalidrawAPI) return;
-							handleSceneChange(elements, appState);
+
+							if (isProgrammaticUpdateRef.current == true) {
+								handleSceneChange(elements, appState, files);
+							}
+
+							// implementasi debounce, jika tidak ada update lagi
+							// maka initializing selesai
+							if (isProgrammaticUpdateRef.current == false) {
+								// setiap onChange terpanggil, batalkan timer sebelumnya
+								if (debounceTimerRef.current) {
+									clearTimeout(debounceTimerRef.current);
+								}
+
+								// pasang timer baru; kalau tidak ada onChange lagi dalam
+								// DEBOUNCE_DELAY ms, berarti "badai" update sudah reda
+								debounceTimerRef.current = setTimeout(() => {
+									isProgrammaticUpdateRef.current = true;
+									debounceTimerRef.current = null;
+								}, DEBOUNCE_DELAY);
+							}
 						}}
 						// onScrollChange={handleScrollChange}
 						gridModeEnabled={true}
 						zenModeEnabled={true}
-						viewModeEnabled={isProcessed || selectedNote?.status == 'published'}
+						viewModeEnabled={isProcessed}
 						UIOptions={{
 							// @ts-ignore
 							getFormFactor: () => 'phone',
@@ -949,7 +889,7 @@ const CanvasEditorPage: React.FC = () => {
 					<div className='z-50 absolute left-[12px] right-[12px] max-w-[450px] mx-auto'
 						style={{ 'top': 'calc(16px + var(--ion-safe-area-top, 0))', 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}
 					>
-						<div className={`w-full px-[2px] h-[40px] ${!isProcessed && selectedNote?.status == 'draft' && 'bg-white border border-neutral-100 rounded-full shadow'}`}>
+						<div className={`w-full px-[2px] h-[40px] ${!isProcessed && 'bg-white border border-neutral-100 rounded-full shadow'}`}>
 							<div className='flex flex-row gap-3 items-center justify-between h-full tool-buttons'>
 								<div className='flex-1 overflow-hidden'>
 									<div ref={pagesSwiperElRef} className='swiper h-[44px] w-full'>
@@ -972,7 +912,7 @@ const CanvasEditorPage: React.FC = () => {
 									</div>
 								</div>
 
-								{(!isProcessed && selectedNote?.status == 'draft') && (
+								{!isProcessed && (
 									<div className='flex flex-row gap-3 justify-center'>
 										<IonButton
 											size='small'
@@ -1052,7 +992,8 @@ const CanvasEditorPage: React.FC = () => {
 									excalidrawAPI.getAppState(),
 									excalidrawAPI.getFiles(),
 								);
-								setIsDirty(false);
+								updateIsDirty(false);
+								isProgrammaticUpdateRef.current = true;
 							}
 						},
 					},
@@ -1095,7 +1036,7 @@ const CanvasEditorPage: React.FC = () => {
 								if (remaining.length === 0) {
 									setPages([]);
 									setSelectedPage(null);
-									setIsDirty(false);
+									updateIsDirty(false);
 
 									await excalidrawAPI?.resetScene();
 									excalidrawAPI?.updateScene({
@@ -1119,7 +1060,7 @@ const CanvasEditorPage: React.FC = () => {
 
 								await NotesRepository.updatePagesBulk(reindexed);
 								setPages(reindexed);
-								setIsDirty(false);
+								updateIsDirty(false);
 
 								// Set directly from the data we already have
 								// — routing this through selectPageHandler

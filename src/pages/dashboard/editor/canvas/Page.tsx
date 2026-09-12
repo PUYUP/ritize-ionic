@@ -440,6 +440,20 @@ const CanvasEditorPage: React.FC = () => {
 			// tersimpan, jangan mewarisi window throttle halaman sebelumnya.
 			lastPersistedAtRef.current = 0;
 
+			// Jaga-jaga kalau caller lupa flush: batalkan autosave timer
+			// yang mungkin masih nyantol dari halaman SEBELUMNYA.
+			if (autosaveTimer.current) {
+				clearTimeout(autosaveTimer.current);
+				autosaveTimer.current = undefined;
+			}
+
+			// Redam onChange sampai transisi kanvas benar-benar settle,
+			// supaya onChange yang masih membawa elements halaman LAMA
+			// (karena updateScene di bawah baru jalan 100ms lagi) tidak
+			// ikut ter-treat sebagai perubahan milik halaman BARU ini.
+			isProgrammaticUpdateRef.current = false;
+			latestCanvasStateRef.current = null;
+
 			if (contentData) {
 				try {
 					const decoder = new TextDecoder('utf-8');
@@ -450,8 +464,6 @@ const CanvasEditorPage: React.FC = () => {
 					const json = JSON.parse(jsonString);
 
 					setHasContent(!isElementsEmpty(json.elements));
-					// Seed the dedupe ref so the onChange this triggers
-					// doesn't cause an immediate, redundant re-save.
 					lastSavedDataRef.current = jsonString;
 
 					setTimeout(() => {
@@ -490,7 +502,7 @@ const CanvasEditorPage: React.FC = () => {
 		try {
 			// Flush any unsaved edits on the OUTGOING page before touching
 			// selectedPage / swapping the canvas' content.
-			// if (!isProcessed) await flushPendingSave();
+			if (!isProcessed) await flushPendingSave();
 
 			const updatedPages = pages.map((p) => ({
 				id: p.id,
@@ -498,7 +510,8 @@ const CanvasEditorPage: React.FC = () => {
 				workspaceId: p.workspaceId,
 				workspaceNoteId: p.workspaceNoteId,
 				pageNum: p.pageNum,
-				isActive: p.id === page.id
+				isActive: p.id === page.id,
+				status: p.status,
 			}));
 
 			if (!isProcessed) {
@@ -764,22 +777,16 @@ const CanvasEditorPage: React.FC = () => {
 		if (!selectedNoteRef?.current?.id) return;
 		isProgrammaticUpdateRef.current = false;
 
-		// update semua pages as published
-		await NotesRepository.updatePagesBulk(
-			pages.map(p => {
-				return {
-					...p,
-					status: 'published',
-				}
-			})
-		);
-
-		setPages(prev => {
-			return prev.map(p => ({
+		const updatedPages = pages.map(p => {
+			return {
 				...p,
-				status: 'published',
-			}));
+				status: 'published' as any,
+			};
 		});
+
+		// update semua pages as published
+		await NotesRepository.updatePagesBulk(updatedPages);
+		setPages(updatedPages);
 
 		// update note dari 'draft' ke 'publish'
 		// tujuannya untuk start embedding
@@ -795,6 +802,7 @@ const CanvasEditorPage: React.FC = () => {
 				status: 'published',
 			};
 		});
+
 		presentToast('Note saved successfully!', 1000);
 	}
 

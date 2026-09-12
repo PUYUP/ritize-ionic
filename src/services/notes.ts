@@ -576,7 +576,7 @@ export const notesAPI = createApi({
                             const noteIndex = draft.notes.findIndex((n) => n.id === body.workspace_note_id);
                             if (noteIndex !== -1) {
                                 // Timpa data lama dengan data baru (patch)
-                                draft.notes[noteIndex].page_count[0].count += 1;
+                                draft.notes[noteIndex].page_count += 1;
                                 draft.notes[noteIndex].documents = [];
                             }
                         }
@@ -775,7 +775,7 @@ export const notesAPI = createApi({
                             const noteIndex = draft.notes.findIndex((n) => n.id === workspace_note_id);
                             if (noteIndex !== -1) {
                                 // Timpa data lama dengan data baru (patch)
-                                draft.notes[noteIndex].page_count[0].count -= 1;
+                                draft.notes[noteIndex].page_count -= 1;
                             }
                         }
                     )

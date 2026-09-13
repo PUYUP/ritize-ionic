@@ -1,5 +1,5 @@
-import { IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonCardHeader, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonNote, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
-import { albums, albumsOutline, cameraOutline, checkmarkCircleOutline, cloudUploadOutline, copyOutline, trashOutline } from "ionicons/icons";
+import { IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonCardHeader, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
+import { albums, albumsOutline, cameraOutline, checkmarkCircleOutline, closeOutline, cloudUploadOutline, copyOutline, trashOutline } from "ionicons/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import './Page.css';
 import { Note, Page } from "../../../../databases/entities/notes";
@@ -59,6 +59,7 @@ const FilesEditorPage: React.FC = () => {
     const noteId = searchParams.get('noteId');
     const isProcessed = Boolean(searchParams.get('clusteredDate'));
 
+    const [viewImage, setViewImage] = useState<any>(null);
     const [pages, setPages] = useState<FilePage[]>([]);
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
     const [selectedPage, setSelectedPage] = useState<Partial<FilePage> | null>(null);
@@ -767,7 +768,7 @@ const FilesEditorPage: React.FC = () => {
 
                             return (
                                 <div key={page.id} className="block">
-                                    <IonCard className="rounded-xl">
+                                    <IonCard className="rounded-xl" onClick={() => setViewImage(page)}>
                                         <IonCardContent>
                                             <div className="relative aspect-square">
                                                 {(isUploading && ((page.uploadProgress ?? 0) < 100 || page.isSaving)) && (
@@ -933,6 +934,26 @@ const FilesEditorPage: React.FC = () => {
                     },
                 ]}
             ></IonAlert>
+
+            {/* image viewer */}
+            <IonModal isOpen={!!viewImage} onDidDismiss={() => setViewImage(null)}
+                className='rounded-2xl'
+            >
+                <IonHeader className="ion-no-border">
+                    <IonToolbar>
+                        <IonButton slot="end" onClick={() => setViewImage(null)} shape="round" color={'light'} className="ion-margin-end">
+                            <IonIcon icon={closeOutline} slot="icon-only" />
+                        </IonButton>
+                    </IonToolbar>
+                </IonHeader>
+                <IonContent>
+                    {viewImage && (
+                        <div className="flex items-center justify-center h-full">
+                            <img src={viewImage?.attributes?.file?.media_link} alt="" className="max-w-full max-h-full" />
+                        </div>
+                    )}
+                </IonContent>
+            </IonModal>
         </IonPage>
     )
 }

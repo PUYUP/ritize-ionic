@@ -585,6 +585,7 @@ export const notesAPI = createApi({
                                 // Timpa data lama dengan data baru (patch)
                                 draft.notes[noteIndex].page_count += 1;
                                 draft.notes[noteIndex].documents = [];
+                                draft.notes[noteIndex].pages_status = body?.status || 'draft';
                             }
                         }
                     )

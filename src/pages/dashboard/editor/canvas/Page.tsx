@@ -50,6 +50,12 @@ function isElementsEmpty(elements: readonly ExcalidrawElement[] | null | undefin
 	return !elements.some((el) => !el.isDeleted);
 }
 
+function getElementFingerprint(el: ExcalidrawElement) {
+	// Buang properti meta yang tidak relevan dengan tampilan visual
+	const { version, versionNonce, updated, seed, isDeleted, ...coreProperties } = el;
+	return JSON.stringify(coreProperties);
+}
+
 const CanvasEditorPage: React.FC = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const workspaceId = searchParams.get('workspaceId');
@@ -112,6 +118,14 @@ const CanvasEditorPage: React.FC = () => {
 	const updateIsDirty = useCallback((value: boolean) => {
 		isDirtyRef.current = value;
 	}, []);
+
+	// canva memory
+	// Gunakan useRef untuk menyimpan state awal tanpa memicu re-render
+	const initialElementsMap = useRef<Map<string, string>>(new Map());
+	const initialActiveCount = useRef<number>(0);
+
+	// State untuk UI (opsional: jika Anda ingin menampilkan status di layar)
+	const [hasSignificantChange, setHasSignificantChange] = useState(false);
 
 	// excalidraw setups
 	const excalidrawAppProps = useMemo(() => ({
@@ -178,8 +192,8 @@ const CanvasEditorPage: React.FC = () => {
 			await NotesRepository.microUpdatePage(page.id as string, {
 				contentData: bufferData,
 				contentExtracted: { fileData: fileData },
-				status: 'draft', // karena edit jadi draft
-				processingStatus: 'pending', // kembali belum di proses AI
+				status: hasSignificantChange ? 'draft' : 'published', // karena edit jadi draft
+				processingStatus: hasSignificantChange ? 'pending' : 'processed', // kembali belum di proses AI
 			});
 
 			console.log('selected page id: ', page.id, ' is updated');
@@ -190,8 +204,8 @@ const CanvasEditorPage: React.FC = () => {
 					prevPages.map((p) => (p.id === page.id ? {
 						...p,
 						contentData: bufferData,
-						status: 'draft',
-						processingStatus: 'pending'
+						status: hasSignificantChange ? 'draft' : 'published',
+						processingStatus: hasSignificantChange ? 'pending' : 'processed'
 					} : p))
 				);
 			}
@@ -206,7 +220,7 @@ const CanvasEditorPage: React.FC = () => {
 			// Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
 			if (isPageActiveRef.current) setIsSaving(false);
 		}
-	}, [presentToast, workspaceId, selectedNote]);
+	}, [presentToast, workspaceId, selectedNote, hasSignificantChange]);
 
 	// Persists whatever is currently on the canvas for the currently
 	// selected page.
@@ -480,6 +494,9 @@ const CanvasEditorPage: React.FC = () => {
 								...excalidrawAppProps.appState,
 							},
 						});
+
+						// Set initial state untuk membandingkan perubahan
+						setInitialState(json.elements);
 					}, 100);
 				} catch (error) {
 					console.error('Failed to parse saved content', error);
@@ -499,6 +516,23 @@ const CanvasEditorPage: React.FC = () => {
 
 		loadContentData();
 	}, [selectedPage, excalidrawAPI]);
+
+	useEffect(() => {
+		const handleVisibilityChange = () => {
+			// Check if the document visibility state is 'visible'
+			if (document.visibilityState == 'visible') {
+				isProgrammaticUpdateRef.current = true;
+			}
+		};
+
+		// Add listener for tab switching/minimizing
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+
+		// Cleanup the listener when the component unmounts
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		};
+	}, []);
 
 	// select page
 	const selectPageHandler = async (page: Page) => {
@@ -819,6 +853,62 @@ const CanvasEditorPage: React.FC = () => {
 		presentToast('Note saved successfully!', 1000);
 	}
 
+	// 1. Fungsi untuk merekam kondisi awal (di-wrap dengan useCallback)
+	const setInitialState = useCallback((elements: readonly ExcalidrawElement[]) => {
+		initialElementsMap.current.clear();
+		initialActiveCount.current = 0;
+
+		elements.forEach((el) => {
+			if (!el.isDeleted) {
+				initialElementsMap.current.set(el.id, getElementFingerprint(el));
+				initialActiveCount.current++;
+			}
+		});
+	}, []);
+
+	// 2. Fungsi untuk mengecek perubahan
+	const checkNetChange = useCallback((currentElements: readonly ExcalidrawElement[]) => {
+		let changeCount = 0;
+		const initialMap = initialElementsMap.current;
+		const initialCount = initialActiveCount.current;
+
+		// Jika canvas awalnya kosong sama sekali
+		if (initialCount === 0) {
+			const currentActive = currentElements.filter(el => !el.isDeleted).length;
+			return currentActive > 0;
+		}
+
+		currentElements.forEach((el) => {
+			const initialFingerprint = initialMap.get(el.id);
+
+			if (el.isDeleted) {
+				// Elemen bawaan yang dihapus
+				if (initialFingerprint !== undefined) {
+					changeCount++;
+				}
+			} else {
+				// Elemen baru
+				if (initialFingerprint === undefined) {
+					changeCount++;
+				}
+				// Elemen bawaan yang dimodifikasi
+				else {
+					const currentFingerprint = getElementFingerprint(el);
+					if (initialFingerprint !== currentFingerprint) {
+						changeCount++;
+					}
+				}
+			}
+		});
+
+		const percentageChanged = (changeCount / initialCount) * 100;
+
+		// Opsional: console log untuk debugging
+		// console.log(`Perubahan: ${percentageChanged.toFixed(1)}%`);
+
+		return percentageChanged >= 10;
+	}, []);
+
 	return (
 		<IonPage>
 			<IonHeader className="ion-no-border">
@@ -843,6 +933,7 @@ const CanvasEditorPage: React.FC = () => {
 								className="normal-button"
 								style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
 								onClick={handleSaveChanges}
+								disabled={!hasSignificantChange}
 							>
 								Save Changes
 							</IonButton>
@@ -877,15 +968,14 @@ const CanvasEditorPage: React.FC = () => {
 							isProgrammaticUpdateRef.current = false;
 							setExcalidrawAPI(api);
 							if (api) setIsLoaded(true);
-
-							// setTimeout(() => {
-							// 	isProgrammaticUpdateRef.current = true;
-							// }, 5000)
 						}}
 						onChange={(elements, appState, files) => {
 							if (!excalidrawAPI || !isDeletedRef) return;
 
 							if (isProgrammaticUpdateRef.current == true) {
+								// Cek apakah perubahan sudah mencapai 10%
+								const isChanged = checkNetChange(elements);
+								setHasSignificantChange(isChanged);
 								handleSceneChange(elements, appState, files);
 							}
 

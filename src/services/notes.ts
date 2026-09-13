@@ -160,7 +160,7 @@ export const notesAPI = createApi({
                     .upsert(body, { onConflict: "id,synced_id" })
                     .select(`
                         *
-                        , pages:workspace_notes_pages(*)
+                        , pages:workspace_notes_pages(status, processing_status)
                         , user!inner(id, name)
                         , documents:workspace_notes_documents(
                             id
@@ -202,15 +202,15 @@ export const notesAPI = createApi({
                                     // Update existing note
                                     draft.notes[noteIndex] = {
                                         ...draft.notes[noteIndex],
-                                        ...data,
                                         content_preview: data.content,
-                                        pages_status: data.pages?.some(p => p.status == 'draft') ? 'draft' : 'published',
+                                        pages_status: data.pages?.some(p => p.status === 'draft') ? 'draft' : 'published',
                                     };
                                 } else {
                                     // Add new note at the beginning (most recent)
                                     draft.notes.unshift({
                                         ...data,
                                         page_count: 1,
+                                        pages_status: 'draft',
                                     });
                                 }
                             }
@@ -406,9 +406,14 @@ export const notesAPI = createApi({
                     .from("workspace_notes_list")
                     .select(`
                         *
-                        , pages:workspace_notes_pages(status)
+                        , pages:workspace_notes_pages(
+                            id
+                            , status 
+                            , content_text
+                            , processing_status
+                            , attachments(*, file:file_id(*))
+                        )
                         , user!inner(id, name)
-                        , attachments(*, file:file_id(*))
                         , documents:workspace_notes_documents(
                             id
                             , similarity_score

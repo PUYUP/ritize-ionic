@@ -1,0 +1,6 @@
+ion-button.page-active::part(native) {
+    border-width: 1px;
+    border-style: solid;
+    border-color: white;
+    background-color: #e0dfff;
+}

@@ -145,7 +145,7 @@ const NoteItem: React.FC<{
                             </div>
                         </div>
 
-                        {content_preview && (
+                        {(content_preview && item.content_type == 'text') && (
                             <>
                                 <div className='ion-padding-start ion-padding-end'>
                                     {item.workspace && !workspaceId && (
@@ -196,6 +196,29 @@ const NoteItem: React.FC<{
                                     </div>
                                 </div>
                             </>
+                        )}
+
+                        {item.content_type == 'canvas' && (
+                            <Link to={linkTo}>
+                                <div className='ion-padding-start ion-padding-bottom ion-padding-end'>
+                                    <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
+                                        {item.pages?.map((p: any) => {
+                                            const mediaLink = p?.attachments?.[0]?.file?.media_link;
+
+                                            return (
+                                                <div key={p.id} className="relative aspect-square overflow-hidden">
+                                                    <div className='absolute left-0 right-0 bottom-0 top-0 border border-neutral-200 p-2 rounded-xl shadow flex items-center justify-center'>
+                                                        {mediaLink && <img src={mediaLink} className='w-full h-full object-cover' />}
+                                                        {!mediaLink && (
+                                                            <IonText className='text-xs text-center' color="medium">Currently is drafted</IonText>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </Link>
                         )}
                     </div>
                 </IonCardContent>

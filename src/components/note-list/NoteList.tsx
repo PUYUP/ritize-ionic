@@ -1,7 +1,7 @@
 import { IonActionSheet, IonAlert, IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { alarm, alarmOutline, arrowForwardCircleOutline, arrowForwardOutline, attachOutline, bookmarkOutline, bookmarkSharp, bookSharp, briefcaseOutline, checkmarkCircleOutline, checkmarkCircleSharp, chevronForwardOutline, closeOutline, ellipsisVertical, pencil, pencilOutline, pencilSharp, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { alarm, alarmOutline, arrowForwardCircleOutline, arrowForwardOutline, attachOutline, bookmarkOutline, bookmarkSharp, bookSharp, briefcaseOutline, checkmarkCircleOutline, checkmarkCircleSharp, chevronForwardOutline, closeOutline, ellipsisVertical, imageOutline, pencil, pencilOutline, pencilSharp, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
@@ -105,6 +105,11 @@ const NoteItem: React.FC<{
             badgeTextColor = 'text-purple-800';
         }
 
+        if (item.page_count <= 0) {
+            badgeColor = 'bg-gray-200';
+            badgeTextColor = 'text-gray-500';
+        }
+
         return (
             <IonCard className='rounded-xl'>
                 <IonCardContent className='!p-0 h-full'>
@@ -116,12 +121,12 @@ const NoteItem: React.FC<{
                                         <div className={`flex items-center gap-1.5 ${badgeColor} rounded-full px-1.5 py-0.5 leading-3`}>
                                             {item.content_type === 'text' && <IonIcon icon={textOutline} className={`text-base ${badgeTextColor}`} />}
                                             {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className={`text-base ${badgeTextColor}`} />}
-                                            {item.content_type === 'file' && <IonIcon icon={attachOutline} className={`text-base ${badgeTextColor}`} />}
+                                            {item.content_type === 'file' && <IonIcon icon={imageOutline} className={`text-base ${badgeTextColor}`} />}
 
                                             {(!item.clustered_date || item.clustered_date == '') && (
                                                 <IonText className={`text-sm flex gap-1 ${badgeTextColor}`}>
                                                     <span className='font-semibold'>{item.page_count || 0}</span>
-                                                    {item.pages_status == 'published' ? 'finished' : 'draft'}
+                                                    {item.pages_status == 'published' ? (item.page_count > 0 ? 'finished' : 'empty') : 'draft'}
                                                 </IonText>
                                             )}
 
@@ -134,7 +139,8 @@ const NoteItem: React.FC<{
                                         <IonText className='text-sm text-neutral-400'>&bull;</IonText>
                                         <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'HH:mm')}</IonText>
                                     </div>
-                                    <IonText color="dark font-semibold text-sm block mt-1">{item.user.name}</IonText>
+
+                                    {item.workspace?.scope === 'group' && <IonText color="dark font-semibold text-sm block mt-1">{item.user.name}</IonText>}
                                 </Link>
 
                                 <div className='ml-auto'>

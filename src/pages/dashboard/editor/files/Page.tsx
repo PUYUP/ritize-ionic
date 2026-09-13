@@ -72,14 +72,7 @@ const FilesEditorPage: React.FC = () => {
     useEffect(() => { selectedPageRef.current = selectedPage; }, [selectedPage]);
     useEffect(() => { selectedNoteRef.current = selectedNote; }, [selectedNote]);
 
-    const [showClearAlert, setShowClearAlert] = useState(false);
     const [showRemoveAlert, setShowRemoveAlert] = useState(false);
-
-    const [isDirty, setIsDirty] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [hasContent, setHasContent] = useState(false);
-    const autosaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-    const lastSavedDataRef = useRef<string | null>(null);
     const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
 
     // RTK Query
@@ -94,65 +87,10 @@ const FilesEditorPage: React.FC = () => {
         setSearchParams(newParams, { replace: true });
     };
 
-    // Saves an explicit (page, delta) pair. Takes both as arguments rather
-    // than reading them from refs/state at call time, so callers control
-    // exactly what gets written where — this is what makes it safe to call
-    // right before switching pages (see flushPendingSave / persistCurrentPage).
-    const persistPageContent = useCallback(async (page: Partial<Page>, content: any) => {
-        setIsSaving(true);
-        try {
-            const contentEmpty = false;
-            const json = contentEmpty ? null : JSON.stringify(content);
-
-            // Identical to the last thing we saved (typically a save
-            // triggered right after a programmatic updateScene, not a real
-            // edit) — skip the redundant DB write.
-            if (json === lastSavedDataRef.current) return;
-            lastSavedDataRef.current = json;
-
-            const bufferData = json ? Buffer.from(json, 'utf-8') : null;
-
-            await NotesRepository.updatePage(page.id as string, { contentData: bufferData }, false);
-            console.log('selected page id: ', page.id, ' is updated');
-
-            setPages((prevPages) =>
-                prevPages.map((p) => (p.id === page.id ? { ...p, contentData: bufferData } : p))
-            );
-        } catch (err) {
-            console.error('Failed to save document', err);
-            presentToast({ message: 'Could not save your changes.', duration: 2500, color: 'danger' });
-        } finally {
-            setIsSaving(false);
-        }
-    }, [presentToast]);
-
-    // Persists whatever is currently in the editor for the currently selected page.
-    const persistCurrentPage = useCallback(async () => {
-        if (!selectedPage || isProcessed) return;
-        await persistPageContent(selectedPage, null);
-        setIsDirty(false);
-    }, [selectedPage, persistPageContent]);
-
-    // Cancels any pending debounced autosave and, if there are unsaved
-    // changes, saves them immediately for the CURRENT page.
-    //
-    // This must be awaited before switching pages, adding a page, or leaving
-    // the editor. Without it, a pending autosave (scheduled while page A was
-    // active) can fire after page B's content has already been swapped into
-    // the editor, saving page B's content under page A's id.
-    const flushPendingSave = useCallback(async () => {
-        if (autosaveTimer.current) {
-            clearTimeout(autosaveTimer.current);
-            autosaveTimer.current = undefined;
-        }
-        if (!isDirty) return;
-        await persistCurrentPage();
-    }, [isDirty, persistCurrentPage]);
-
     // Ionic's router outlet keeps pages mounted in its history stack, so plain
     // unmount isn't a reliable "user is leaving" signal — flush explicitly.
     useIonViewWillLeave(() => {
-        void flushPendingSave();
+        // pass
     });
 
     useIonViewDidEnter(() => {
@@ -170,35 +108,6 @@ const FilesEditorPage: React.FC = () => {
         setSelectedNote(null);
         prevNoteIdRef.current = null;
     });
-
-    useEffect(() => () => {
-        if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    }, []);
-
-    // Load content data for the active page into the editor.
-    useEffect(() => {
-        if (!selectedPage) return;
-
-        const loadContentData = async () => {
-            const contentData = selectedPage?.contentData;
-
-            if (contentData) {
-                try {
-                    setHasContent(true);
-                    // Seed the dedupe ref so the onChange this triggers
-                    // doesn't cause an immediate, redundant re-save.
-                    lastSavedDataRef.current = 'content value';
-                } catch (error) {
-                    console.error('Failed to parse saved content', error);
-                }
-            } else {
-                setHasContent(false);
-                lastSavedDataRef.current = null;
-            }
-        };
-
-        loadContentData();
-    }, [selectedPage]);
 
     // select page
     const selectPageHandler = async (page: FilePage) => {
@@ -232,100 +141,6 @@ const FilesEditorPage: React.FC = () => {
         } catch (err) {
             console.error('Failed to switch page', err);
             presentToast({ message: 'Could not switch pages.', duration: 2500, color: 'danger' });
-        }
-    };
-
-    // add new page
-    const newPageHandler = async (title: string | null = '') => {
-        if (!selectedNote) return;
-
-        try {
-            await flushPendingSave();
-
-            const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
-            if (prevPages.length > 0) {
-                await NotesRepository.updatePagesBulk(prevPages);
-            }
-
-            await createPage(selectedNote, {
-                title: title ?? 'Untitled Page',
-                pageNum: pages.length + 1,
-                workspaceId: selectedNote.workspaceId,
-                workspaceNoteId: selectedNote.id,
-                isActive: true,
-                syncedAt: new Date(),
-                syncedId: generateUUID(),
-            });
-
-            const updatedPages = (await NotesRepository.getPagesByNoteId(selectedNote.id)) as FilePage[];
-            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null, isSaving: false })));
-
-            const activePage = updatedPages.find((p) => p.isActive);
-            if (activePage) {
-                setSelectedPage(activePage);
-            }
-        } catch (err) {
-            console.error('Failed to create a new page', err);
-            presentToast({ message: 'Could not create a new page.', duration: 2500, color: 'danger' });
-        }
-    };
-
-    // bulk create pages
-    // `newPages` may already carry an `id` (set when the file behind it was
-    // uploaded to GCS under that id as `pageId`) — reuse it here instead of
-    // minting a fresh one, so the DB page ends up with the same id the
-    // uploaded file was actually associated with.
-    const bulkNewPagesHandler = async (newPages: FilePage[]) => {
-        if (!selectedNote) return;
-
-        try {
-            await flushPendingSave();
-
-            const prevPages = pages.map((p) => {
-                // hilangkan bukan bagian dari table database
-                delete p.uploadProgress;
-                delete p.uploadError;
-                delete p.isSaving;
-
-                return { ...p, isActive: false }
-            });
-            if (prevPages.length > 0) {
-                await NotesRepository.updatePagesBulk(prevPages);
-            }
-
-            const pageLength = pages.length;
-            const insertedPages = newPages.map((page, index) => {
-                // `uploadProgress` is not part of this model, remove it
-                delete page.uploadProgress;
-                delete page.uploadError;
-                delete page.isSaving;
-
-                const pageNum = (index + 1) + pageLength;
-                return {
-                    id: page.id ?? generateUUID(),
-                    title: page.title ?? 'Untitled Page',
-                    pageNum: pageNum,
-                    workspaceId: selectedNote.workspaceId,
-                    workspaceNoteId: selectedNote.id,
-                    isActive: true,
-                    syncedAt: new Date(),
-                    syncedId: generateUUID(),
-                }
-            });
-
-            // 2. insert pages ke database
-            await NotesRepository.addPagesBulk(selectedNote, insertedPages);
-
-            const updatedPages = (await NotesRepository.getPagesByNoteId(selectedNote.id)) as FilePage[];
-            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null, isSaving: false })));
-
-            const activePage = updatedPages.find((p) => p.isActive);
-            if (activePage) {
-                setSelectedPage(activePage);
-            }
-        } catch (err) {
-            console.error('Failed to create a new page', err);
-            presentToast({ message: 'Could not create a new page.', duration: 2500, color: 'danger' });
         }
     };
 
@@ -423,42 +238,12 @@ const FilesEditorPage: React.FC = () => {
                     if (injectedPages.length > 0) {
                         const savedPages = await NotesRepository.addPagesBulk({ id: serverNote.id }, injectedPages);
                         console.log("injected pages", savedPages);
-                    } else {
-                        // halaman belum ada, buat halaman baru
-                        // di local db dan server juga
-                        // const page = await createPage({ id: note.id }, {
-                        //     pageNum: 1,
-                        //     workspaceId: workspaceId,
-                        //     workspaceNoteId: note.id,
-                        //     isActive: true,
-                        //     syncedAt: new Date(),
-                        //     syncedId: generateUUID(),
-                        // });
-
-                        // console.log('note first page injected', page);
                     }
                 }
             }
         }
 
         // 4. setelah dari local db dan server masih juga tidak ada
-        // 5. buat note baru
-        if (note === null) {
-            // Brand-new note: there was never a server record to fetch.
-            note = await initNote(workspaceId);
-            console.log('create new note', note);
-
-            // const page = await createPage({ id: note.id }, {
-            //     pageNum: 1,
-            //     workspaceId: workspaceId,
-            //     workspaceNoteId: note.id,
-            //     isActive: true,
-            //     syncedAt: new Date(),
-            //     syncedId: generateUUID(),
-            // });
-            // console.log('create page note didn\'t exist', page);
-        }
-
         // setelah semuanya diatas beres
         if (note) {
             // set active note
@@ -477,12 +262,6 @@ const FilesEditorPage: React.FC = () => {
                 console.log('active page', activePage);
             }
         }
-
-        // di url params tidak ada noteId
-        // set dengan yang baru
-        if (!noteId) {
-            handleUpdateUrlWithNoteId(note.id);
-        }
     }
 
     // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
@@ -491,7 +270,6 @@ const FilesEditorPage: React.FC = () => {
             setPages([]);
             setSelectedPage(null);
             setSelectedNote(null);
-            lastSavedDataRef.current = null;
             prevNoteIdRef.current = noteId;
         }
     }, [noteId]);
@@ -499,31 +277,190 @@ const FilesEditorPage: React.FC = () => {
     // --- CAPTURE IMAGE AND UPLOAD FUNCTION ---
     const handleImageCaptured = async (photo: Photo) => {
         if (!selectedPage || !photo || !photo.webPath) return;
+        let note: any = null;
+        if (!workspaceId) return;
+        if (!selectedNote) {
+            // buat catatan dulu
+            const newNote = await initNote(workspaceId);
+            if (!noteId) {
+                handleUpdateUrlWithNoteId(newNote.id);
+            }
+
+            note = newNote;
+            setSelectedNote(newNote);
+            console.log('active note', newNote);
+        } else {
+            note = selectedNote;
+        }
 
         ionContentRef.current?.scrollToBottom(0);
 
+        const user = await getUser();
         const response = await fetch(photo.webPath);
         const blob = await response.blob();
+        const url = new URL(photo.webPath);
+        const fileName = url.pathname.split('/').pop() || 'image.png';
 
-        const file = new File(
+        const pickedFile = new File(
             [blob],
-            'image.png',
+            fileName,
             { type: blob.type }
         );
 
-        // let progress = 0;
-        // const user = await getUser();
-        // const result = await uploadFileToGCS(
-        //     file,
-        //     { onProgress: (p: UploadProgress) => { progress = p.percentage; } },
-        //     {
-        //         pageId: selectedPage?.id,
-        //         workspaceId: workspaceId,
-        //     }
-        // );
+        // temp page
+        const tempEntry = {
+            id: generateUUID(),
+            title: pickedFile.name,
+            uploadProgress: 0,
+            uploadError: false,
+            userId: user.id,
+            workspaceId: workspaceId,
+            workspaceNoteId: note?.id,
+            syncedId: generateUUID(),
+            syncedAt: new Date(),
+        } as FilePage;
 
-        // console.log('Image captured:', photo);
-        // do something with the imageUri, e.g., set it to state
+        setPages((prev) => [...prev, tempEntry]);
+
+        try {
+            // PickedFile -> File asli dulu, baru bisa dioper ke uploadFileToGCS
+            const file = await pickedFileToFile({
+                blob: pickedFile,
+                mimeType: blob.type,
+                name: fileName,
+                size: blob.size,
+            });
+
+            const result = await uploadFileToGCS(
+                file,
+                {
+                    onProgress: (p: UploadProgress) => {
+                        setPages((prev) =>
+                            prev.map((page) =>
+                                page.id === tempEntry.id
+                                    ? {
+                                        ...page,
+                                        uploadProgress: p.percentage,
+                                        isSaving: true,
+                                    }
+                                    : page
+                            )
+                        );
+                    },
+                },
+                {
+                    // pakai id yang sama dengan tempEntries, nanti id ini juga
+                    // dipakai sebagai id page asli di bulkNewPagesHandler,
+                    // jadi file yang ter-upload konsisten terhubung ke page-nya.
+                    pageId: tempEntry.id,
+                    workspaceId: workspaceId,
+                    workspaceNoteId: note?.id,
+                }
+            );
+
+            // create page directly after upload sucess
+            if (note) {
+                const existingPageCount = pages.length;
+                const pageNum = existingPageCount + 1;
+                const newPage = await createPage(note, {
+                    title: file.name ?? 'Untitled Page',
+                    pageNum: pageNum,
+                    workspaceId: note.workspaceId,
+                    workspaceNoteId: note.id,
+                    isActive: true,
+                    syncedAt: new Date(),
+                    syncedId: generateUUID(),
+                    status: 'draft', // directly as published karena user tidak bisa edit
+                    processingStatus: 'pending',
+                });
+
+                // relasikan file dengan attachment
+                // kemudian relasikan attachment dengan page
+                // save the file
+                const filePayload = {
+                    user_id: user.id,
+                    disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
+                    file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
+                    mime_type: result.contentType,
+                    original_filename: file.name,
+                    size_bytes: result.size,
+                    created_at: result.timeCreated,
+                    updated_at: result.updated,
+                    checksum_sha256: result.md5Hash,
+                    path: result.name,
+                    media_link: result.mediaLink
+                };
+
+                // save file metadata
+                const { data: fileData, error: fileError } = await supabase.from("files")
+                    .insert(filePayload)
+                    .select('*')
+                    .single();
+
+                // create attachment
+                const attachmentPayload = {
+                    file_id: fileData.id,
+                    user_id: user.id,
+                    entity_type: 'workspace_notes_pages',
+                    entity_id: newPage.id,
+                    purpose: 'captured_notebook',
+                }
+
+                const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
+                    .insert(attachmentPayload)
+                    .select('*')
+                    .single();
+
+                const attributes = {
+                    file: fileData,
+                    attachment: attachmentData,
+                }
+
+                // update page with file metadata
+                await NotesRepository.updatePage(newPage.id as string, { attributes: attributes });
+
+                setPages((prev) =>
+                    prev.map((page) =>
+                        page.id === tempEntry.id
+                            ? {
+                                ...page,
+                                pageNum: pageNum,
+                                uploadProgress: null,
+                                isSaving: false,
+                                attributes: attributes,
+                                status: 'draft',
+                                processingStatus: 'pending',
+                            }
+                            : page
+                    )
+                );
+            }
+
+        } catch (err) {
+            // pakai pickedFile.name (bukan file.name) karena kalau
+            // pickedFileToFile sendiri yang gagal, `file` belum sempat ada
+            console.error(`Failed to upload file "${pickedFile.name}"`, err);
+            presentToast({
+                message: `Gagal mengunggah "${pickedFile.name}", lanjut ke file berikutnya.`,
+                duration: 2500,
+                color: 'danger',
+            });
+
+            // tandai entry ini gagal di UI, lalu lanjut ke file berikutnya
+            // (tidak throw / break, biar loop tetap jalan)
+            setPages((prev) =>
+                prev.map((page) =>
+                    page.id === tempEntry.id
+                        ? {
+                            ...page,
+                            uploadProgress: null,
+                            uploadError: true,
+                            isSaving: false,
+                        }
+                        : page
+                )
+            );
+        }
     };
 
     const handleError = (error: Error) => {
@@ -533,31 +470,33 @@ const FilesEditorPage: React.FC = () => {
 
     // --- SELECT FILE AND UPLOAD FUNCTION ---
     const selectFile = async () => {
-        if (!selectedNote) return;
+        let note: any = null;
+        if (!workspaceId) return;
+        if (!selectedNote) {
+            // buat catatan dulu
+            const newNote = await initNote(workspaceId);
+            if (!noteId) {
+                handleUpdateUrlWithNoteId(newNote.id);
+            }
+
+            note = newNote;
+            setSelectedNote(newNote);
+            console.log('active note', newNote);
+        } else {
+            note = selectedNote;
+        }
+
         const user = await getUser();
         let result;
 
         try {
             result = await FilePicker.pickFiles({
                 types: [
-                    // 'application/pdf',
-                    // 'application/msword',
-                    // 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    // 'text/plain',
                     'image/png',
                     'image/jpeg',
                     'image/jpg',
                     'image/gif',
                     'image/webp',
-                    // 'audio/mpeg',      // .mp3
-                    // 'audio/wav',       // .wav
-                    // 'audio/x-wav',     // .wav (varian beberapa browser)
-                    // 'audio/ogg',       // .ogg
-                    // 'audio/webm',      // .webm audio
-                    // 'audio/mp4',       // .m4a
-                    // 'audio/x-m4a',     // .m4a (varian Safari/iOS)
-                    // 'audio/aac',       // .aac
-                    // 'audio/flac',      // .flac
                 ],
                 limit: 0,
             });
@@ -580,14 +519,13 @@ const FilesEditorPage: React.FC = () => {
             uploadError: false,
             userId: user.id,
             workspaceId: workspaceId,
-            workspaceNoteId: selectedNote?.id,
+            workspaceNoteId: note?.id,
             syncedId: generateUUID(),
             syncedAt: new Date(),
         } as FilePage));
 
         setPages((prev) => [...prev, ...tempEntries]);
 
-        const successfulPages: FilePage[] = [];
         const existingPageCount = pages.length;
 
         // Upload satu per satu secara berurutan (bukan Promise.all / .map),
@@ -622,22 +560,22 @@ const FilesEditorPage: React.FC = () => {
                         // jadi file yang ter-upload konsisten terhubung ke page-nya.
                         pageId: tempId,
                         workspaceId: workspaceId,
-                        workspaceNoteId: selectedNote?.id,
+                        workspaceNoteId: note?.id,
                     }
                 );
 
                 // create page directly after upload sucess
-                if (selectedNote) {
+                if (note) {
                     const pageNum = existingPageCount + i + 1;
-                    const newPage = await createPage(selectedNote, {
+                    const newPage = await createPage(note, {
                         title: file.name ?? 'Untitled Page',
                         pageNum: pageNum,
-                        workspaceId: selectedNote.workspaceId,
-                        workspaceNoteId: selectedNote.id,
+                        workspaceId: note.workspaceId,
+                        workspaceNoteId: note.id,
                         isActive: true,
                         syncedAt: new Date(),
                         syncedId: generateUUID(),
-                        status: 'published', // directly as published karena user tidak bisa edit
+                        status: 'draft', // directly as published karena user tidak bisa edit
                         processingStatus: 'pending',
                     });
 
@@ -695,24 +633,20 @@ const FilesEditorPage: React.FC = () => {
                                     uploadProgress: null,
                                     isSaving: false,
                                     attributes: attributes,
+                                    status: 'draft',
+                                    processingStatus: 'pending',
                                 }
                                 : page
                         )
                     );
                 }
 
-                successfulPages.push({
-                    id: tempId,
-                    title: pickedFile.name,
-                    uploadProgress: null,
-                    isSaving: false,
-                } as FilePage);
             } catch (err) {
                 // pakai pickedFile.name (bukan file.name) karena kalau
                 // pickedFileToFile sendiri yang gagal, `file` belum sempat ada
                 console.error(`Failed to upload file "${pickedFile.name}"`, err);
                 presentToast({
-                    message: `Gagal mengunggah "${pickedFile.name}", lanjut ke file berikutnya.`,
+                    message: `Failed to upload "${pickedFile.name}", going to upload next...`,
                     duration: 2500,
                     color: 'danger',
                 });
@@ -733,15 +667,6 @@ const FilesEditorPage: React.FC = () => {
                 );
             }
         }
-
-        // Buang semua entry sementara — yang sukses akan digantikan oleh data
-        // asli dari DB lewat bulkNewPagesHandler, yang gagal memang tidak perlu
-        // tetap nampang (toast sudah memberi tahu file mana yang gagal).
-        // setPages((prev) => prev.filter((page) => !tempEntries.some((t) => t.id === page.id)));
-
-        // if (successfulPages.length > 0) {
-        //     await bulkNewPagesHandler(successfulPages);
-        // }
     };
     // --- END SELECT FILE AND UPLOAD FUNCTION ---
 
@@ -749,7 +674,42 @@ const FilesEditorPage: React.FC = () => {
     // save changes
     // ...
     const handleSaveChanges = async () => {
+        if (!selectedNoteRef?.current?.id) return;
 
+        const updatedPages = pages.map(p => {
+            delete p.uploadError;
+            delete p.uploadProgress;
+            delete p.isSaving;
+
+            // @ts-ignore
+            delete p.isActive;
+
+            return {
+                ...p,
+                status: 'published' as any,
+            };
+        });
+
+        // update semua pages as published
+        await NotesRepository.updatePagesBulk(updatedPages);
+        setPages(updatedPages);
+
+        // update note dari 'draft' ke 'publish'
+        // tujuannya untuk start embedding
+        await NotesRepository.updateNote({
+            id: selectedNoteRef.current.id,
+            status: 'published',
+        });
+
+        setSelectedNote((prev: Note | null) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                status: 'published',
+            };
+        });
+
+        presentToast('Note saved successfully!', 1000);
     }
 
     return (
@@ -764,20 +724,29 @@ const FilesEditorPage: React.FC = () => {
                         {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
 
-                    <IonButtons slot="end" className="ion-padding-end">
-                        <IonButton
-                            fill="solid"
-                            color="primary"
-                            size="small"
-                            mode="ios"
-                            shape="round"
-                            className="normal-button"
-                            style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
-                            onClick={handleSaveChanges}
-                        >
-                            Save Changes
-                        </IonButton>
-                    </IonButtons>
+                    {pages.some(p => p.status === 'draft') && (
+                        <IonButtons slot="end" className="ion-padding-end">
+                            <IonButton
+                                fill="solid"
+                                color="primary"
+                                size="small"
+                                mode="ios"
+                                shape="round"
+                                className="normal-button"
+                                style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
+                                onClick={handleSaveChanges}
+                            >
+                                Save Changes
+                            </IonButton>
+                        </IonButtons>
+                    )}
+
+                    {!pages.some(p => p.status === 'draft') && (
+                        <div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
+                            <IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
+                            <IonText color="success">All Saved</IonText>
+                        </div>
+                    )}
                 </IonToolbar>
             </IonHeader>
 
@@ -792,7 +761,7 @@ const FilesEditorPage: React.FC = () => {
                 )}
 
                 {pages.length > 0 && (
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                         {[...pages].map((page: FilePage, index, array) => {
                             const isUploading = page.uploadProgress !== null && page.uploadProgress !== undefined;
 
@@ -809,59 +778,14 @@ const FilesEditorPage: React.FC = () => {
 
                                                 {(page.pageNum && page.attributes) && (
                                                     <div className="absolute top-0 right-0 bottom-0 left-0">
-                                                        <img src={page.attributes.file.media_link} className="h-full w-full object-cover" />
+                                                        <img src={page?.attributes?.file?.media_link} className="h-full w-full object-cover" />
                                                     </div>
                                                 )}
                                             </div>
                                         </IonCardContent>
-
-                                        {/* <div slot="start" className="ion-padding-end w-8">
-                                        {isUploading && (page.uploadProgress ?? 0) < 100 && (
-                                            <IonSpinner name="crescent" color="primary" className="w-4 h-4" />
-                                        )}
-
-                                        {(page.uploadProgress ?? 0) >= 100 && (
-                                            <IonIcon icon={checkmarkCircleOutline} className="text-lg" color="success"></IonIcon>
-                                        )}
-
-                                        {page.pageNum && <IonNote className="underline">{page.pageNum ?? '-'}.</IonNote>}
-                                    </div>
-                                    <IonLabel className="py-2 !text-sm">
-                                        {page.title || `Page ${page.pageNum}`}
-
-                                        {isUploading && (
-                                            <IonProgressBar
-                                                value={(page.uploadProgress ?? 0) / 100}
-                                                color="primary"
-                                                className="mt-1"
-                                            />
-                                        )}
-
-                                        {page.uploadError && (
-                                            <IonNote color="danger" className="block !text-xs mt-1">
-                                                Upload failed
-                                            </IonNote>
-                                        )}
-                                    </IonLabel>
-
-                                    <div slot="end" className="ion-padding-start">
-                                        {!isUploading && (
-                                            <IonButton
-                                                shape="round"
-                                                size="small"
-                                                color="light"
-                                                onClick={() => {
-                                                    setShowRemoveAlert(true)
-                                                    setSelectedPage(page);
-                                                }}
-                                            >
-                                                <IonIcon icon={trashOutline} slot='icon-only' color={'danger'}></IonIcon>
-                                            </IonButton>
-                                        )}
-                                    </div> */}
                                     </IonCard>
 
-                                    <div className="block ion-text-center pt-1">
+                                    <div className="block ion-text-center pt-2">
                                         {!isUploading && (
                                             <div className="flex items-center justify-between">
                                                 <div className="w-5 h-5 text-neutral-700 bg-neutral-100 shadow rounded-full flex items-center justify-center text-xs font-semibold">{page.pageNum}</div>
@@ -1000,7 +924,7 @@ const FilesEditorPage: React.FC = () => {
                             // set current active page
                             const newSelected = reindexed.find((p) => p.isActive);
                             if (newSelected) {
-                                await selectPageHandler(newSelected);
+                                setSelectedPage(newSelected);
                             }
 
                             setPages(reindexed);

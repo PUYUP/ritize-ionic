@@ -173,6 +173,11 @@ export const notesAPI = createApi({
                             )
                         )
                         , chunks:workspace_notes_chunks(clustered_date)
+                        , workspace:workspace_id!inner(
+                            title
+                            , scope
+                            , workspace_members!inner(user_id)
+                        )
                     `)
                     .limit(2, { foreignTable: "documents" })
                     .limit(1, { foreignTable: "workspace_notes_chunks" })
@@ -325,6 +330,11 @@ export const notesAPI = createApi({
                             )
                         )
                         , chunks:workspace_notes_chunks(clustered_date)
+                        , workspace:workspace_id!inner(
+                            title
+                            , scope
+                            , workspace_members!inner(user_id)
+                        )
                     `)
                     .eq("id", id)
                     .eq("workspace_id", workspace_id)
@@ -427,6 +437,7 @@ export const notesAPI = createApi({
                         , chunks:workspace_notes_chunks(clustered_date)
                         , workspace:workspace_id!inner(
                             title
+                            , scope
                             , workspace_members!inner(user_id)
                         )
                     `, { count: "exact" });

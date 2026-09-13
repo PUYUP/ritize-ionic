@@ -78,16 +78,16 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                     <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/files?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
                             <div className='w-8 h-8 flex items-center justify-center bg-[#EEE4FA] rounded-full mb-3'>
-                                <IonIcon icon={documentAttachOutline} className='text-xl text-[#5B00C9]' />
+                                <IonIcon icon={imagesOutline} className='text-xl text-[#5B00C9]' />
                             </div>
 
                             <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700">Files</IonText>
+                                <IonText className="font-semibold text-sm text-neutral-700">Upload</IonText>
                             </div>
 
                             <div className='block leading-3 line-clamp-1'>
                                 <IonText className='text-xs line-clamp-1'>
-                                    Upload any media
+                                    Note in the book
                                 </IonText>
                             </div>
                         </IonCardContent>

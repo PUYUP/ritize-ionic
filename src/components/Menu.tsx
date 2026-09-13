@@ -65,11 +65,12 @@ const Menu: React.FC = () => {
     }, []);
 
     return (
-        <IonMenu contentId="main" type="overlay" className='border-r border-neutral-200' style={{ 'width': '250px' }}>
+        <IonMenu contentId="main" type="overlay" className='border-r border-neutral-200'>
             <IonContent>
                 <IonList id="inbox-list" style={{ 'paddingTop': 'var(--ion-safe-area-top, 0)' }}>
-                    <IonListHeader>{user?.name}</IonListHeader>
-                    <IonNote>{user?.email}</IonNote>
+                    {/* <IonListHeader>{user?.name}</IonListHeader>
+                    <IonNote>{user?.email}</IonNote> */}
+                    <IonListHeader className='!text-2xl text-neutral-700 ion-margin-bottom'>Ritize!</IonListHeader>
                     {appPages.map((appPage, index) => {
                         return (
                             <IonMenuToggle key={index} autoHide={false}>

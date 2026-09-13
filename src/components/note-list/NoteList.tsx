@@ -92,34 +92,42 @@ const NoteItem: React.FC<{
             onRefreshPapers?.(item);
         }
 
+        let badgeColor: string = 'bg-yellow-200';
+        let badgeTextColor: string = 'text-yellow-800';
+
+        if (item.pages_status == 'published') {
+            badgeColor = 'bg-green-200';
+            badgeTextColor = 'text-green-800';
+        }
+
+        if (item.clustered_date) {
+            badgeColor = 'bg-purple-200';
+            badgeTextColor = 'text-purple-800';
+        }
+
         return (
             <IonCard className='rounded-xl'>
                 <IonCardContent className='!p-0 h-full'>
                     <div className="w-full h-full flex flex-col">
                         <div className='ion-padding'>
-                            {item.clustered_date && (
-                                <div className='flex mb-2 gap-2.5'>
-                                    <div className='inline-block'>
-                                        <div className='flex items-center gap-1.5 bg-yellow-100 px-1 pr-1.5 py-0.5 pl-1.5 rounded-xl shadow'>
-                                            <IonIcon icon={bookmarkSharp} color="warning"></IonIcon>
-                                            <IonText className='text-xs text-yellow-800'>Materialized</IonText>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             <div className='flex'>
                                 <Link to={linkTo} className='block w-full flex-1'>
                                     <div className='flex gap-1 !m-0 items-center !text-sm flex-wrap'>
-                                        <div className={`flex items-center gap-1.5`}>
-                                            {item.content_type === 'text' && <IonIcon icon={textOutline} className='text-base text-neutral-500' />}
-                                            {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className='text-base text-neutral-500' />}
-                                            {item.content_type === 'file' && <IonIcon icon={attachOutline} className='text-base text-neutral-500' />}
+                                        <div className={`flex items-center gap-1.5 ${badgeColor} rounded-full px-1.5 py-0.5 leading-3`}>
+                                            {item.content_type === 'text' && <IonIcon icon={textOutline} className={`text-base ${badgeTextColor}`} />}
+                                            {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className={`text-base ${badgeTextColor}`} />}
+                                            {item.content_type === 'file' && <IonIcon icon={attachOutline} className={`text-base ${badgeTextColor}`} />}
 
-                                            <IonText className={`text-sm flex gap-1 ${item.pages_status === 'published' ? 'text-lime-800' : 'text-blue-800'}`}>
-                                                <span className='font-semibold'>{item.page_count || 0}</span>
-                                                {item.pages_status == 'published' ? 'finished' : 'draft'}
-                                            </IonText>
+                                            {(!item.clustered_date || item.clustered_date == '') && (
+                                                <IonText className={`text-sm flex gap-1 ${badgeTextColor}`}>
+                                                    <span className='font-semibold'>{item.page_count || 0}</span>
+                                                    {item.pages_status == 'published' ? 'finished' : 'draft'}
+                                                </IonText>
+                                            )}
+
+                                            {(item.clustered_date) && (
+                                                <IonText className={`text-sm flex gap-1 ${badgeTextColor}`}>Materialized</IonText>
+                                            )}
                                         </div>
                                         <IonText className='text-sm text-neutral-400'>&bull;</IonText>
                                         <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'MM/dd/yy')}</IonText>

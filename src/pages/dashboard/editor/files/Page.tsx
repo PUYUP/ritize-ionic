@@ -1,4 +1,4 @@
-import { IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonNote, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
+import { IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonCardHeader, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonNote, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
 import { albums, albumsOutline, cameraOutline, checkmarkCircleOutline, cloudUploadOutline, copyOutline, trashOutline } from "ionicons/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import './Page.css';
@@ -11,14 +11,16 @@ import { useSearchParams } from "react-router-dom";
 import { useGetWorkspaceByIdQuery } from "../../../../services/workspace";
 import { generateUUID } from "../../../../utils/generator";
 import { getUser } from "../../../../utils/authState";
-import { uploadFileToGCS } from "../../../../utils/gcs-upload-client";
+import { getFileTypePure, uploadFileToGCS } from "../../../../utils/gcs-upload-client";
 import { UploadProgress } from "../../../../types/upload";
 import { FilePicker, PickedFile } from '@capawesome/capacitor-file-picker';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from "../../../../lib/supabase";
 
 interface FilePage extends Page {
     uploadProgress?: number | null;
     uploadError?: boolean;
+    isSaving?: boolean;
 }
 
 // FilePicker mengembalikan `PickedFile`, bukan `File` bawaan browser yang
@@ -205,11 +207,14 @@ const FilesEditorPage: React.FC = () => {
         try {
             // Flush any unsaved edits on the OUTGOING page before touching
             // selectedPage / swapping the editor's content.
-            if (!isProcessed) await flushPendingSave();
+            // if (!isProcessed) await flushPendingSave();
 
             const updatedPages = pages.map((p) => {
+                // hilangkan karena bukan bagian dari table database
                 delete p.uploadProgress;
                 delete p.uploadError;
+                delete p.isSaving;
+
                 return { ...p, isActive: p.id === page.id }
             });
             if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
@@ -253,7 +258,7 @@ const FilesEditorPage: React.FC = () => {
             });
 
             const updatedPages = (await NotesRepository.getPagesByNoteId(selectedNote.id)) as FilePage[];
-            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null })));
+            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null, isSaving: false })));
 
             const activePage = updatedPages.find((p) => p.isActive);
             if (activePage) {
@@ -277,8 +282,11 @@ const FilesEditorPage: React.FC = () => {
             await flushPendingSave();
 
             const prevPages = pages.map((p) => {
+                // hilangkan bukan bagian dari table database
                 delete p.uploadProgress;
                 delete p.uploadError;
+                delete p.isSaving;
+
                 return { ...p, isActive: false }
             });
             if (prevPages.length > 0) {
@@ -290,6 +298,7 @@ const FilesEditorPage: React.FC = () => {
                 // `uploadProgress` is not part of this model, remove it
                 delete page.uploadProgress;
                 delete page.uploadError;
+                delete page.isSaving;
 
                 const pageNum = (index + 1) + pageLength;
                 return {
@@ -308,7 +317,7 @@ const FilesEditorPage: React.FC = () => {
             await NotesRepository.addPagesBulk(selectedNote, insertedPages);
 
             const updatedPages = (await NotesRepository.getPagesByNoteId(selectedNote.id)) as FilePage[];
-            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null })));
+            setPages(updatedPages.map(p => ({ ...p, uploadProgress: null, isSaving: false })));
 
             const activePage = updatedPages.find((p) => p.isActive);
             if (activePage) {
@@ -330,6 +339,8 @@ const FilesEditorPage: React.FC = () => {
             contentType: "file",
             syncedId: generateUUID(),
             syncedAt: new Date(),
+            status: 'draft',
+            processingStatus: 'pending',
         });
         return entity;
     }
@@ -362,6 +373,8 @@ const FilesEditorPage: React.FC = () => {
                         workspaceId: workspaceId,
                         title: serverNote.title || "Untitled Note",
                         content: serverNote.content,
+                        status: serverNote.status,
+                        processingStatus: serverNote.processing_status,
                         noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
                         contentType: serverNote.content_type as NoteFormatTypes,
                         syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
@@ -396,10 +409,13 @@ const FilesEditorPage: React.FC = () => {
                                     contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
                                     userId: p.user_id,
                                     pageNum: p.page_num,
+                                    status: p.status,
+                                    processingStatus: p.processing_status,
                                     isActive: p.is_active,
                                     syncedId: p.synced_id ? p.synced_id : generateUUID(),
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
-                                    note: { id: serverNote.id }
+                                    note: { id: serverNote.id },
+                                    attributes: p.attributes,
                                 }
                             })
                         : [];
@@ -517,6 +533,7 @@ const FilesEditorPage: React.FC = () => {
 
     // --- SELECT FILE AND UPLOAD FUNCTION ---
     const selectFile = async () => {
+        if (!selectedNote) return;
         const user = await getUser();
         let result;
 
@@ -562,6 +579,10 @@ const FilesEditorPage: React.FC = () => {
             uploadProgress: 0,
             uploadError: false,
             userId: user.id,
+            workspaceId: workspaceId,
+            workspaceNoteId: selectedNote?.id,
+            syncedId: generateUUID(),
+            syncedAt: new Date(),
         } as FilePage));
 
         setPages((prev) => [...prev, ...tempEntries]);
@@ -585,7 +606,11 @@ const FilesEditorPage: React.FC = () => {
                             setPages((prev) =>
                                 prev.map((page) =>
                                     page.id === tempId
-                                        ? { ...page, uploadProgress: p.percentage }
+                                        ? {
+                                            ...page,
+                                            uploadProgress: p.percentage,
+                                            isSaving: true,
+                                        }
                                         : page
                                 )
                             );
@@ -597,6 +622,7 @@ const FilesEditorPage: React.FC = () => {
                         // jadi file yang ter-upload konsisten terhubung ke page-nya.
                         pageId: tempId,
                         workspaceId: workspaceId,
+                        workspaceNoteId: selectedNote?.id,
                     }
                 );
 
@@ -611,13 +637,65 @@ const FilesEditorPage: React.FC = () => {
                         isActive: true,
                         syncedAt: new Date(),
                         syncedId: generateUUID(),
-                        contentData: Buffer.from(JSON.stringify(result)),
+                        status: 'published', // directly as published karena user tidak bisa edit
+                        processingStatus: 'pending',
                     });
+
+                    // relasikan file dengan attachment
+                    // kemudian relasikan attachment dengan page
+                    // save the file
+                    const filePayload = {
+                        user_id: user.id,
+                        disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
+                        file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
+                        mime_type: result.contentType,
+                        original_filename: file.name,
+                        size_bytes: result.size,
+                        created_at: result.timeCreated,
+                        updated_at: result.updated,
+                        checksum_sha256: result.md5Hash,
+                        path: result.name,
+                        media_link: result.mediaLink
+                    };
+
+                    // save file metadata
+                    const { data: fileData, error: fileError } = await supabase.from("files")
+                        .insert(filePayload)
+                        .select('*')
+                        .single();
+
+                    // create attachment
+                    const attachmentPayload = {
+                        file_id: fileData.id,
+                        user_id: user.id,
+                        entity_type: 'workspace_notes_pages',
+                        entity_id: newPage.id,
+                        purpose: 'captured_notebook',
+                    }
+
+                    const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
+                        .insert(attachmentPayload)
+                        .select('*')
+                        .single();
+
+                    const attributes = {
+                        file: fileData,
+                        attachment: attachmentData,
+                    }
+
+                    // update page with file metadata
+                    await NotesRepository.updatePage(newPage.id as string, { attributes: attributes });
 
                     setPages((prev) =>
                         prev.map((page) =>
                             page.id === tempId
-                                ? { ...page, uploadProgress: null, id: newPage.id, pageNum: pageNum }
+                                ? {
+                                    ...page,
+                                    pageNum: pageNum,
+                                    uploadProgress: null,
+                                    isSaving: false,
+                                    attributes: attributes,
+                                }
                                 : page
                         )
                     );
@@ -627,6 +705,7 @@ const FilesEditorPage: React.FC = () => {
                     id: tempId,
                     title: pickedFile.name,
                     uploadProgress: null,
+                    isSaving: false,
                 } as FilePage);
             } catch (err) {
                 // pakai pickedFile.name (bukan file.name) karena kalau
@@ -643,7 +722,12 @@ const FilesEditorPage: React.FC = () => {
                 setPages((prev) =>
                     prev.map((page) =>
                         page.id === tempId
-                            ? { ...page, uploadProgress: null, uploadError: true }
+                            ? {
+                                ...page,
+                                uploadProgress: null,
+                                uploadError: true,
+                                isSaving: false,
+                            }
                             : page
                     )
                 );
@@ -653,13 +737,20 @@ const FilesEditorPage: React.FC = () => {
         // Buang semua entry sementara — yang sukses akan digantikan oleh data
         // asli dari DB lewat bulkNewPagesHandler, yang gagal memang tidak perlu
         // tetap nampang (toast sudah memberi tahu file mana yang gagal).
-        setPages((prev) => prev.filter((page) => !tempEntries.some((t) => t.id === page.id)));
+        // setPages((prev) => prev.filter((page) => !tempEntries.some((t) => t.id === page.id)));
 
         // if (successfulPages.length > 0) {
         //     await bulkNewPagesHandler(successfulPages);
         // }
     };
     // --- END SELECT FILE AND UPLOAD FUNCTION ---
+
+    // ...
+    // save changes
+    // ...
+    const handleSaveChanges = async () => {
+
+    }
 
     return (
         <IonPage>
@@ -669,13 +760,28 @@ const FilesEditorPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
 
-                    <IonTitle className='text-base ion-padding-start ion-padding-end line-clamp-1'>
+                    <IonTitle className='text-sm ion-padding-start ion-padding-end line-clamp-1'>
                         {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
+
+                    <IonButtons slot="end" className="ion-padding-end">
+                        <IonButton
+                            fill="solid"
+                            color="primary"
+                            size="small"
+                            mode="ios"
+                            shape="round"
+                            className="normal-button"
+                            style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
+                            onClick={handleSaveChanges}
+                        >
+                            Save Changes
+                        </IonButton>
+                    </IonButtons>
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent ref={ionContentRef}>
+            <IonContent ref={ionContentRef} className="ion-padding">
                 {pages.length === 0 && (
                     <div className='flex flex-col items-center justify-center h-full ion-padding'>
                         <IonIcon icon={albumsOutline} className="text-4xl mb-2"></IonIcon>
@@ -686,14 +792,30 @@ const FilesEditorPage: React.FC = () => {
                 )}
 
                 {pages.length > 0 && (
-                    <IonList lines='full'>
+                    <div className="grid grid-cols-3 gap-4">
                         {[...pages].map((page: FilePage, index, array) => {
-                            const isLast = index === array.length - 1;
                             const isUploading = page.uploadProgress !== null && page.uploadProgress !== undefined;
 
                             return (
-                                <IonItem lines={isLast ? 'none' : 'full'} key={page.id}>
-                                    <div slot="start" className="ion-padding-end w-8">
+                                <div key={page.id} className="block">
+                                    <IonCard className="rounded-xl">
+                                        <IonCardContent>
+                                            <div className="relative aspect-square">
+                                                {(isUploading && ((page.uploadProgress ?? 0) < 100 || page.isSaving)) && (
+                                                    <div className="absolute top-0 right-0 bottom-0 left-0 flex items-center justify-center">
+                                                        <IonSpinner name="crescent" color="primary" className="w-4 h-4" />
+                                                    </div>
+                                                )}
+
+                                                {(page.pageNum && page.attributes) && (
+                                                    <div className="absolute top-0 right-0 bottom-0 left-0">
+                                                        <img src={page.attributes.file.media_link} className="h-full w-full object-cover" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </IonCardContent>
+
+                                        {/* <div slot="start" className="ion-padding-end w-8">
                                         {isUploading && (page.uploadProgress ?? 0) < 100 && (
                                             <IonSpinner name="crescent" color="primary" className="w-4 h-4" />
                                         )}
@@ -736,11 +858,50 @@ const FilesEditorPage: React.FC = () => {
                                                 <IonIcon icon={trashOutline} slot='icon-only' color={'danger'}></IonIcon>
                                             </IonButton>
                                         )}
+                                    </div> */}
+                                    </IonCard>
+
+                                    <div className="block ion-text-center pt-1">
+                                        {!isUploading && (
+                                            <div className="flex items-center justify-between">
+                                                <div className="w-5 h-5 text-neutral-700 bg-neutral-100 shadow rounded-full flex items-center justify-center text-xs font-semibold">{page.pageNum}</div>
+                                                <div className="flex items-center justify-end flex-1">
+                                                    <IonButton
+                                                        fill="clear"
+                                                        mode="ios"
+                                                        color="primary"
+                                                        size="small"
+                                                        onClick={() => {
+                                                            setShowRemoveAlert(true)
+                                                            setSelectedPage(page);
+                                                        }}
+                                                    >
+                                                        <IonText className="ml-1">Delete</IonText>
+                                                    </IonButton>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {(isUploading || page.isSaving) && (
+                                            <div className="ion-padding-start ion-padding-end">
+                                                <IonProgressBar
+                                                    value={(page.uploadProgress ?? 0) / 100}
+                                                    color="primary"
+                                                    className="mt-3 h-2 rounded-full"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {page.uploadError && (
+                                            <IonText color="danger" className="block !text-xs ion-text-center">
+                                                Upload failed!
+                                            </IonText>
+                                        )}
                                     </div>
-                                </IonItem>
+                                </div>
                             );
                         })}
-                    </IonList>
+                    </div>
                 )}
             </IonContent>
 
@@ -756,7 +917,7 @@ const FilesEditorPage: React.FC = () => {
                                     <div className="flex items-center gap-4">
                                         <IonButton
                                             shape="round"
-                                            color={'dark'}
+                                            color={'light'}
                                             onClick={selectFile}
                                         >
                                             <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
@@ -772,7 +933,7 @@ const FilesEditorPage: React.FC = () => {
                                         >
                                             <IonButton
                                                 shape="round"
-                                                color={'dark'}
+                                                color={'light'}
                                             >
                                                 <IonIcon icon={cameraOutline} slot="icon-only"></IonIcon>
                                             </IonButton>
@@ -799,10 +960,10 @@ const FilesEditorPage: React.FC = () => {
                         handler: async () => {
                             if (!selectedPage) return;
 
-                            let activeIndex = pages.findIndex((p) => p.isActive);
+                            let activeIndex = pages.findIndex(p => p.id === selectedPage.id);
                             if (activeIndex === -1) {
-                                activeIndex = pages.findIndex(p => p.id == selectedPage.id);
-                            };
+                                activeIndex = pages.findIndex((p) => p.isActive);
+                            }
 
                             // delete page from db
                             await NotesRepository.deletePage(
@@ -827,6 +988,7 @@ const FilesEditorPage: React.FC = () => {
                             const reindexed = filtered.map((p, idx) => {
                                 delete p.uploadProgress;
                                 delete p.uploadError;
+                                delete p.isSaving;
 
                                 return {
                                     ...p,

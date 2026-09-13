@@ -119,7 +119,6 @@ const CanvasEditorPage: React.FC = () => {
 		isDirtyRef.current = value;
 	}, []);
 
-	// canva memory
 	// Gunakan useRef untuk menyimpan state awal tanpa memicu re-render
 	const initialElementsMap = useRef<Map<string, string>>(new Map());
 	const initialActiveCount = useRef<number>(0);
@@ -705,7 +704,8 @@ const CanvasEditorPage: React.FC = () => {
 									isActive: p.is_active,
 									syncedId: p.synced_id ? p.synced_id : generateUUID(),
 									syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
-									note: { id: serverNote.id }
+									note: { id: serverNote.id },
+									attributes: p.attributes,
 								}
 							})
 						: [];

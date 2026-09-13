@@ -77,6 +77,7 @@ const RichTextEditorPage: React.FC = () => {
 
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
     const [selectedPage, setSelectedPage] = useState<Partial<Page> | null>(null);
+    const [hasSignificantChange, setHasSignificantChange] = useState(false);
 
     const pagesSwiperElRef = useRef<HTMLDivElement>(null);
     const pagesSwiperRef = useRef<Swiper | null>(null);
@@ -95,12 +96,18 @@ const RichTextEditorPage: React.FC = () => {
     const lastPersistedAtRef = useRef(0);
     const isSavingRef = useRef(false);
 
-    // Menyimpan backup data Excalidraw secara real-time
+    // Menyimpan backup data quilljs secara real-time
+    const initialQuillDataRef = useRef<Delta | null>(null);
     const latestQuillStateRef = useRef<Quill | null>(null);
+    const initialQuillLengthRef = useRef<number>(0);
 
     // Menyimpan halaman yang sedang aktif agar tidak menjadi null saat unmount
     const selectedPageRef = useRef<Partial<Page> | null>(null);
     const selectedNoteRef = useRef<Partial<Note> | null>(null);
+
+    // Gunakan useRef untuk menyimpan state awal tanpa memicu re-render
+    const initialDelta = useRef<any>(null);
+    const initialLength = useRef<number>(0);
 
     // RTK Query
     const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
@@ -141,8 +148,8 @@ const RichTextEditorPage: React.FC = () => {
 
             await NotesRepository.microUpdatePage(page.id as string, {
                 contentData: bufferData,
-                status: 'draft',
-                processingStatus: 'pending',
+                status: hasSignificantChange ? 'draft' : 'published',
+                processingStatus: hasSignificantChange ? 'pending' : 'processed',
             });
 
             console.log('selected page id: ', page.id, ' is updated');
@@ -153,8 +160,8 @@ const RichTextEditorPage: React.FC = () => {
                     prevPages.map((p) => (p.id === page.id ? {
                         ...p,
                         contentData: bufferData,
-                        processingStatus: 'pending',
-                        status: 'draft'
+                        processingStatus: hasSignificantChange ? 'pending' : 'processed',
+                        status: hasSignificantChange ? 'draft' : 'published',
                     } : p))
                 );
             }
@@ -207,6 +214,9 @@ const RichTextEditorPage: React.FC = () => {
         });
     }, [isDirty, persistCurrentPage]);
 
+    // ...
+    // Listen to text change from quilljs
+    // ...
     const handleTextChange = useCallback((
         delta: Delta,
         oldDelta: Delta,
@@ -214,6 +224,21 @@ const RichTextEditorPage: React.FC = () => {
         quill: Quill
     ) => {
         if (source !== 'user') return;
+
+        // Panggil fungsi eksternal
+        const result = calculateQuillChange(
+            initialQuillDataRef.current,
+            quill.getContents(),
+            initialQuillLengthRef.current,
+            quill.getLength(),
+            5 // Threshold 10%
+        );
+
+        // Update state jika nilainya berubah saja
+        setHasSignificantChange((prev) => {
+            if (prev !== result.isReachedLimit) return result.isReachedLimit;
+            return prev;
+        });
 
         updateIsDirty(true);
         latestQuillStateRef.current = quill;
@@ -244,6 +269,15 @@ const RichTextEditorPage: React.FC = () => {
             }, remaining);
         }
     }, [persistCurrentPage, updateIsDirty]);
+
+    // Fungsi untuk merekam kondisi awal (di-wrap dengan useCallback)
+    const setInitialState = useCallback((delta: Delta) => {
+        initialQuillDataRef.current = delta;
+    }, []);
+
+    const setInitialLength = useCallback((length: number) => {
+        initialQuillLengthRef.current = length;
+    }, []);
 
     const handleEnter = useCallback((quill: Quill) => {
         ionContentRef.current?.scrollToBottom(0);
@@ -360,6 +394,8 @@ const RichTextEditorPage: React.FC = () => {
 
                     if (quillRef.current) {
                         quillRef.current.setContents(new Delta(json));
+                        setInitialState(new Delta(json));
+                        setInitialLength(quillRef.current.getLength());
                     }
 
                     setHasContent(true);
@@ -532,7 +568,8 @@ const RichTextEditorPage: React.FC = () => {
                                     isActive: p.is_active,
                                     syncedId: p.synced_id ? p.synced_id : generateUUID(),
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
-                                    note: { id: serverNote.id }
+                                    note: { id: serverNote.id },
+                                    attributes: p.attributes,
                                 }
                             })
                         : [];
@@ -672,15 +709,65 @@ const RichTextEditorPage: React.FC = () => {
 
         // update note dari 'draft' ke 'publish'
         // tujuannya untuk start embedding
-        const res = await NotesRepository.updateNote({
-            id: selectedNoteRef.current.id,
-            status: 'published',
-            processingStatus: 'pending',
-            content: newContent,
-        });
+        // const res = await NotesRepository.updateNote({
+        //     id: selectedNoteRef.current.id,
+        //     status: 'published',
+        //     processingStatus: 'pending',
+        //     content: newContent,
+        // });
 
-        setSelectedNote(res);
+        //setSelectedNote(res);
         presentToast('Note saved successfully!', 1000);
+    }
+
+    // 1. Simpan "Fingerprint" / State Awal saat editor siap
+    useEffect(() => {
+        if (quillRef.current) {
+            // Simpan format Delta asli sebagai baseline
+            initialDelta.current = quillRef.current.getContents();
+
+            // Simpan panjang karakter awal (Quill minimal selalu punya 1 karakter: '\n')
+            initialLength.current = quillRef.current.getLength();
+        }
+    }, [handleTextChange]); // Re-run jika initialHTML dari server berubah
+
+    function calculateQuillChange(
+        initialDelta: any,
+        currentDelta: any,
+        initialLength: number,
+        currentLength: number, // Parameter baru
+        threshold: number = 10
+    ) {
+        if (!initialDelta || !currentDelta) {
+            return { percentage: 0, isReachedLimit: false };
+        }
+
+        const diff = initialDelta.diff(currentDelta);
+        let totalChangedCharacters = 0;
+
+        if (diff && diff.ops) {
+            diff.ops.forEach((op: any) => {
+                if (op.insert) {
+                    totalChangedCharacters += typeof op.insert === 'string' ? op.insert.length : 1;
+                }
+                if (op.delete) {
+                    totalChangedCharacters += op.delete;
+                }
+            });
+        }
+
+        // Gunakan teks terpanjang (awal atau sekarang) sebagai pembagi
+        const maxLength = Math.max(initialLength, currentLength);
+        const baseLength = maxLength <= 1 ? 1 : maxLength;
+
+        // Hitung persentase dan kunci maksimal di 100%
+        let percentage = (totalChangedCharacters / baseLength) * 100;
+        percentage = Math.min(percentage, 100);
+
+        return {
+            percentage,
+            isReachedLimit: percentage >= threshold
+        };
     }
 
     return (
@@ -706,6 +793,7 @@ const RichTextEditorPage: React.FC = () => {
                                 className="normal-button"
                                 style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
                                 onClick={handleSaveChanges}
+                                disabled={!hasSignificantChange}
                             >
                                 Save Changes
                             </IonButton>

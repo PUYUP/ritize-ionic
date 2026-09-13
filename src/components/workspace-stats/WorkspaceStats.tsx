@@ -26,7 +26,7 @@ const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSet
         <div id="today-workspace">
             <div className='grid grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4'>
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard onClick={() => onSetActiveTab?.('note')} className={`relative w-full rounded-xl ${isTab && activeTab === 'note' ? 'bg-lime-50' : ''}`}>
+                    <IonCard onClick={() => onSetActiveTab?.('note')} className={`relative w-full cursor-pointer rounded-xl ${isTab && activeTab === 'note' ? 'bg-lime-50' : ''}`}>
                         <IonCardContent>
                             <div className='flex items-center justify-between w-full'>
                                 <div className='text-2xl font-semibold leading-3 text-neutral-700'>{note.todayCount}</div>
@@ -57,7 +57,7 @@ const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSet
                 </div>
 
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard onClick={() => onSetActiveTab?.('material')} className={`relative w-full rounded-xl ${isTab && activeTab === 'material' ? 'bg-blue-50' : ''}`}>
+                    <IonCard onClick={() => onSetActiveTab?.('material')} className={`relative w-full cursor-pointer rounded-xl ${isTab && activeTab === 'material' ? 'bg-blue-50' : ''}`}>
                         <IonCardContent>
                             <div className='flex items-center justify-between w-full'>
                                 <div className='text-2xl font-semibold leading-3 text-neutral-700 relative'>
@@ -91,7 +91,7 @@ const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSet
                 </div>
 
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard onClick={() => onSetActiveTab?.('digest')} className={`relative w-full rounded-xl ${isTab && activeTab === 'digest' ? 'bg-yellow-50' : ''}`}>
+                    <IonCard onClick={() => onSetActiveTab?.('digest')} className={`relative w-full cursor-pointer rounded-xl ${isTab && activeTab === 'digest' ? 'bg-yellow-50' : ''}`}>
                         <IonCardContent>
                             <div className='flex items-center justify-between w-full'>
                                 <div className='text-2xl font-semibold leading-3 text-neutral-700 relative'>

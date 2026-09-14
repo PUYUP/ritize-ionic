@@ -126,7 +126,7 @@ const NoteItem: React.FC<{
                                             {(!item.clustered_date || item.clustered_date == '') && (
                                                 <IonText className={`text-sm flex gap-1 ${badgeTextColor}`}>
                                                     <span className='font-semibold'>{item.page_count || 0}</span>
-                                                    {item.pages_status == 'published' ? (item.page_count > 0 ? 'finished' : 'empty') : 'draft'}
+                                                    {item.pages_status == 'published' ? (item.page_count > 0 ? 'saved' : 'empty') : 'draft'}
                                                 </IonText>
                                             )}
 

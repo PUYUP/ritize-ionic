@@ -317,8 +317,6 @@ const FilesEditorPage: React.FC = () => {
             userId: user.id,
             workspaceId: workspaceId,
             workspaceNoteId: note?.id,
-            syncedId: generateUUID(),
-            syncedAt: new Date(),
         } as FilePage;
 
         setPages((prev) => [...prev, tempEntry]);
@@ -425,12 +423,15 @@ const FilesEditorPage: React.FC = () => {
                         page.id === tempEntry.id
                             ? {
                                 ...page,
+                                id: newPage.id,
                                 pageNum: pageNum,
                                 uploadProgress: null,
                                 isSaving: false,
                                 attributes: attributes,
                                 status: 'draft',
                                 processingStatus: 'pending',
+                                syncedAt: newPage.syncedAt,
+                                syncedId: newPage.syncedId,
                             }
                             : page
                     )
@@ -521,8 +522,6 @@ const FilesEditorPage: React.FC = () => {
             userId: user.id,
             workspaceId: workspaceId,
             workspaceNoteId: note?.id,
-            syncedId: generateUUID(),
-            syncedAt: new Date(),
         } as FilePage));
 
         setPages((prev) => [...prev, ...tempEntries]);
@@ -630,12 +629,15 @@ const FilesEditorPage: React.FC = () => {
                             page.id === tempId
                                 ? {
                                     ...page,
+                                    id: newPage.id,
                                     pageNum: pageNum,
                                     uploadProgress: null,
                                     isSaving: false,
                                     attributes: attributes,
                                     status: 'draft',
                                     processingStatus: 'pending',
+                                    syncedAt: newPage.syncedAt,
+                                    syncedId: newPage.syncedId,
                                 }
                                 : page
                         )
@@ -681,9 +683,6 @@ const FilesEditorPage: React.FC = () => {
             delete p.uploadError;
             delete p.uploadProgress;
             delete p.isSaving;
-
-            // @ts-ignore
-            delete p.isActive;
 
             return {
                 ...p,

@@ -127,6 +127,7 @@ class NotesRepository {
                             title: note.title,
                             status: note.status,
                             processing_status: note.processingStatus,
+                            attributes: note.attributes,
                         })
                     }))
                     .unwrap();
@@ -159,6 +160,7 @@ class NotesRepository {
                             title: note.title,
                             status: note.status,
                             processing_status: note.processingStatus,
+                            attributes: note.attributes,
                         })
                     }))
                     .unwrap();
@@ -222,6 +224,7 @@ class NotesRepository {
                             is_active: savedPage.isActive,
                             status: savedPage.status,
                             processing_status: savedPage.processingStatus,
+                            attributes: note.attributes,
                         })
                     }))
                     .unwrap();
@@ -429,6 +432,7 @@ class NotesRepository {
                 status: p.status,
                 processing_status: p.processingStatus,
                 content_data: objString,
+                attributes: p.attributes,
             })
         });
 

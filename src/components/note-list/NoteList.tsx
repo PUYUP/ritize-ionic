@@ -176,39 +176,6 @@ const NoteItem: React.FC<{
                                         />
                                     </Link>
                                 </div>
-
-                                <div className='block mt-auto pt-2.5'>
-                                    <div className='py-3'>
-                                        <div className='ion-padding-start mb-2'>
-                                            <IonText className='!text-neutral-700 underline italic'>Relevant papers:</IonText>
-                                        </div>
-                                        {item.documents?.length > 0 && (
-                                            <div className='flex flex-col gap-2 ion-padding-start ion-padding-end'>
-                                                {item?.documents?.slice(0, 2).map((doc: any, index: number, array: any) => {
-                                                    return (
-                                                        <Link key={doc.id} to={doc.paper.pdf_url} target="_blank" rel="noopener noreferrer">
-                                                            <div className='flex flex-col gap-0.5'>
-                                                                <p className='!text-blue-700 mb-0 !text-xs'>{doc.paper.title}</p>
-                                                                <p className='line-clamp-2 !overflow-hidden !text-xs text-neutral-600'>{doc.document_content}</p>
-                                                            </div>
-                                                        </Link>
-                                                    )
-                                                })}
-                                            </div>
-                                        )}
-                                        {item.documents?.length === 0 && (
-                                            <IonItem style={{ '--background': 'none' }} button={true} mode="md" detail={false} lines='none'>
-                                                <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
-                                                <IonLabel className='pl-2'>
-                                                    <p className='text-neutral-500 !text-xs'>Discovering...</p>
-                                                </IonLabel>
-                                                <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
-                                                    tap here to refresh
-                                                </IonButton>
-                                            </IonItem>
-                                        )}
-                                    </div>
-                                </div>
                             </>
                         )}
 
@@ -265,6 +232,39 @@ const NoteItem: React.FC<{
                                 </div>
                             </Link>
                         )}
+
+                        <div className='block mt-auto border-t border-neutral-200'>
+                            <div className='py-3'>
+                                <div className='ion-padding-start mb-2'>
+                                    <IonText className='!text-neutral-800 tracking-widest uppercase !text-xs'>Relevant papers:</IonText>
+                                </div>
+                                {item.documents?.length > 0 && (
+                                    <div className='flex flex-col gap-2 ion-padding-start ion-padding-end'>
+                                        {item?.documents?.slice(0, 2).map((doc: any, index: number, array: any) => {
+                                            return (
+                                                <Link key={doc.id} to={doc.paper.pdf_url} target="_blank" rel="noopener noreferrer">
+                                                    <div className='flex flex-col gap-0.5'>
+                                                        <p className='!text-blue-700 mb-0 !text-xs !font-semibold'>{doc.paper.title}</p>
+                                                        <p className='line-clamp-2 !overflow-hidden !text-xs text-neutral-600'>{doc.document_content}</p>
+                                                    </div>
+                                                </Link>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                                {item.documents?.length === 0 && (
+                                    <IonItem style={{ '--background': 'none' }} button={true} mode="md" detail={false} lines='none'>
+                                        <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
+                                        <IonLabel className='pl-2'>
+                                            <p className='text-neutral-500 !text-xs'>Discovering...</p>
+                                        </IonLabel>
+                                        <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
+                                            tap here to refresh
+                                        </IonButton>
+                                    </IonItem>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </IonCardContent>
             </IonCard>

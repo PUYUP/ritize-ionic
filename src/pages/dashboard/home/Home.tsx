@@ -12,7 +12,7 @@ import { getInitials } from '../../../utils/generator';
 
 const HomePage: React.FC = () => {
     const ionRouter = useIonRouter();
-    const { name = '' } = useParams<{ name: string; }>();
+    const { name = 'Ritize!' } = useParams<{ name: string; }>();
     const { data: workspaces, isLoading } = useGetAllWorkspacesQuery({ from: 0, to: 10 });
     const [getWorkspaceStats, { data: workspaceStats, isFetching: workspaceStatsFetching }] = useLazyGetWorkspaceStatsQuery({});
     const [user, setUser] = useState<any>(null);
@@ -115,7 +115,11 @@ const HomePage: React.FC = () => {
                         !workspaces || workspaces.length === 0 ? (
                             <div className='ion-padding-start ion-padding-end'>
                                 <div className='flex flex-col items-center justify-center gap-4 bg-red-100 rounded-lg border border-red-200 ion-padding'>
-                                    <IonText className='text-center text-base block'>No workspaces found. Create one to get started.</IonText>
+                                    <IonText className='text-center text-base block'>
+                                        No workspaces found.
+                                        Create one to get started.
+                                        If you’re a university student, think workspace as a course.
+                                    </IonText>
                                     <IonButton mode='ios' routerLink={'/dashboard/editor/workspace'} shape="round">Create Workspace</IonButton>
                                 </div>
                             </div>

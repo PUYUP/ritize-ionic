@@ -767,7 +767,7 @@ const FilesEditorPage: React.FC = () => {
                 )}
 
                 {pages.length > 0 && (
-                    <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                         {[...pages].map((page: FilePage, index, array) => {
                             const isUploading = page.uploadProgress !== null && page.uploadProgress !== undefined;
 

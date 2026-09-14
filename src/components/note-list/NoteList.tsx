@@ -159,24 +159,22 @@ const NoteItem: React.FC<{
                             </div>
                         </div>
 
-                        {(content_preview && item.content_type == 'text') && (
-                            <>
-                                <div className='ion-padding-start ion-padding-end'>
-                                    {item.workspace && !workspaceId && (
-                                        <div className='flex items-center gap-2 text-orange-700 mb-2'>
-                                            <IonIcon icon={briefcaseOutline}></IonIcon>
-                                            <IonText className='text-xs'>{item.workspace.title}</IonText>
-                                        </div>
-                                    )}
+                        {item.workspace && !workspaceId && (
+                            <div className='flex items-center gap-2 text-orange-700 mb-2 ion-padding-start ion-padding-end'>
+                                <IonIcon icon={briefcaseOutline}></IonIcon>
+                                <IonText className='text-xs'>{item.workspace.title}</IonText>
+                            </div>
+                        )}
 
-                                    <Link to={linkTo}>
-                                        <div
-                                            dangerouslySetInnerHTML={{ __html: content_preview }}
-                                            className='text-neutral-800 text-base leading-6 line-clamp-4'
-                                        />
-                                    </Link>
-                                </div>
-                            </>
+                        {(content_preview && item.content_type == 'text') && (
+                            <div className='ion-padding-start ion-padding-end ion-padding-bottom'>
+                                <Link to={linkTo}>
+                                    <div
+                                        dangerouslySetInnerHTML={{ __html: content_preview }}
+                                        className='text-neutral-800 text-base leading-6 line-clamp-4'
+                                    />
+                                </Link>
+                            </div>
                         )}
 
                         {item.content_type == 'canvas' && (

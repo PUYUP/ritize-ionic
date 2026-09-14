@@ -75,7 +75,7 @@ const HomePage: React.FC = () => {
                     <StartNote /> */}
 
                     <div className='text-lg mb-4 text-neutral-800'>
-                        <IonText>Happening Today's</IonText>
+                        <IonText>Overall Learning Stats</IonText>
                     </div>
                     <WorkspaceStats
                         onSetActiveTab={gotoPage}
@@ -117,7 +117,6 @@ const HomePage: React.FC = () => {
                                 <div className='flex flex-col items-center justify-center gap-4 bg-red-100 rounded-lg border border-red-200 ion-padding'>
                                     <IonText className='text-center text-base block'>
                                         No workspaces found.
-                                        Create one to get started.
                                         If you’re a university student, think workspace as a course.
                                     </IonText>
                                     <IonButton mode='ios' routerLink={'/dashboard/editor/workspace'} shape="round">Create Workspace</IonButton>

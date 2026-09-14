@@ -188,11 +188,24 @@ const CanvasEditorPage: React.FC = () => {
 				fileData = await blobToBase64(blobData);
 			}
 
+			const currentStatus = selectedNoteRef.current?.status;
+			const isDraft = currentStatus === 'draft';
+
 			await NotesRepository.microUpdatePage(page.id as string, {
 				contentData: bufferData,
 				contentExtracted: { fileData: fileData },
-				status: hasSignificantChange ? 'draft' : 'published', // karena edit jadi draft
-				processingStatus: hasSignificantChange ? 'pending' : 'processed', // kembali belum di proses AI
+
+				// 1. Jika dari awal draft, paksa 'draft'. 
+				// 2. Jika bukan draft (published), apakah perubahan signifikan mengubahnya jadi draft lagi? 
+				// Jika tidak, ganti `(hasSignificantChange ? 'draft' : 'published')` menjadi `'published'` saja.
+				status: isDraft
+					? 'draft'
+					: (hasSignificantChange ? 'draft' : 'published'),
+
+				// Sama seperti di atas, jika draft paksa ke 'pending'.
+				processingStatus: isDraft
+					? 'pending'
+					: (hasSignificantChange ? 'pending' : 'processed'),
 			});
 
 			console.log('selected page id: ', page.id, ' is updated');
@@ -203,8 +216,12 @@ const CanvasEditorPage: React.FC = () => {
 					prevPages.map((p) => (p.id === page.id ? {
 						...p,
 						contentData: bufferData,
-						status: hasSignificantChange ? 'draft' : 'published',
-						processingStatus: hasSignificantChange ? 'pending' : 'processed'
+						status: isDraft
+							? 'draft'
+							: (hasSignificantChange ? 'draft' : 'published'),
+						processingStatus: isDraft
+							? 'pending'
+							: (hasSignificantChange ? 'pending' : 'processed'),
 					} : p))
 				);
 			}

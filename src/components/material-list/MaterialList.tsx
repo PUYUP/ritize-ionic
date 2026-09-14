@@ -54,7 +54,9 @@ const MaterialList: React.FC<Props> = ({ workspaceId }) => {
 
     if (data.results.length === 0) return (
         <div className='flex items-center justify-center h-full'>
-            <IonText color="medium">No materials found</IonText>
+            <IonText color="medium" className='ion-text-center'>
+                No materials found. To get learning materials every day, start with your first note.
+            </IonText>
         </div>
     );
 

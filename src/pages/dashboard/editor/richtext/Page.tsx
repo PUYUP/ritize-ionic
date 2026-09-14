@@ -145,11 +145,25 @@ const RichTextEditorPage: React.FC = () => {
             lastSavedDataRef.current = json;
 
             const bufferData = json ? Buffer.from(json, 'utf-8') : null;
+            const contentText = quillRef.current?.getText().trim() ?? '';
+            const currentStatus = selectedNoteRef.current?.status;
+            const isDraft = currentStatus === 'draft';
 
             await NotesRepository.microUpdatePage(page.id as string, {
                 contentData: bufferData,
-                status: hasSignificantChange ? 'draft' : 'published',
-                processingStatus: hasSignificantChange ? 'pending' : 'processed',
+                contentText: contentText,
+
+                // 1. Jika dari awal draft, paksa 'draft'. 
+                // 2. Jika bukan draft (published), apakah perubahan signifikan mengubahnya jadi draft lagi? 
+                // Jika tidak, ganti `(hasSignificantChange ? 'draft' : 'published')` menjadi `'published'` saja.
+                status: isDraft
+                    ? 'draft'
+                    : (hasSignificantChange ? 'draft' : 'published'),
+
+                // Sama seperti di atas, jika draft paksa ke 'pending'.
+                processingStatus: isDraft
+                    ? 'pending'
+                    : (hasSignificantChange ? 'pending' : 'processed'),
             });
 
             console.log('selected page id: ', page.id, ' is updated');
@@ -160,8 +174,13 @@ const RichTextEditorPage: React.FC = () => {
                     prevPages.map((p) => (p.id === page.id ? {
                         ...p,
                         contentData: bufferData,
-                        processingStatus: hasSignificantChange ? 'pending' : 'processed',
-                        status: hasSignificantChange ? 'draft' : 'published',
+                        contentText: contentText,
+                        status: isDraft
+                            ? 'draft'
+                            : (hasSignificantChange ? 'draft' : 'published'),
+                        processingStatus: isDraft
+                            ? 'pending'
+                            : (hasSignificantChange ? 'pending' : 'processed'),
                     } : p))
                 );
             }
@@ -176,7 +195,7 @@ const RichTextEditorPage: React.FC = () => {
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
             if (isPageActiveRef.current) setIsSaving(false);
         }
-    }, [presentToast, workspaceId]);
+    }, [presentToast, workspaceId, hasSignificantChange, selectedNoteRef]);
 
     // Persists whatever is currently in the editor for the currently selected page.
     const persistCurrentPage = useCallback(async () => {
@@ -560,6 +579,7 @@ const RichTextEditorPage: React.FC = () => {
                                     id: p.id,
                                     workspaceId: p.workspace_id,
                                     workspaceNoteId: p.workspace_note_id,
+                                    contentText: p.content_text,
                                     contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
                                     userId: p.user_id,
                                     pageNum: p.page_num,
@@ -709,14 +729,14 @@ const RichTextEditorPage: React.FC = () => {
 
         // update note dari 'draft' ke 'publish'
         // tujuannya untuk start embedding
-        // const res = await NotesRepository.updateNote({
-        //     id: selectedNoteRef.current.id,
-        //     status: 'published',
-        //     processingStatus: 'pending',
-        //     content: newContent,
-        // });
+        const res = await NotesRepository.updateNote({
+            id: selectedNoteRef.current.id,
+            status: 'published',
+            processingStatus: 'pending',
+            content: newContent,
+        });
 
-        //setSelectedNote(res);
+        setSelectedNote(res);
         presentToast('Note saved successfully!', 1000);
     }
 
@@ -793,7 +813,7 @@ const RichTextEditorPage: React.FC = () => {
                                 className="normal-button"
                                 style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
                                 onClick={handleSaveChanges}
-                                disabled={!hasSignificantChange}
+                                disabled={!hasSignificantChange && pages.some(p => p.status === 'published')}
                             >
                                 Save Changes
                             </IonButton>

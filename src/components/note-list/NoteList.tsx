@@ -231,38 +231,40 @@ const NoteItem: React.FC<{
                             </Link>
                         )}
 
-                        <div className='block mt-auto border-t border-neutral-200'>
-                            <div className='py-3'>
-                                <div className='ion-padding-start mb-2'>
-                                    <IonText className='!text-neutral-800 tracking-widest uppercase !text-xs'>Relevant papers:</IonText>
-                                </div>
-                                {item.documents?.length > 0 && (
-                                    <div className='flex flex-col gap-2 ion-padding-start ion-padding-end'>
-                                        {item?.documents?.slice(0, 2).map((doc: any, index: number, array: any) => {
-                                            return (
-                                                <Link key={doc.id} to={doc.paper.pdf_url} target="_blank" rel="noopener noreferrer">
-                                                    <div className='flex flex-col gap-0.5'>
-                                                        <p className='!text-blue-700 mb-0 !text-xs !font-semibold'>{doc.paper.title}</p>
-                                                        <p className='line-clamp-2 !overflow-hidden !text-xs text-neutral-600'>{doc.document_content}</p>
-                                                    </div>
-                                                </Link>
-                                            )
-                                        })}
+                        {item.status === 'published' && (
+                            <div className='block mt-auto border-t border-neutral-200'>
+                                <div className='py-3'>
+                                    <div className='ion-padding-start mb-2'>
+                                        <IonText className='!text-neutral-800 tracking-widest uppercase !text-xs'>Relevant papers:</IonText>
                                     </div>
-                                )}
-                                {item.documents?.length === 0 && (
-                                    <IonItem style={{ '--background': 'none' }} button={true} mode="md" detail={false} lines='none'>
-                                        <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
-                                        <IonLabel className='pl-2'>
-                                            <p className='text-neutral-500 !text-xs'>Discovering...</p>
-                                        </IonLabel>
-                                        <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
-                                            tap here to refresh
-                                        </IonButton>
-                                    </IonItem>
-                                )}
+                                    {item.documents?.length > 0 && (
+                                        <div className='flex flex-col gap-2 ion-padding-start ion-padding-end'>
+                                            {item?.documents?.slice(0, 2).map((doc: any, index: number, array: any) => {
+                                                return (
+                                                    <Link key={doc.id} to={doc.paper.pdf_url} target="_blank" rel="noopener noreferrer">
+                                                        <div className='flex flex-col gap-0.5'>
+                                                            <p className='!text-blue-700 mb-0 !text-xs !font-semibold'>{doc.paper.title}</p>
+                                                            <p className='line-clamp-2 !overflow-hidden !text-xs text-neutral-600'>{doc.document_content}</p>
+                                                        </div>
+                                                    </Link>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                    {item.documents?.length === 0 && (
+                                        <IonItem style={{ '--background': 'none' }} button={true} mode="md" detail={false} lines='none'>
+                                            <IonSpinner slot="start" className='w-3 h-3'></IonSpinner>
+                                            <IonLabel className='pl-2'>
+                                                <p className='text-neutral-500 !text-xs'>Discovering...</p>
+                                            </IonLabel>
+                                            <IonButton slot='end' fill='clear' className='text-xs' mode="ios" onClick={async () => await refreshPapers(item)}>
+                                                tap here to refresh
+                                            </IonButton>
+                                        </IonItem>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </IonCardContent>
             </IonCard>
@@ -323,11 +325,32 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
 
     if (isLoading && page === 1) {
         return (
-            <div className="ion-padding text-center">
+            <div className="ion-padding text-center ion-padding">
                 <IonText className='text-center ion-padding'>Loading...</IonText>
             </div>
         );
     }
+
+    if (isError) return (
+        <div className='flex items-center justify-center h-full ion-padding'>
+            <IonText color="danger">Error loading notes</IonText>
+        </div>
+    );
+
+    if (data?.notes?.length === 0) return (
+        <div className='flex items-center justify-center h-full ion-padding'>
+            <IonText color="medium" className='ion-text-center'>
+                Start your first note by select input method: <br />
+                Texting, Canvas, or File Upload above.
+            </IonText>
+        </div>
+    );
+
+    if (isError) return (
+        <div className='flex items-center justify-center h-full ion-padding'>
+            <IonText color="danger">Error loading notes</IonText>
+        </div>
+    );
 
     return (
         <>

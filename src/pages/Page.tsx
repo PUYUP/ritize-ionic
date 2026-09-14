@@ -29,16 +29,28 @@ const Page: React.FC = () => {
             </h1>
 
             <div className='block text-center mt-8 mb-6'>
-              <div className='block text-center'>
+              <div className='flex flex-col gap-4 justify-center items-center'>
                 <IonButton
                   routerLink="/oauth-google"
                   color={'dark'}
                   mode={'ios'}
                   shape='round'
-                  className='items-center gap-3'
+                  className='items-center gap-6'
                 >
                   <IonIcon slot='start' icon={logoGoogle} />
                   <IonText className='ml-2'>Continue with Google</IonText>
+                </IonButton>
+
+                <IonButton
+                  routerLink="/register"
+                  color={'primary'}
+                  mode={'ios'}
+                  shape='round'
+                  className='items-center gap-3'
+                  fill='clear'
+                >
+                  <IonIcon slot='start' icon={mailOutline} />
+                  <IonText className='ml-2'>or use email</IonText>
                 </IonButton>
               </div>
 

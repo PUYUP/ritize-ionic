@@ -361,14 +361,17 @@ const FilesEditorPage: React.FC = () => {
             if (note) {
                 const existingPageCount = pages.length;
                 const pageNum = existingPageCount + 1;
+                const syncedId = generateUUID();
+                const syncedAt = new Date();
+
                 const newPage = await createPage(note, {
                     title: file.name ?? 'Untitled Page',
                     pageNum: pageNum,
                     workspaceId: note.workspaceId,
                     workspaceNoteId: note.id,
                     isActive: true,
-                    syncedAt: new Date(),
-                    syncedId: generateUUID(),
+                    syncedAt: syncedAt,
+                    syncedId: syncedId,
                     status: 'draft', // directly as published karena user tidak bisa edit
                     processingStatus: 'pending',
                 });
@@ -430,8 +433,8 @@ const FilesEditorPage: React.FC = () => {
                                 attributes: attributes,
                                 status: 'draft',
                                 processingStatus: 'pending',
-                                syncedAt: newPage.syncedAt,
-                                syncedId: newPage.syncedId,
+                                syncedAt: syncedAt,
+                                syncedId: syncedId,
                             }
                             : page
                     )
@@ -567,14 +570,17 @@ const FilesEditorPage: React.FC = () => {
                 // create page directly after upload sucess
                 if (note) {
                     const pageNum = existingPageCount + i + 1;
+                    const syncedId = generateUUID();
+                    const syncedAt = new Date();
+
                     const newPage = await createPage(note, {
                         title: file.name ?? 'Untitled Page',
                         pageNum: pageNum,
                         workspaceId: note.workspaceId,
                         workspaceNoteId: note.id,
                         isActive: true,
-                        syncedAt: new Date(),
-                        syncedId: generateUUID(),
+                        syncedAt: syncedAt,
+                        syncedId: syncedId,
                         status: 'draft', // directly as published karena user tidak bisa edit
                         processingStatus: 'pending',
                     });
@@ -636,8 +642,8 @@ const FilesEditorPage: React.FC = () => {
                                     attributes: attributes,
                                     status: 'draft',
                                     processingStatus: 'pending',
-                                    syncedAt: newPage.syncedAt,
-                                    syncedId: newPage.syncedId,
+                                    syncedAt: syncedAt,
+                                    syncedId: syncedId,
                                 }
                                 : page
                         )
@@ -795,9 +801,9 @@ const FilesEditorPage: React.FC = () => {
                                                         mode="ios"
                                                         color="primary"
                                                         size="small"
-                                                        onClick={() => {
-                                                            setShowRemoveAlert(true)
+                                                        onClick={async () => {
                                                             setSelectedPage(page);
+                                                            setShowRemoveAlert(true)
                                                         }}
                                                     >
                                                         <IonText className="ml-1">Delete</IonText>
@@ -885,6 +891,7 @@ const FilesEditorPage: React.FC = () => {
                             if (!selectedPage) return;
 
                             let activeIndex = pages.findIndex(p => p.id === selectedPage.id);
+                            console.log(activeIndex);
                             if (activeIndex === -1) {
                                 activeIndex = pages.findIndex((p) => p.isActive);
                             }

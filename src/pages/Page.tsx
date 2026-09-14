@@ -1,14 +1,14 @@
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonImg, IonMenuButton, IonPage, IonText, IonTitle, IonToolbar } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Page.css';
-import { logoGoogle, mailOutline } from 'ionicons/icons';
+import { keyOutline, logoGoogle, mailOutline, personAddOutline } from 'ionicons/icons';
 
 const Page: React.FC = () => {
   const { name = '' } = useParams<{ name: string; }>();
 
   return (
     <IonPage>
-      <IonContent className='ion-padding' fullscreen>
+      <IonContent className='ion-padding' scrollY={true} fullscreen>
         <div className='flex flex-col w-full h-full'>
           <div className='block ion-tcenter mt-auto mb-4'>
             <IonImg className='w-32 h-32 mx-auto' src='/icons/notes.png'></IonImg>
@@ -40,18 +40,46 @@ const Page: React.FC = () => {
                   <IonIcon slot='start' icon={logoGoogle} />
                   <IonText className='ml-2'>Continue with Google</IonText>
                 </IonButton>
+              </div>
 
-                <IonButton
-                  routerLink="/register"
-                  color={'primary'}
-                  mode={'ios'}
-                  shape='round'
-                  className='items-center gap-3'
-                  fill='clear'
-                >
-                  <IonIcon slot='start' icon={mailOutline} />
-                  <IonText className='ml-2'>or use email</IonText>
-                </IonButton>
+              <div className="flex items-center justify-center gap-3 mt-6">
+                <div className="h-px bg-gray-200 w-[20%]"></div>
+
+                <span className="text-sm text-gray-400 whitespace-nowrap">
+                  or use email
+                </span>
+
+                <div className="h-px bg-gray-200 w-[20%]"></div>
+              </div>
+
+              <div className='flex flex-row gap-6 items-center justify-center'>
+                <div className='block'>
+                  <IonButton
+                    routerLink="/register"
+                    color={'primary'}
+                    mode={'ios'}
+                    shape='round'
+                    className='items-center gap-3'
+                    fill='clear'
+                  >
+                    <IonIcon slot='start' icon={personAddOutline} />
+                    <IonText className='ml-2'>Register</IonText>
+                  </IonButton>
+                </div>
+
+                <div className='block'>
+                  <IonButton
+                    routerLink="/login"
+                    color={'primary'}
+                    mode={'ios'}
+                    shape='round'
+                    className='items-center gap-3'
+                    fill='clear'
+                  >
+                    <IonIcon slot='start' icon={keyOutline} />
+                    <IonText className='ml-2'>Login</IonText>
+                  </IonButton>
+                </div>
               </div>
 
               {/* <div className='block text-center mt-4'>

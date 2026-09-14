@@ -16,7 +16,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { supabase } from '../../../lib/supabase';
 import { Preferences } from '@capacitor/preferences';
 
-const RegisterPage: React.FC = () => {
+const LoginPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
@@ -24,7 +24,6 @@ const RegisterPage: React.FC = () => {
     const { control, handleSubmit, reset, formState: { errors, isValid } } = useForm({
         mode: 'onChange',
         defaultValues: {
-            name: '',
             email: '',
             password: '',
         }
@@ -35,14 +34,9 @@ const RegisterPage: React.FC = () => {
         setErrorMsg('');
 
         try {
-            const { data: user, error } = await supabase.auth.signUp({
+            const { data: user, error } = await supabase.auth.signInWithPassword({
                 email: data.email,
                 password: data.password,
-                options: {
-                    data: {
-                        name: data.name
-                    }
-                }
             });
 
             if (error) {
@@ -66,7 +60,6 @@ const RegisterPage: React.FC = () => {
                     key: 'ritize_user',
                     value: JSON.stringify(userData)
                 });
-
                 // Reset form
                 reset();
 
@@ -102,36 +95,12 @@ const RegisterPage: React.FC = () => {
 
                         <h1 className='block ion-text-center !mt-0 px-3'>
                             <IonText className='text-2xl font-bold'>
-                                Create FREE Account
+                                Login to Your Account
                             </IonText>
                         </h1>
                     </div>
 
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <Controller
-                            name="name"
-                            control={control}
-                            rules={{ required: 'Name is required' }}
-                            render={({ field }) => (
-                                <div>
-                                    <IonInput
-                                        {...field}
-                                        label="Name"
-                                        labelPlacement="floating"
-                                        fill="outline"
-                                        type="text"
-                                        placeholder="Enter your name"
-                                        shape='round'
-                                    />
-                                    {errors.name && (
-                                        <IonText color="danger" className="text-sm mt-1 block">
-                                            {errors.name.message as string}
-                                        </IonText>
-                                    )}
-                                </div>
-                            )}
-                        />
-
                         <Controller
                             name="email"
                             control={control}
@@ -206,21 +175,21 @@ const RegisterPage: React.FC = () => {
                             mode='ios'
                             shape='round'
                         >
-                            {isLoading ? <IonSpinner name="crescent" /> : 'Register'}
+                            {isLoading ? <IonSpinner name="crescent" /> : 'Login'}
                         </IonButton>
 
                         <div className="text-center mt-6 flex items-center justify-center">
                             <IonText color="medium" className="text-sm">
-                                Already have an account?
+                                Don't have an account?
                             </IonText>
                             <IonButton
-                                routerLink="/login"
+                                routerLink="/register"
                                 fill='clear'
                                 mode='ios'
                                 shape='round'
                                 size='small'
                             >
-                                Login
+                                Register
                             </IonButton>
                         </div>
                     </form>
@@ -230,4 +199,4 @@ const RegisterPage: React.FC = () => {
     );
 };
 
-export default RegisterPage;
+export default LoginPage;

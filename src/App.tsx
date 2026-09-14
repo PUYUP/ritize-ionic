@@ -40,7 +40,7 @@ const AppLayout: React.FC = () => {
 	const location = useLocation();
 
 	// Daftar path di mana menu harus disembunyikan
-	const hideMenuPaths = ['/', '/oauth-google', '/oauth-email'];
+	const hideMenuPaths = ['/', '/oauth-google', '/oauth-email', '/register', '/login'];
 
 	// Cek apakah pathname saat ini ada di dalam daftar hideMenuPaths
 	const hideMenu = hideMenuPaths.includes(location.pathname);

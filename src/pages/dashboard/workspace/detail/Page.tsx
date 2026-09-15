@@ -197,7 +197,7 @@ const WorkspaceDetailPage: React.FC = () => {
                             </div>
 
                             {activeTab == 'note' && <NoteList workspaceId={id} />}
-                            {activeTab == 'material' && <div className="ion-padding"><MaterialList workspaceId={id} /></div>}
+                            {activeTab == 'material' && <div className="ion-padding"><MaterialList workspaceId={id} insideWorkspaceDetail={true} /></div>}
                         </div>
                     )}
                 </div>

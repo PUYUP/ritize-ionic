@@ -3,13 +3,14 @@ import { useGetLearningMaterialsQuery } from '../../services/workspace';
 import './MaterialList.css';
 import { IonButton, IonCard, IonCardHeader, IonCardSubtitle, IonCardTitle, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonList, IonSpinner, IonText } from '@ionic/react';
 import { format } from 'date-fns';
-import { chevronForwardOutline } from 'ionicons/icons';
+import { briefcaseOutline, chevronForwardOutline } from 'ionicons/icons';
 
 type Props = {
     workspaceId?: string;
+    insideWorkspaceDetail?: boolean;
 }
 
-const MaterialList: React.FC<Props> = ({ workspaceId }) => {
+const MaterialList: React.FC<Props> = ({ workspaceId, insideWorkspaceDetail = false }) => {
     const [page, setPage] = useState(1);
     const [ionScrollEl, setIonScrollEl] = useState<HTMLIonInfiniteScrollElement | null>(null);
     const { data, isLoading, isFetching, isSuccess, isError } = useGetLearningMaterialsQuery({
@@ -22,7 +23,6 @@ const MaterialList: React.FC<Props> = ({ workspaceId }) => {
     const handleIonInfinite = async (e: CustomEvent<void>) => {
         if (!isFetching && hasMore) {
             setPage((p) => p + 1);
-            console.log("page: ", page);
         }
 
         setIonScrollEl(e.target as HTMLIonInfiniteScrollElement);
@@ -79,12 +79,19 @@ const MaterialList: React.FC<Props> = ({ workspaceId }) => {
                                                 {format(new Date(item.generated_date), 'dd MMMM yyyy')}
                                             </IonCardTitle>
 
-                                            <IonCardSubtitle className="mt-1">
+                                            <IonCardSubtitle className="mt-0">
                                                 <div className="flex items-center flex-wrap gap-3">
                                                     <span className="text-sm">{item.attributes.file.extension?.toUpperCase()}</span>
                                                     <IonText className='text-xs text-neutral-400'>&bull;</IonText>
                                                     <span className="text-sm">{(item.attributes.file.size_bytes / 1024).toFixed(1)} KB</span>
                                                 </div>
+
+                                                {!insideWorkspaceDetail && (
+                                                    <div className='text-xs flex items-center gap-2 mt-1'>
+                                                        <IonIcon icon={briefcaseOutline}></IonIcon>
+                                                        <IonText className="line-clamp-1 font-normal">{item.workspace.title}</IonText>
+                                                    </div>
+                                                )}
                                             </IonCardSubtitle>
                                         </div>
 

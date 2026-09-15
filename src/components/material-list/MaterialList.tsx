@@ -88,7 +88,9 @@ const MaterialList: React.FC<Props> = ({ workspaceId, insideWorkspaceDetail = fa
 
                                                 {!insideWorkspaceDetail && (
                                                     <div className='text-xs flex items-center gap-2 mt-1'>
-                                                        <IonIcon icon={briefcaseOutline}></IonIcon>
+                                                        <div className='w-4 flex items-center'>
+                                                            <IonIcon icon={briefcaseOutline}></IonIcon>
+                                                        </div>
                                                         <IonText className="line-clamp-1 font-normal">{item.workspace.title}</IonText>
                                                     </div>
                                                 )}

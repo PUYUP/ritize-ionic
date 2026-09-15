@@ -161,7 +161,14 @@ export const notesAPI = createApi({
                     .upsert(body, { onConflict: "id,synced_id" })
                     .select(`
                         *
-                        , pages:workspace_notes_pages(synced_id, status, processing_status)
+                        , pages:workspace_notes_pages(
+                            id
+                            , synced_id
+                            , status 
+                            , content_text
+                            , processing_status
+                            , attachments(*, file:file_id(*))
+                        )
                         , user!inner(id, name)
                         , documents:workspace_notes_documents(
                             id

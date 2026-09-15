@@ -184,6 +184,7 @@ const LoginPage: React.FC = () => {
                             </IonText>
                             <IonButton
                                 routerLink="/register"
+                                routerDirection="root"
                                 fill='clear'
                                 mode='ios'
                                 shape='round'

@@ -577,7 +577,14 @@ const CanvasEditorPage: React.FC = () => {
 
 			if (selectedNote) {
 				const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
-				setPages(currentPages);
+				if (isProcessed) {
+					// fake isActive indicator
+					setPages(prev => {
+						return prev.map((p) => ({ ...p, isActive: p.id === page.id }));
+					});
+				} else {
+					setPages(currentPages);
+				}
 
 				const freshSelectedPage = currentPages.find((p) => p.id === page.id);
 				if (freshSelectedPage) {

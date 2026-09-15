@@ -215,6 +215,7 @@ const RegisterPage: React.FC = () => {
                             </IonText>
                             <IonButton
                                 routerLink="/login"
+                                routerDirection="root"
                                 fill='clear'
                                 mode='ios'
                                 shape='round'

@@ -801,6 +801,7 @@ const FilesEditorPage: React.FC = () => {
                                                         mode="ios"
                                                         color="primary"
                                                         size="small"
+                                                        disabled={isProcessed}
                                                         onClick={async () => {
                                                             setSelectedPage(page);
                                                             setShowRemoveAlert(true)

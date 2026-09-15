@@ -95,30 +95,27 @@ const WorkspaceDetailPage: React.FC = () => {
                                     <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Workspace Detail'}</IonText>
                                 </div>
 
-                                <div className='flex items-center gap-2 text-base text-neutral-700'>
-                                    <IonIcon icon={languageOutline} />
-                                    <IonText>{language.name}</IonText>
+                                <div className='flex items-center gap-2 text-neutral-700'>
+                                    <div className='flex gap-2 text-sm items-center'>
+                                        <IonIcon icon={languageOutline} />
+                                        <IonText>{language.name}</IonText>
+                                    </div>
+
+                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                    <IonText className='text-sm'>{workspace.scope === 'group' ? 'Group' : 'Personal'}</IonText>
+
+                                    {workspace.scope === 'group' && (
+                                        <>
+                                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                            <div className='cursor-pointer text-blue-700 flex items-center gap-1 text-sm' onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}>
+                                                <IonText>{workspace.member_count || 0} members</IonText>
+                                                <IonIcon icon={chevronForwardOutline} />
+                                            </div>
+                                        </>
+                                    )}
+
                                 </div>
                             </div>
-
-                            {workspace.scope === 'group' && (
-                                <div className='ml-auto flex items-start'>
-                                    <div
-                                        onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}
-                                        className='flex flex-col items-start justify-start bg-white rounded-xl p-2 pr-1 pt-1 shadow-sm min-w-20 cursor-pointer'
-                                    >
-                                        <div className='flex items-center justify-between w-full'>
-                                            <div className='flex items-center gap-1'>
-                                                <IonIcon icon={personCircleOutline} className='text-xl text-[#424242] mt-[1px]' />
-                                                <IonText className='text-lg text-[#383838] font-semibold'>{workspace.member_count || 0}</IonText>
-                                            </div>
-                                            <IonIcon icon={chevronForwardOutline} className='text-xl text-[#424242] mt-[1px]' />
-                                        </div>
-
-                                        <IonText className='text-xs text-[#383838] leading-3'>members</IonText>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
 

@@ -450,11 +450,19 @@ const RichTextEditorPage: React.FC = () => {
             if (!isProcessed) await flushPendingSave();
 
             const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
-            if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
-            setPages(updatedPages);
+            if (!isProcessed) {
+                await NotesRepository.updatePagesBulk(updatedPages);
+            }
 
             const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
-            setPages(currentPages);
+            if (isProcessed) {
+                // fake isActive indicator
+                setPages(prev => {
+                    return prev.map((p) => ({ ...p, isActive: p.id === page.id }));
+                });
+            } else {
+                setPages(currentPages);
+            }
 
             const freshSelectedPage = currentPages.find((p) => p.id === page.id);
             if (freshSelectedPage) {

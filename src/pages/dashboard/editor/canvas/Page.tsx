@@ -945,30 +945,34 @@ const CanvasEditorPage: React.FC = () => {
 						{workspaceData?.title ?? 'Untitled Note'}
 					</IonTitle>
 
-					{/* pages tools */}
-					{pages.some(p => p.status === 'draft') && (
-						<IonButtons slot="end" className="ion-padding-end">
-							<IonButton
-								fill="solid"
-								color="primary"
-								size="small"
-								mode="ios"
-								shape="round"
-								className="normal-button"
-								style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
-								onClick={handleSaveChanges}
-								disabled={!hasSignificantChange}
-							>
-								Save Changes
-							</IonButton>
-						</IonButtons>
-					)}
+					{!isProcessed && (
+						<>
+							{/* pages tools */}
+							{pages.some(p => p.status === 'draft') && (
+								<IonButtons slot="end" className="ion-padding-end">
+									<IonButton
+										fill="solid"
+										color="primary"
+										size="small"
+										mode="ios"
+										shape="round"
+										className="normal-button"
+										style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
+										onClick={handleSaveChanges}
+										disabled={!hasSignificantChange}
+									>
+										Save Changes
+									</IonButton>
+								</IonButtons>
+							)}
 
-					{!pages.some(p => p.status === 'draft') && (
-						<div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
-							<IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
-							<IonText color="success">All Saved</IonText>
-						</div>
+							{!pages.some(p => p.status === 'draft') && (
+								<div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
+									<IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
+									<IonText color="success">All Saved</IonText>
+								</div>
+							)}
+						</>
 					)}
 				</IonToolbar>
 			</IonHeader>

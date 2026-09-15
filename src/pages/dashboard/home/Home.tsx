@@ -75,7 +75,7 @@ const HomePage: React.FC = () => {
                     <StartNote /> */}
 
                     <div className='text-lg mb-4 text-neutral-800'>
-                        <IonText>Overall Learning Stats</IonText>
+                        <IonText>Today's Your Learning Stats</IonText>
                     </div>
                     <WorkspaceStats
                         onSetActiveTab={gotoPage}

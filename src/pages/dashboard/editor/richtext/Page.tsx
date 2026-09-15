@@ -183,6 +183,13 @@ const RichTextEditorPage: React.FC = () => {
                             : (hasSignificantChange ? 'pending' : 'processed'),
                     } : p))
                 );
+
+                // collect the contents
+                const contents = pages.map((p) => p.contentText).join('\n');
+                await NotesRepository.updateNote({
+                    id: selectedNoteRef.current?.id,
+                    content: contents,
+                });
             }
         } catch (err) {
             console.error('Failed to save document', err);
@@ -195,7 +202,7 @@ const RichTextEditorPage: React.FC = () => {
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
             if (isPageActiveRef.current) setIsSaving(false);
         }
-    }, [presentToast, workspaceId, hasSignificantChange, selectedNoteRef]);
+    }, [presentToast, workspaceId, hasSignificantChange, selectedNoteRef, pages, selectedNote]);
 
     // Persists whatever is currently in the editor for the currently selected page.
     const persistCurrentPage = useCallback(async () => {
@@ -810,29 +817,33 @@ const RichTextEditorPage: React.FC = () => {
                         {workspaceData?.title ?? 'Untitled Note'}
                     </IonTitle>
 
-                    {pages.some(p => p.status === 'draft') && (
-                        <IonButtons slot="end" className="ion-padding-end">
-                            <IonButton
-                                fill="solid"
-                                color="primary"
-                                size="small"
-                                mode="ios"
-                                shape="round"
-                                className="normal-button"
-                                style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
-                                onClick={handleSaveChanges}
-                                disabled={!hasSignificantChange && pages.some(p => p.status === 'published')}
-                            >
-                                Save Changes
-                            </IonButton>
-                        </IonButtons>
-                    )}
+                    {!isProcessed && (
+                        <>
+                            {pages.some(p => p.status === 'draft') && (
+                                <IonButtons slot="end" className="ion-padding-end">
+                                    <IonButton
+                                        fill="solid"
+                                        color="primary"
+                                        size="small"
+                                        mode="ios"
+                                        shape="round"
+                                        className="normal-button"
+                                        style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
+                                        onClick={handleSaveChanges}
+                                        disabled={!hasSignificantChange && pages.some(p => p.status === 'published')}
+                                    >
+                                        Save Changes
+                                    </IonButton>
+                                </IonButtons>
+                            )}
 
-                    {!pages.some(p => p.status === 'draft') && (
-                        <div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
-                            <IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
-                            <IonText color="success">All Saved</IonText>
-                        </div>
+                            {!pages.some(p => p.status === 'draft') && (
+                                <div slot="end" className="text-sm ion-padding-end flex items-center gap-2">
+                                    <IonIcon icon={checkmarkCircleOutline} color="success" className='text-lg'></IonIcon>
+                                    <IonText color="success">All Saved</IonText>
+                                </div>
+                            )}
+                        </>
                     )}
                 </IonToolbar>
             </IonHeader>

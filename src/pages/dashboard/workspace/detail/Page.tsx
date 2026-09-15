@@ -68,6 +68,51 @@ const WorkspaceDetailPage: React.FC = () => {
         )
     }
 
+    const ACTIONS = [
+        {
+            text: 'Edit',
+            icon: pencilOutline,
+            data: {
+                action: 'edit',
+            },
+            handler: () => {
+                ionRouter.push(`/dashboard/editor/workspace/${id}`, "forward");
+            }
+        },
+        {
+            text: 'Delete',
+            icon: trashOutline,
+            role: 'destructive',
+            data: {
+                action: 'delete',
+            },
+            handler: () => {
+                setShowDeleteAlert(true);
+            },
+        },
+        {
+            text: 'Cancel',
+            icon: closeOutline,
+            role: 'cancel',
+            data: {
+                action: 'cancel',
+            },
+        },
+    ];
+
+    if (workspace.scope === 'group') {
+        ACTIONS.unshift({
+            text: 'Manage Members',
+            icon: personCircleOutline,
+            data: {
+                action: 'manage-members',
+            },
+            handler: () => {
+                ionRouter.push(`/dashboard/workspace/${id}/members`, "forward");
+            }
+        });
+    }
+
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -161,47 +206,7 @@ const WorkspaceDetailPage: React.FC = () => {
             <IonActionSheet
                 trigger="workspace-actions"
                 header="Workspace Actions"
-                buttons={[
-                    {
-                        text: 'Manage Members',
-                        icon: personCircleOutline,
-                        data: {
-                            action: 'manage-members',
-                        },
-                        handler: () => {
-                            ionRouter.push(`/dashboard/workspace/${id}/members`, "forward");
-                        }
-                    },
-                    {
-                        text: 'Edit',
-                        icon: pencilOutline,
-                        data: {
-                            action: 'edit',
-                        },
-                        handler: () => {
-                            ionRouter.push(`/dashboard/editor/workspace/${id}`, "forward");
-                        }
-                    },
-                    {
-                        text: 'Delete',
-                        icon: trashOutline,
-                        role: 'destructive',
-                        data: {
-                            action: 'delete',
-                        },
-                        handler: () => {
-                            setShowDeleteAlert(true);
-                        },
-                    },
-                    {
-                        text: 'Cancel',
-                        icon: closeOutline,
-                        role: 'cancel',
-                        data: {
-                            action: 'cancel',
-                        },
-                    },
-                ]}
+                buttons={ACTIONS}
             ></IonActionSheet>
 
             {/* delete workspace */}

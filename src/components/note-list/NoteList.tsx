@@ -81,7 +81,7 @@ const NoteItem: React.FC<{
 
         // if not the creator, view the note as a normal viewer
         if (item.user.id !== user.id) {
-            linkTo = `/dashboard/workspace/note-viewer?workspaceId=${item.workspace_id}&noteId=${item.id}`;
+            linkTo = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}&clusteredDate=1`;
         }
 
         const optionsHandler = async (item: NoteTypes) => {

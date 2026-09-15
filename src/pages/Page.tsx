@@ -14,8 +14,9 @@ const ArrowDiagram: React.FC = () => {
       const wp = document.getElementById('wrapper-papers');
       const wm = document.getElementById('wrapper-materials');
       const wd = document.getElementById('wrapper-digests');
+      const wpdf = document.getElementById('wrapper-pdf');
 
-      if (container && wn && wp && wm && wd) {
+      if (container && wn && wp && wm && wd && wpdf) {
         const cRect = container.getBoundingClientRect();
 
         const getCenter = (el: HTMLElement) => {
@@ -30,11 +31,17 @@ const ArrowDiagram: React.FC = () => {
         const p = getCenter(wp);
         const m = getCenter(wm);
         const d = getCenter(wd);
+        const pdf = getCenter(wpdf);
 
         setLines([
+          // Notes to Materials
           { startX: n.x, startY: n.y + 25, endX: m.x - 25, endY: m.y - 35 },
+          // Papers to Materials
           { startX: p.x, startY: p.y + 25, endX: m.x + 25, endY: m.y - 35 },
-          { startX: m.x, startY: m.y + 25, endX: d.x, endY: d.y - 30 }
+          // Materials to PDF
+          { startX: m.x - 25, startY: m.y + 25, endX: pdf.x, endY: pdf.y - 50 },
+          // Materials to Digests
+          { startX: m.x + 25, startY: m.y + 25, endX: d.x, endY: d.y - 30 }
         ]);
       }
     };
@@ -73,14 +80,14 @@ const ShortFeature: React.FC = () => {
       <div className='flex justify-between relative z-10'>
         <div id="wrapper-notes" className='block pl-[5%]'>
           <div id="notes" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[160px] flex items-center gap-3 bg-white'>
-            <IonImg className='w-10 h-auto mx-auto' src='/icons/paper.png'></IonImg>
+            <IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/paper.png'></IonImg>
             <IonText className='text-xs leading-4'>Your Notes Collection</IonText>
           </div>
         </div>
 
         <div id="wrapper-papers" className='block pt-6'>
           <div id="papers" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[120px] flex items-center gap-3 bg-white' style={{ animationDelay: '1s' }}>
-            <IonImg className='w-10 h-auto mx-auto' src='/icons/research.png'></IonImg>
+            <IonImg className='w-auto h-7 mx-auto flex-none' src='/icons/research.png'></IonImg>
             <IonText className='text-xs leading-4'>Research Papers</IonText>
           </div>
         </div>
@@ -88,17 +95,26 @@ const ShortFeature: React.FC = () => {
 
       <div className='flex justify-center pt-12 pr-[20%] relative z-10'>
         <div id="wrapper-materials" className='block'>
-          <div id="materials" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[200px] flex items-center gap-3 bg-white' style={{ animationDelay: '2s' }}>
-            <IonImg className='w-10 h-auto mx-auto' src='/icons/learning-material.png'></IonImg>
-            <IonText className='text-xs leading-4'>Enhanced Learning Material</IonText>
+          <div id="materials" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[200px] flex items-center gap-3 bg-white relative' style={{ animationDelay: '2s' }}>
+            <IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/learning-material.png'></IonImg>
+            <IonText className='text-xs leading-4'>Enhanced Learning Material — <i>while you sleep.</i></IonText>
+
+            <IonImg src={'/icons/sleeping.png'} className='absolute -top-2 -right-2 w-7 h-7'></IonImg>
           </div>
         </div>
       </div>
 
-      <div className='flex justify-center pt-12 pl-[30%] relative z-10'>
-        <div id="wrapper-digests" className='block pt-2'>
-          <div id="digests" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[160px] flex items-center gap-3 bg-white' style={{ animationDelay: '0.5s' }}>
-            <IonImg className='w-10 h-auto mx-auto' src='/icons/explaination.png'></IonImg>
+      <div className='flex justify-between gap-6 pt-12 pl-[0%] relative z-10'>
+        <div id="wrapper-pdf" className='block'>
+          <div id="pdf" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[120px] flex items-center gap-3 bg-white' style={{ animationDelay: '0.5s' }}>
+            <IonImg className='w-auto h-5 mx-auto flex-none' src='/icons/pdf-file-format.png'></IonImg>
+            <IonText className='text-xs leading-4'>PDF File</IonText>
+          </div>
+        </div>
+
+        <div id="wrapper-digests" className='block mt-8'>
+          <div id="digests" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-1 w-[150px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.75s' }}>
+            <IonImg className='w-auto h-8 mx-auto flex-none' src='/icons/explaination.png'></IonImg>
             <IonText className='text-xs leading-4'>Weekly Digests</IonText>
           </div>
         </div>
@@ -128,7 +144,7 @@ const Page: React.FC = () => {
             <h1 className='block ion-text-center !mt-0 px-3'>
               <IonText className='text-2xl font-bold'>
                 {/* Exchange lecture notes to assist studies every day. */}
-                Note taking for power students, assist studies on every moment.
+                Note taking for power students, assist studies <u>while you sleep.</u>
               </IonText>
             </h1>
 

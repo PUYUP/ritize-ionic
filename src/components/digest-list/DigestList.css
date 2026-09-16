@@ -1,0 +1,14 @@
+/* ion-item.note-item {
+    padding-bottom: 10px;
+    padding-top: 10px;
+} */
+
+ion-list.notes-list ion-item.note-item {
+    --border-width: 0 0 4px 0 !important;
+}
+
+.digest-swiper .swiper-pagination-bullet {
+    --swiper-pagination-bullet-width: 12px;
+    --swiper-pagination-bullet-height: 12px;
+    --swiper-pagination-color: #f54a00;
+}

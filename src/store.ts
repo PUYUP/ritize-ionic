@@ -3,6 +3,7 @@ import { userAPI } from './services/user'
 import { workspaceAPI } from './services/workspace'
 import { workspaceMemberAPI } from './services/workspace.member'
 import { notesAPI } from './services/notes'
+import { digestAPI } from './services/digest'
 
 export const store = configureStore({
     reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
         [workspaceAPI.reducerPath]: workspaceAPI.reducer,
         [workspaceMemberAPI.reducerPath]: workspaceMemberAPI.reducer,
         [notesAPI.reducerPath]: notesAPI.reducer,
+        [digestAPI.reducerPath]: digestAPI.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(
@@ -17,6 +19,7 @@ export const store = configureStore({
             workspaceAPI.middleware,
             workspaceMemberAPI.middleware,
             notesAPI.middleware,
+            digestAPI.middleware
         ),
 })
 

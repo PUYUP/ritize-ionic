@@ -1,7 +1,7 @@
-import { IonActionSheet, IonAlert, IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
+import { IonActionSheet, IonAlert, IonButton, IonCard, IonCardContent, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteList.css';
-import { alarm, alarmOutline, arrowForwardCircleOutline, arrowForwardOutline, attachOutline, bookmarkOutline, bookmarkSharp, bookSharp, briefcaseOutline, checkmarkCircleOutline, checkmarkCircleSharp, chevronForwardOutline, closeOutline, ellipsisVertical, imageOutline, pencil, pencilOutline, pencilSharp, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { briefcaseOutline, chevronForwardOutline, closeOutline, ellipsisVertical, imageOutline, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';

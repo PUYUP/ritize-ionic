@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useDeleteWorkspaceMutation, useGetWorkspaceByIdQuery, useLazyGetWorkspaceStatsQuery } from '../../../../services/workspace';
 import { by639_1 } from 'iso-language-codes';
 import MaterialList from '../../../../components/material-list/MaterialList';
+import DigestList from '../../../../components/digest-list/DigestList';
 
 interface RouteParams {
     id?: string
@@ -198,6 +199,7 @@ const WorkspaceDetailPage: React.FC = () => {
 
                             {activeTab == 'note' && <NoteList workspaceId={id} />}
                             {activeTab == 'material' && <div className="ion-padding"><MaterialList workspaceId={id} insideWorkspaceDetail={true} /></div>}
+                            {activeTab == 'digest' && <div className="ion-padding"><DigestList workspaceId={id} /></div>}
                         </div>
                     )}
                 </div>

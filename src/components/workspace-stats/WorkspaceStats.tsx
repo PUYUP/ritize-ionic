@@ -104,7 +104,7 @@ const WorkspaceStats: React.FC<WorkspaceStatsProps> = ({ isTab, activeTab, onSet
                             </div>
 
                             <div className='text-sm mt-3'>
-                                <IonText className='font-semibold text-neutral-700'>Digest</IonText>
+                                <IonText className='font-semibold text-neutral-700'>Digests</IonText>
                             </div>
 
                             <div className='text-xs mt-0.5 flex items-center justify-between'>

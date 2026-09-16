@@ -1,6 +1,7 @@
 import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonText, IonTitle, IonToolbar } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Page.css';
+import DigestList from '../../../components/digest-list/DigestList';
 
 const DigestsPage: React.FC = () => {
     const { name = 'All Digests' } = useParams<{ name: string; }>();
@@ -18,8 +19,8 @@ const DigestsPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent>
-                <IonText>Under development...</IonText>
+            <IonContent color={'light'} className='ion-padding'>
+                <DigestList />
             </IonContent>
         </IonPage>
     );

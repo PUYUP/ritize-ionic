@@ -959,7 +959,7 @@ const CanvasEditorPage: React.FC = () => {
 										className="normal-button"
 										style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
 										onClick={handleSaveChanges}
-										disabled={!hasSignificantChange}
+										disabled={!hasSignificantChange && pages.some(p => p.status === 'published')}
 									>
 										Save Changes
 									</IonButton>

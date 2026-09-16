@@ -1,0 +1,5 @@
+ion-item-divider.divider {
+    --ion-item-background: transparent;
+    --ion-background-color: transparent;
+    background: transparent;
+}

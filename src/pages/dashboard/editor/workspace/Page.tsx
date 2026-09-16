@@ -140,10 +140,7 @@ const WorkspaceEditorPage: React.FC = () => {
                             rules={{ required: true }}
                             render={({ field: { onChange, value } }) => (
                                 <IonRadioGroup className='ion-no-background' value={value} onIonChange={(e) => onChange(e.detail.value)}>
-                                    <IonList
-                                        className='ion-no-padding'
-                                        style={{ '--ion-item-background': 'transparent', '--ion-background-color': 'transparent', 'background': 'none' }}
-                                    >
+                                    <IonList className='ion-no-padding divider'>
                                         <IonItemDivider>
                                             <IonLabel>Select a workspace scope</IonLabel>
                                         </IonItemDivider>
@@ -167,7 +164,7 @@ const WorkspaceEditorPage: React.FC = () => {
                             rules={{ required: true }}
                             render={({ field: { onChange, value } }) => (
                                 <div className='block'>
-                                    <IonItemDivider style={{ '--ion-item-background': 'transparent', '--ion-background-color': 'transparent', 'background': 'none' }}>
+                                    <IonItemDivider className='divider'>
                                         <IonLabel>Main language for workspace content</IonLabel>
                                     </IonItemDivider>
                                     <IonSelect

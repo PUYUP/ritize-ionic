@@ -234,7 +234,7 @@ const WorkspaceMembersPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
-                        Workspace Members
+                        Classmates
                     </IonTitle>
                     <IonButtons slot="end" className="ion-padding-end">
                         <IonButton fill='clear' shape="round" color="primary" disabled={addingMembers} onClick={() => setShowAddMembersModal(true)}>
@@ -385,7 +385,7 @@ const WorkspaceMembersPage: React.FC = () => {
 
                                     <input
                                         {...register(`members.${index}.workspace_id` as const)}
-                                        placeholder="Workspace ID"
+                                        placeholder="Class ID"
                                         type="hidden"
                                     />
 

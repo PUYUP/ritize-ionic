@@ -3,7 +3,7 @@ import { useGetLearningMaterialsQuery } from '../../services/workspace';
 import './MaterialList.css';
 import { IonButton, IonCard, IonCardHeader, IonCardSubtitle, IonCardTitle, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonList, IonSpinner, IonText } from '@ionic/react';
 import { format } from 'date-fns';
-import { briefcaseOutline, chevronForwardOutline } from 'ionicons/icons';
+import { briefcaseOutline, chevronForwardOutline, schoolOutline } from 'ionicons/icons';
 
 type Props = {
     workspaceId?: string;
@@ -89,7 +89,7 @@ const MaterialList: React.FC<Props> = ({ workspaceId, insideWorkspaceDetail = fa
                                                 {!insideWorkspaceDetail && (
                                                     <div className='text-xs flex items-center gap-2 mt-1'>
                                                         <div className='w-4 flex items-center'>
-                                                            <IonIcon icon={briefcaseOutline}></IonIcon>
+                                                            <IonIcon icon={schoolOutline}></IonIcon>
                                                         </div>
                                                         <IonText className="line-clamp-1 font-normal">{item.workspace.title}</IonText>
                                                     </div>

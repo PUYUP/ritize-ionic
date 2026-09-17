@@ -2,6 +2,10 @@
 http://ionicframework.com/docs/theming/ */
 @import "tailwindcss";
 
+.ion-no-background {
+    --background: none;
+}
+
 ion-toolbar {
     --min-height: 48px !important;
     --ion-padding: 12px;

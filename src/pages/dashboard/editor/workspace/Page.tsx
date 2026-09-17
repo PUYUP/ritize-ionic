@@ -1,5 +1,5 @@
 import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSelect, IonSelectOption, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
-import { briefcaseOutline } from 'ionicons/icons';
+import { briefcaseOutline, schoolOutline } from 'ionicons/icons';
 import { useForm, Controller, SubmitHandler } from "react-hook-form"
 import './Page.css';
 import languages from '../../../../utils/ISO-639-1-language.json';
@@ -99,7 +99,7 @@ const WorkspaceEditorPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center fixed left-6 right-6 top-0 bottom-0 text-lg">
-                        Workspace Editor
+                        Class Editor
                     </IonTitle>
                 </IonToolbar>
             </IonHeader>
@@ -119,14 +119,14 @@ const WorkspaceEditorPage: React.FC = () => {
                                     onIonInput={(e) => onChange(e.detail.value)}
                                     onIonBlur={onBlur}
                                     color="dark"
-                                    label="Workspace name"
-                                    placeholder="Enter workspace name"
+                                    label="Class name"
+                                    placeholder="Enter class name"
                                     labelPlacement="floating"
                                     fill="outline"
                                     rows={1}
                                     className='!bg-white'
                                 >
-                                    <IonIcon slot="start" icon={briefcaseOutline} aria-hidden="true"></IonIcon>
+                                    <IonIcon slot="start" icon={schoolOutline} aria-hidden="true"></IonIcon>
                                 </IonTextarea>
                             )}
                         />
@@ -139,17 +139,19 @@ const WorkspaceEditorPage: React.FC = () => {
                             control={control}
                             rules={{ required: true }}
                             render={({ field: { onChange, value } }) => (
-                                <IonRadioGroup className='ion-no-background' value={value} onIonChange={(e) => onChange(e.detail.value)}>
-                                    <IonList className='ion-no-padding divider'>
-                                        <IonItemDivider>
-                                            <IonLabel>Select a workspace scope</IonLabel>
+                                <IonRadioGroup className='ion-no-background !bg-transparent' value={value} onIonChange={(e) => onChange(e.detail.value)}>
+                                    <IonList className='ion-no-padding divider !bg-transparent'>
+                                        <IonItemDivider className='ion-no-background !bg-transparent'>
+                                            <IonLabel>Select class type</IonLabel>
                                         </IonItemDivider>
 
-                                        <IonItem className='ion-no-padding'>
+                                        <IonItem className='ion-no-padding ion-no-background !bg-transparent'>
                                             <IonRadio color="dark" value="personal" labelPlacement="end" justify="start">Personal</IonRadio>
+                                            <IonText className='text-xs pt-1.5 italic text-neutral-600'>Only for you</IonText>
                                         </IonItem>
-                                        <IonItem lines='none' className='ion-no-padding'>
+                                        <IonItem lines='none' className='ion-no-padding ion-no-background !bg-transparent'>
                                             <IonRadio color="dark" value="group" labelPlacement="end" justify="start">Group</IonRadio>
+                                            <IonText className='text-xs pt-1.5 italic text-neutral-600'>Share notes with classmates</IonText>
                                         </IonItem>
                                     </IonList>
                                 </IonRadioGroup>
@@ -165,7 +167,7 @@ const WorkspaceEditorPage: React.FC = () => {
                             render={({ field: { onChange, value } }) => (
                                 <div className='block'>
                                     <IonItemDivider className='divider'>
-                                        <IonLabel>Main language for workspace content</IonLabel>
+                                        <IonLabel>Main language for the class content</IonLabel>
                                     </IonItemDivider>
                                     <IonSelect
                                         labelPlacement="floating"
@@ -200,7 +202,7 @@ const WorkspaceEditorPage: React.FC = () => {
                                     <span className='ion-margin-start'>Processing...</span>
                                 </>
                             ) : (
-                                !workspace ? 'Create Workspace' : 'Update Workspace'
+                                !workspace ? 'Create Class' : 'Update Class'
                             )}
                         </IonButton>
                     </div>

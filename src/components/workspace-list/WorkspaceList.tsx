@@ -1,5 +1,5 @@
 import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonIcon, IonItem, IonLabel, IonList, IonText } from "@ionic/react";
-import { chatbubblesOutline, chevronForwardOutline, ellipseOutline } from "ionicons/icons";
+import { chatbubblesOutline, chevronForwardOutline, ellipseOutline, people, peopleOutline } from "ionicons/icons";
 import { WorkspaceTypes } from "../../services/workspace";
 import './WorkspaceList.css';
 
@@ -18,25 +18,6 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
             <IonCardHeader className="ion-padding flex flex-row">
                 <div className="flex-1">
                     <IonCardTitle className="text-lg">{item.title}</IonCardTitle>
-                    {/* <IonCardSubtitle className="mt-1 font-normal">
-                        <div className="flex items-center flex-wrap gap-1.5">
-                            <span className="text-sm">
-                                {item.scope === 'personal' ? 'Personal' : 'Group'}
-                            </span>
-                            <IonText className='text-xs text-neutral-400'>&bull;</IonText>
-                            {item.scope === 'group' && <span className="text-sm">{item.member_count} members</span>}
-
-                            <IonText className='text-xs text-neutral-400'>&bull;</IonText>
-                            <span className="text-sm">{item.total_note_count} notes</span>
-
-                            {item?.today_note_count != 0 && (
-                                <>
-                                    <IonText className='text-xs text-neutral-400'>&bull;</IonText>
-                                    <span className="text-sm text-green-700">{item.today_note_count} today's</span>
-                                </>
-                            )}
-                        </div>
-                    </IonCardSubtitle> */}
                 </div>
 
                 <div className="ml-auto">
@@ -57,11 +38,10 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                                     <IonText className="text-sm min-w-6">
                                         {item.scope === 'personal' ? 'Personal' : 'Group'}
                                     </IonText>
-                                    {item.scope === 'group' && (
-                                        <div className="ml-auto">
-                                            {item.member_count != 0 &&
-                                                <IonText className="text-neutral-500 text-xs font-semibold">{item.member_count} members</IonText>
-                                            }
+                                    {item.scope === 'group' && item.member_count != 0 && (
+                                        <div className="ml-auto flex items-center gap-2">
+                                            <IonIcon icon={people} className='text-base text-neutral-400'></IonIcon>
+                                            <IonText className="text-neutral-600 text-xs font-semibold">{item.member_count}</IonText>
                                         </div>
                                     )}
                                 </div>

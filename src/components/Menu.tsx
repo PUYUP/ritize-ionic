@@ -10,7 +10,7 @@ import {
     IonNote,
 } from '@ionic/react';
 
-import { briefcaseOutline, homeOutline, logOutOutline, peopleOutline, settingsOutline } from 'ionicons/icons';
+import { briefcaseOutline, homeOutline, logOutOutline, peopleOutline, schoolOutline, settingsOutline } from 'ionicons/icons';
 import './Menu.css';
 import { useLocation } from 'react-router';
 import { useAuth } from '../utils/authContext';
@@ -32,10 +32,10 @@ const appPages: AppPage[] = [
         mdIcon: homeOutline
     },
     {
-        title: 'Workspaces',
+        title: 'Classes',
         url: '/dashboard/workspace',
-        iosIcon: briefcaseOutline,
-        mdIcon: briefcaseOutline
+        iosIcon: schoolOutline,
+        mdIcon: schoolOutline
     },
     // {
     //     title: 'Profile',

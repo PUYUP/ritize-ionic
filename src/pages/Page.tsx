@@ -15,8 +15,9 @@ const ArrowDiagram: React.FC = () => {
       const wm = document.getElementById('wrapper-materials');
       const wd = document.getElementById('wrapper-digests');
       const wpdf = document.getElementById('wrapper-pdf');
+      const wcb = document.getElementById('wrapper-chatbot');
 
-      if (container && wn && wp && wm && wd && wpdf) {
+      if (container && wn && wp && wm && wd && wpdf && wcb) {
         const cRect = container.getBoundingClientRect();
 
         const getCenter = (el: HTMLElement) => {
@@ -32,16 +33,19 @@ const ArrowDiagram: React.FC = () => {
         const m = getCenter(wm);
         const d = getCenter(wd);
         const pdf = getCenter(wpdf);
+        const cb = getCenter(wcb);
 
         setLines([
           // Notes to Materials
-          { startX: n.x, startY: n.y + 25, endX: m.x - 25, endY: m.y - 35 },
+          { startX: n.x, startY: n.y + 5, endX: m.x - 25, endY: m.y - 35 },
           // Papers to Materials
           { startX: p.x, startY: p.y + 25, endX: m.x + 25, endY: m.y - 35 },
           // Materials to PDF
           { startX: m.x - 25, startY: m.y + 25, endX: pdf.x, endY: pdf.y - 50 },
           // Materials to Digests
-          { startX: m.x + 25, startY: m.y + 25, endX: d.x, endY: d.y - 30 }
+          { startX: m.x + 25, startY: m.y + 25, endX: d.x, endY: d.y - 30 },
+          // Chatbot to Materials
+          { startX: cb.x, startY: cb.y - 25, endX: m.x, endY: m.y + 35 }
         ]);
       }
     };
@@ -58,17 +62,23 @@ const ArrowDiagram: React.FC = () => {
           <polygon points="0 0, 6 3, 0 6" fill="#cbd5e1" />
         </marker>
       </defs>
-      {lines.map((line, i) => (
-        <path
-          key={i}
-          d={`M ${line.startX} ${line.startY} C ${line.startX} ${line.startY + 40}, ${line.endX} ${line.endY - 40}, ${line.endX} ${line.endY}`}
-          stroke="#cbd5e1"
-          strokeWidth="2"
-          fill="none"
-          strokeDasharray="5 5"
-          markerEnd="url(#arrowhead)"
-        />
-      ))}
+      {lines.map((line, i) => {
+        const isUpward = line.startY > line.endY;
+        const c1y = isUpward ? line.startY - 40 : line.startY + 40;
+        const c2y = isUpward ? line.endY + 40 : line.endY - 40;
+
+        return (
+          <path
+            key={i}
+            d={`M ${line.startX} ${line.startY} C ${line.startX} ${c1y}, ${line.endX} ${c2y}, ${line.endX} ${line.endY}`}
+            stroke="#cbd5e1"
+            strokeWidth="2"
+            fill="none"
+            strokeDasharray="5 5"
+            markerEnd="url(#arrowhead)"
+          />
+        );
+      })}
     </svg>
   );
 };
@@ -79,9 +89,9 @@ const ShortFeature: React.FC = () => {
       <ArrowDiagram />
       <div className='flex justify-between relative z-10'>
         <div id="wrapper-notes" className='block pl-[5%]'>
-          <div id="notes" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[160px] flex items-center gap-2 bg-white'>
+          <div id="notes" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-1 w-[140px] flex items-center gap-0 bg-white'>
             <IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/paper.png'></IonImg>
-            <IonText className='text-sm leading-4'>Your Notes Collection</IonText>
+            <IonText className='text-sm leading-4'>Your Notes</IonText>
           </div>
         </div>
 
@@ -93,9 +103,9 @@ const ShortFeature: React.FC = () => {
         </div>
       </div>
 
-      <div className='flex justify-center pt-12 pr-[20%] relative z-10'>
+      <div className='flex justify-center pt-6 pr-[20%] relative z-10'>
         <div id="wrapper-materials" className='block'>
-          <div id="materials" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[220px] flex items-center gap-2 bg-white relative' style={{ animationDelay: '2s' }}>
+          <div id="materials" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[220px] flex items-center gap-2 bg-white relative' style={{ animationDelay: '2s' }}>
             <IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/learning-material.png'></IonImg>
             <IonText className='text-sm leading-4'>
               <strong>AI Enhanced</strong> Learning Material — <i>while you sleep.</i>
@@ -105,7 +115,7 @@ const ShortFeature: React.FC = () => {
         </div>
       </div>
 
-      <div className='flex justify-between gap-6 pt-12 pl-[0%] relative z-10'>
+      <div className='flex justify-between gap-6 pt-6 pl-[0%] relative z-10'>
         <div id="wrapper-pdf" className='block'>
           <div id="pdf" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[120px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.5s' }}>
             <IonImg className='w-auto h-5 mx-auto flex-none' src='/icons/pdf-file-format.png'></IonImg>
@@ -117,6 +127,15 @@ const ShortFeature: React.FC = () => {
           <div id="digests" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[120px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.75s' }}>
             <IonImg className='w-auto h-8 mx-auto flex-none' src='/icons/explaination.png'></IonImg>
             <IonText className='text-sm leading-4'>Weekly Digests</IonText>
+          </div>
+        </div>
+      </div>
+
+      <div className='flex justify-between gap-6 pt-0 pl-[20%] relative z-10 -mt-10'>
+        <div id="wrapper-chatbot" className='block mt-8'>
+          <div id="chatbot" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[140px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.75s' }}>
+            <IonImg className='w-auto h-8 mx-auto flex-none' src='/icons/ai-language-model.png'></IonImg>
+            <IonText className='text-sm leading-4'>Chat with Own Notes</IonText>
           </div>
         </div>
       </div>

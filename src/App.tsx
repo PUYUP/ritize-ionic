@@ -39,16 +39,20 @@ setupIonicReact({ mode: "md", animated: false });
 const AppLayout: React.FC = () => {
 	const location = useLocation();
 
-	// Daftar path di mana menu harus disembunyikan
+	// Daftar path di mana menu harus disembunyikan sepenuhnya
 	const hideMenuPaths = ['/', '/oauth-google', '/oauth-email', '/register', '/login'];
-
-	// Cek apakah pathname saat ini ada di dalam daftar hideMenuPaths
 	const hideMenu = hideMenuPaths.includes(location.pathname);
-	const hideOnCanvas = location.pathname == '/dashboard/editor/canvas';
+
+	// Daftar path di mana efek SplitPane (sidebar selalu terlihat di layar besar) harus dimatikan
+	const disableSplitPanePaths = [
+		'/dashboard/editor/canvas',
+		'/dashboard/editor/richtext'
+	]; // Tambahkan path lain di sini
+	const disableSplitPane = hideMenu || disableSplitPanePaths.includes(location.pathname);
 
 	return (
-		// Matikan efek SplitPane (when={false}) jika hideMenu bernilai true
-		<IonSplitPane contentId="main" when={hideMenu ? false : (hideOnCanvas ? false : 'md')}>
+		// Matikan efek SplitPane (when={false}) jika disableSplitPane bernilai true
+		<IonSplitPane contentId="main" when={disableSplitPane ? false : 'md'}>
 			{!hideMenu && <Menu />}
 			<IonRouterOutlet id="main">
 				{mainRoutes.map((route) => (

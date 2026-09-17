@@ -7,8 +7,8 @@ android {
         applicationId "com.ritize.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 10000 // 2 digit conversion: 10000 = 1.0.0, 10100 = 1.1.0, 11000 = 1.10.0, etc
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

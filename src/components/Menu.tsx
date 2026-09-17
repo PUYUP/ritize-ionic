@@ -10,7 +10,7 @@ import {
     IonNote,
 } from '@ionic/react';
 
-import { briefcaseOutline, homeOutline, logOutOutline, peopleOutline, schoolOutline, settingsOutline } from 'ionicons/icons';
+import { briefcaseOutline, homeOutline, logOutOutline, peopleOutline, schoolOutline, settingsOutline, skullOutline } from 'ionicons/icons';
 import './Menu.css';
 import { useLocation } from 'react-router';
 import { useAuth } from '../utils/authContext';
@@ -36,6 +36,12 @@ const appPages: AppPage[] = [
         url: '/dashboard/workspace',
         iosIcon: schoolOutline,
         mdIcon: schoolOutline
+    },
+    {
+        title: 'Delete Account',
+        url: '/dashboard/account-deletion',
+        iosIcon: skullOutline,
+        mdIcon: skullOutline
     },
     // {
     //     title: 'Profile',

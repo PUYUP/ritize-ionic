@@ -171,7 +171,7 @@ const LoginPage: React.FC = () => {
                             type="submit"
                             expand="block"
                             className="mt-6"
-                            disabled={isLoading || !isValid}
+                            disabled={isLoading}
                             mode='ios'
                             shape='round'
                         >

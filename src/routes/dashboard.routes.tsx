@@ -11,6 +11,7 @@ import FilesEditorPage from "../pages/dashboard/editor/files/Page";
 import NotesPage from "../pages/dashboard/notes/Page";
 import MaterialsPage from "../pages/dashboard/materials/Page";
 import DigestsPage from "../pages/dashboard/digests/Page";
+import AccountDeletionPage from "../pages/dashboard/account-deletion/Page";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -26,4 +27,5 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/notes", element: <NotesPage /> },
     { path: "/dashboard/materials", element: <MaterialsPage /> },
     { path: "/dashboard/digests", element: <DigestsPage /> },
+    { path: "/dashboard/account-deletion", element: <AccountDeletionPage /> },
 ];

@@ -74,8 +74,8 @@ const HomePage: React.FC = () => {
                     </div>
                     <StartNote /> */}
 
-                    <div className='text-lg mb-4 text-neutral-800'>
-                        <IonText>Today's Your Class Stats</IonText>
+                    <div className='text-base mb-4 text-neutral-600'>
+                        <IonText className='albert-font'>Class Activities</IonText>
                     </div>
                     <WorkspaceStats
                         onSetActiveTab={gotoPage}
@@ -96,9 +96,9 @@ const HomePage: React.FC = () => {
                     />
                 </div> */}
 
-                <div className='block ion-padding-top ion-padding-bottom'>
+                <div className='block pt-3 ion-padding-bottom'>
                     <div className='block mb-3 text-lg flex items-center justify-between ion-padding-start ion-padding-end'>
-                        <IonText>My Classes</IonText>
+                        <IonText className='text-base albert-font text-neutral-600'>My Classes</IonText>
                         <div className='ml-auto'>
                             <IonButton fill="outline" size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
                                 <IonIcon icon={add} slot='icon-only' className='text-xl' />

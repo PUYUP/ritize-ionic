@@ -208,9 +208,9 @@ const DigestList: React.FC<Props> = ({ workspaceId }) => {
                 <div className='grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-4 xl:gap-5'>
                     {groupedDigests.map(({ dateKey, digests }) => (
                         <div key={dateKey} className='block flex flex-col w-full gap-4'>
-                            <div className='block ion-padding-start -mb-2'>
+                            <div className='block -mb-2'>
                                 <IonText className='font-semibold text-orange-600'>
-                                    <h3 className="!text-lg !my-0">
+                                    <h3 className="!text-base !my-0">
                                         {formatDateHeader(dateKey)}
                                     </h3>
                                 </IonText>

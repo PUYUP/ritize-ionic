@@ -5,7 +5,8 @@ http://ionicframework.com/docs/theming/ */
 h1,
 h2,
 h3,
-ion-title {
+ion-title,
+.albert-font {
     font-family: "Albert Sans", sans-serif;
     font-optical-sizing: auto;
     font-weight: 700;

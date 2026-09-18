@@ -166,15 +166,15 @@ const WorkspaceDetailPage: React.FC = () => {
                     </div>
 
                     <div className='ion-padding !pt-0'>
-                        <div className='block mb-3 text-lg'>
-                            <IonText>Start new notes</IonText>
+                        <div className='block mb-3 text-base text-neutral-600'>
+                            <IonText className='albert-font'>Start new notes</IonText>
                         </div>
                         <StartNote workspace={{ id: id, languageCode: workspace.language_code || 'en' }} />
                     </div>
 
-                    <div className='ion-padding'>
-                        <div className='block mb-3 text-lg'>
-                            <IonText>Today's in Class</IonText>
+                    <div className='ion-padding !pt-2'>
+                        <div className='block mb-3 text-base text-neutral-600'>
+                            <IonText className='albert-font'>Today's in Class</IonText>
                         </div>
                         <WorkspaceStats
                             isTab={true}
@@ -187,9 +187,9 @@ const WorkspaceDetailPage: React.FC = () => {
                     </div>
 
                     {id && (
-                        <div className='block'>
-                            <div className='bg-neutral-200 block mb-0 text-lg ion-padding-start ion-padding-end !py-2 flex items-center justify-center'>
-                                <IonText><u>{activeTabLabel}</u> in Class</IonText>
+                        <div className='block pt-3'>
+                            <div className='text-lg ion-padding-start ion-padding-end flex items-center justify-center'>
+                                <IonText className='albert-font text-base text-neutral-600'><u>{activeTabLabel}</u> in Class</IonText>
                                 <div className='ml-auto flex items-center'>
                                     <IonButton shape='round' color="light" size="small">
                                         <IonIcon icon={filterOutline} slot='icon-only' />

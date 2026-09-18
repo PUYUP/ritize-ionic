@@ -231,7 +231,7 @@ const NoteItem: React.FC<{
                             </Link>
                         )}
 
-                        {item.status === 'published' && (
+                        {(item.status === 'published' && item.pages_status == 'published') && (
                             <div className='block mt-auto border-t border-neutral-200'>
                                 <div className='py-3'>
                                     <div className='ion-padding-start mb-2'>
@@ -357,9 +357,9 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
             <div id="notelist" className='flex flex-col gap-4 notes-list ion-padding'>
                 {groupedNotes.map(({ dateKey, notes }) => (
                     <div key={dateKey} className='block flex flex-col w-full gap-4'>
-                        <div className='block ion-padding-start -mb-2'>
+                        <div className='block -mb-2'>
                             <IonText className='font-semibold text-orange-600'>
-                                <h3 className='!text-lg !my-0'>
+                                <h3 className='!text-base !my-0'>
                                     {formatDateHeader(dateKey)}
                                 </h3>
                             </IonText>

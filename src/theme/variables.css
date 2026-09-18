@@ -2,6 +2,16 @@
 http://ionicframework.com/docs/theming/ */
 @import "tailwindcss";
 
+h1,
+h2,
+h3,
+ion-title {
+    font-family: "Albert Sans", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-style: normal;
+}
+
 .ion-no-background {
     --background: none;
 }

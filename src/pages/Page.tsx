@@ -91,14 +91,14 @@ const ShortFeature: React.FC = () => {
         <div id="wrapper-notes" className='block pl-[5%]'>
           <div id="notes" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-1 w-[140px] flex items-center gap-0 bg-white'>
             <IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/paper.png'></IonImg>
-            <IonText className='text-sm leading-4'>Your Notes</IonText>
+            <IonText className='text-sm leading-4 albert-font !font-light'>Your Notes</IonText>
           </div>
         </div>
 
         <div id="wrapper-papers" className='block pt-6'>
           <div id="papers" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[130px] flex items-center gap-2 bg-white' style={{ animationDelay: '1s' }}>
             <IonImg className='w-auto h-7 mx-auto flex-none' src='/icons/research.png'></IonImg>
-            <IonText className='text-sm leading-4'>Research Papers</IonText>
+            <IonText className='text-sm leading-4 albert-font !font-light'>Research Papers</IonText>
           </div>
         </div>
       </div>
@@ -107,7 +107,7 @@ const ShortFeature: React.FC = () => {
         <div id="wrapper-materials" className='block'>
           <div id="materials" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[220px] flex items-center gap-2 bg-white relative' style={{ animationDelay: '2s' }}>
             <IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/learning-material.png'></IonImg>
-            <IonText className='text-sm leading-4'>
+            <IonText className='text-sm leading-4 albert-font !font-light'>
               <strong>AI Enhanced</strong> Learning Material — <i>while you sleep.</i>
             </IonText>
             <IonImg src={'/icons/sleeping.png'} className='absolute -top-2 -right-2 w-7 h-7'></IonImg>
@@ -119,14 +119,14 @@ const ShortFeature: React.FC = () => {
         <div id="wrapper-pdf" className='block'>
           <div id="pdf" className='featbox rounded-full border border-neutral-100 shadow-lg px-4 py-3 w-[120px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.5s' }}>
             <IonImg className='w-auto h-5 mx-auto flex-none' src='/icons/pdf-file-format.png'></IonImg>
-            <IonText className='text-sm leading-4'>PDF File</IonText>
+            <IonText className='text-sm leading-4 albert-font !font-light'>PDF File</IonText>
           </div>
         </div>
 
         <div id="wrapper-digests" className='block mt-8'>
           <div id="digests" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[120px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.75s' }}>
             <IonImg className='w-auto h-8 mx-auto flex-none' src='/icons/explaination.png'></IonImg>
-            <IonText className='text-sm leading-4'>Weekly Digests</IonText>
+            <IonText className='text-sm leading-4 albert-font !font-light'>Weekly Digests</IonText>
           </div>
         </div>
       </div>
@@ -135,7 +135,7 @@ const ShortFeature: React.FC = () => {
         <div id="wrapper-chatbot" className='block mt-8'>
           <div id="chatbot" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[140px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.75s' }}>
             <IonImg className='w-auto h-8 mx-auto flex-none' src='/icons/ai-language-model.png'></IonImg>
-            <IonText className='text-sm leading-4'>Chat with Own Notes</IonText>
+            <IonText className='text-sm leading-4 albert-font !font-light'>Chat with Own Notes</IonText>
           </div>
         </div>
       </div>

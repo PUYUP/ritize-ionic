@@ -137,9 +137,9 @@ const WorkspaceDetailPage: React.FC = () => {
                     <div className='ion-padding'>
                         <div className='flex items-start'>
                             <div className='block ion-padding-end'>
-                                <div className='block mb-1'>
-                                    <IonText className='text-lg font-semibold leading-4'>{workspace.title || 'Class Detail'}</IonText>
-                                </div>
+                                <h1 className='block mb-1 !mt-0 !leading-3'>
+                                    <IonText className='text-xl'>{workspace.title || 'Class Detail'}</IonText>
+                                </h1>
 
                                 <div className='flex items-center gap-2 text-neutral-700'>
                                     <div className='flex gap-2 text-sm items-center'>

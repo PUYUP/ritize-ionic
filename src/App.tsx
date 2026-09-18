@@ -92,7 +92,6 @@ const App: React.FC = () => {
 				google: {
 					webClientId: '1036154501218-uonc708al3gm9bpr84i58ib3ojfon6sv.apps.googleusercontent.com',
 					iOSClientId: '1036154501218-7q37t2sk7uboql5tpfko5p1eqiis1c22.apps.googleusercontent.com',
-					iOSServerClientId: '1036154501218-uonc708al3gm9bpr84i58ib3ojfon6sv.apps.googleusercontent.com',
 					mode: 'online',
 				}
 			});

@@ -258,16 +258,17 @@ const WorkspaceMembersPage: React.FC = () => {
                                         <div className="flex w-full">
                                             <div className="flex-1">
                                                 <IonCardSubtitle className="mb-1">
-                                                    <div className="flex items-center flex-wrap gap-2">
-                                                        <span className={`text-sm font-semibold ${member?.role === 'owner' ? 'text-blue-600' : member?.role === 'admin' ? 'text-purple-600' : 'text-orange-600'} leading-3`}>{member?.role}</span>
+                                                    <div className="line-clamp-1">
+                                                        <span className={`inline-block text-sm font-semibold ${member?.role === 'owner' ? 'text-blue-600' : member?.role === 'admin' ? 'text-purple-600' : 'text-orange-600'}`}>{member?.role}</span>
+                                                        <IonText className='inline-block text-xs text-neutral-300 mx-1.5'>&bull;</IonText>
+                                                        <span className="inline-block text-sm">{member?.user?.email}</span>
                                                     </div>
                                                 </IonCardSubtitle>
-                                                <IonCardTitle className="text-lg">{member?.user?.name}</IonCardTitle>
-                                                <IonCardSubtitle className="mt-0">
-                                                    <div className="flex items-center flex-wrap gap-2">
-                                                        <span className="text-sm">{member?.user?.email}</span>
-                                                    </div>
-                                                </IonCardSubtitle>
+                                                <IonCardTitle className="text-lg pt-0.5">
+                                                    <IonText>
+                                                        <h3 className="!my-0 !text-lg !leading-5 !font-semibold">{member?.user?.name}</h3>
+                                                    </IonText>
+                                                </IonCardTitle>
                                             </div>
 
                                             <div className="ml-auto flex items-center">

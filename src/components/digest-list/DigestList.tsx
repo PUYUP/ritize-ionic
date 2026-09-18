@@ -210,7 +210,9 @@ const DigestList: React.FC<Props> = ({ workspaceId }) => {
                         <div key={dateKey} className='block flex flex-col w-full gap-4'>
                             <div className='block ion-padding-start -mb-2'>
                                 <IonText className='font-semibold text-orange-600'>
-                                    {formatDateHeader(dateKey)}
+                                    <h3 className="!text-lg !my-0">
+                                        {formatDateHeader(dateKey)}
+                                    </h3>
                                 </IonText>
                             </div>
 

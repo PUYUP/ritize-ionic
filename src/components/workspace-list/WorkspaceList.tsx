@@ -16,8 +16,12 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
             className="rounded-xl"
         >
             <IonCardHeader className="ion-padding flex flex-row">
-                <div className="flex-1">
-                    <IonCardTitle className="text-lg">{item.title}</IonCardTitle>
+                <div className="flex-1 pr-2">
+                    <IonCardTitle className="text-lg">
+                        <IonText className="font-semibold">
+                            <h3 className="!mt-0 !mb-0 !text-lg !font-semibold !leading-6">{item.title}</h3>
+                        </IonText>
+                    </IonCardTitle>
                 </div>
 
                 <div className="ml-auto">

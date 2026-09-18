@@ -200,7 +200,7 @@ const NoteItem: React.FC<{
                             </Link>
                         )}
 
-                        {item.content_type == 'file' && (
+                        {(item.content_type == 'file' && item.page_count > 0) && (
                             <Link to={linkTo}>
                                 <div className='ion-padding-start ion-padding-bottom ion-padding-end'>
                                     <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
@@ -359,7 +359,9 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                     <div key={dateKey} className='block flex flex-col w-full gap-4'>
                         <div className='block ion-padding-start -mb-2'>
                             <IonText className='font-semibold text-orange-600'>
-                                {formatDateHeader(dateKey)}
+                                <h3 className='!text-lg !my-0'>
+                                    {formatDateHeader(dateKey)}
+                                </h3>
                             </IonText>
                         </div>
 

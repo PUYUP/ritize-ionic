@@ -76,7 +76,11 @@ const MaterialList: React.FC<Props> = ({ workspaceId, insideWorkspaceDetail = fa
                                     <>
                                         <div className="flex-1">
                                             <IonCardTitle className='text-lg'>
-                                                {format(new Date(item.generated_date), 'dd MMMM yyyy')}
+                                                <IonText>
+                                                    <h3 className='!text-lg !font-semibold !my-0'>
+                                                        {format(new Date(item.generated_date), 'dd MMMM yyyy')}
+                                                    </h3>
+                                                </IonText>
                                             </IonCardTitle>
 
                                             <IonCardSubtitle className="mt-0">

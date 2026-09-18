@@ -4,7 +4,7 @@ import './Page.css';
 import DigestList from '../../../components/digest-list/DigestList';
 
 const DigestsPage: React.FC = () => {
-    const { name = 'All Digests' } = useParams<{ name: string; }>();
+    const { name = 'Weekly Digests' } = useParams<{ name: string; }>();
 
     return (
         <IonPage>

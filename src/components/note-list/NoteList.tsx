@@ -140,7 +140,7 @@ const NoteItem: React.FC<{
                                         <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'HH:mm')}</IonText>
                                     </div>
 
-                                    {item.workspace?.scope === 'group' && <IonText color="dark font-semibold text-sm block mt-1">{item.user.name}</IonText>}
+                                    {item.workspace?.scope === 'group' && <IonText color="dark font-semibold text-base block mt-1 albert-font">{item.user.name}</IonText>}
                                 </Link>
 
                                 <div className='ml-auto'>

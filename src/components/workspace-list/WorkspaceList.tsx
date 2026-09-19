@@ -32,14 +32,14 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
             </IonCardHeader>
 
             <IonCardContent className="ion-padding !px-4 !pt-0 -mt-2">
-                <table className="table text-sm w-full">
+                <table className="table text-xs w-full">
                     <tbody>
                         <tr className="border-b border-neutral-200">
                             <td className="w-26 !py-0.5">Type</td>
                             <td className="flex gap-1">
                                 :
                                 <div className="flex gap-2 items-center w-full">
-                                    <IonText className="text-sm min-w-6">
+                                    <IonText className="min-w-6">
                                         {item.scope === 'personal' ? 'Personal' : 'Group'}
                                     </IonText>
                                     {item.scope === 'group' && item.member_count != 0 && (
@@ -57,7 +57,7 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                             <td className="flex gap-1">
                                 :
                                 <div className="flex gap-2 items-center w-full">
-                                    <IonText className="text-sm min-w-6">{item.total_note_count}</IonText>
+                                    <IonText className="min-w-6">{item.total_note_count}</IonText>
                                     <div className="ml-auto">
                                         {item.today_note_count != 0 &&
                                             <IonText className="text-green-500 text-xs font-semibold">{item.today_note_count} today</IonText>
@@ -71,7 +71,7 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                             <td className="flex gap-1">
                                 :
                                 <div className="flex gap-2 items-center w-full">
-                                    <IonText className="text-sm min-w-6">{item.total_material_count}</IonText>
+                                    <IonText className="min-w-6">{item.total_material_count}</IonText>
                                     <div className="ml-auto">
                                         {item.today_material_count != 0 &&
                                             <IonText className="text-green-500 text-xs font-semibold">{item.today_material_count} today</IonText>

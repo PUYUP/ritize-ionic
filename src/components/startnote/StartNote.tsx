@@ -24,7 +24,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                             </div>
 
                             <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700">Texting</IonText>
+                                <IonText className="font-semibold text-sm text-neutral-700 albert-font">Texting</IonText>
                             </div>
 
                             <div className='block leading-3'>
@@ -44,7 +44,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                             </div>
 
                             <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700">Canvas</IonText>
+                                <IonText className="font-semibold text-sm text-neutral-700 albert-font">Canvas</IonText>
                             </div>
 
                             <div className='block leading-2'>
@@ -82,7 +82,7 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                             </div>
 
                             <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700">Upload</IonText>
+                                <IonText className="font-semibold text-sm text-neutral-700 albert-font">Upload</IonText>
                             </div>
 
                             <div className='block leading-3 line-clamp-1'>

@@ -155,7 +155,7 @@ export const workspaceAPI = createApi({
                         , members:workspace_members!inner(*)
                     `)
                     .in('members.user_id', [user.id])
-                    .order('created_at', { ascending: false })
+                    .order('last_note_update', { ascending: false })
                     .range(from, to);
 
                 if (error) return { error: { message: error.message ?? 'Failed to fetch workspaces' } };

@@ -2,7 +2,7 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getUser } from '../utils/authState';
 import { supabase } from '../lib/supabase';
 
-export type DigestTypes = {
+export type DigestVisibleThinkingTypes = {
     readonly id: string;
     readonly workspace_id: string;
 
@@ -12,24 +12,28 @@ export type DigestTypes = {
     attributes: any;
 }
 
-export const digestAPI = createApi({
-    reducerPath: 'digestAPI',
+export const digestVisibleThinkingAPI = createApi({
+    reducerPath: 'digestVisibleThinkingAPI',
     baseQuery: fakeBaseQuery<{ message: string }>(),
-    tagTypes: ['Digest'],
+    tagTypes: ['DigestVisibleThinking'],
     endpoints: (builder) => ({
-        // get digests
-        getDigests: builder.query<{ results: any[], count: number }, { workspace_id?: string; page?: number, pageSize?: number }>({
+        // get digest visible thinkings
+        getDigestVisibleThinkings: builder.query<{ results: any[], count: number }, { workspace_id?: string; page?: number, pageSize?: number }>({
             queryFn: async ({ workspace_id, page = 1, pageSize = 20 }) => {
                 const user = await getUser();
-                if (!user?.id) return { error: { message: "[Get Digests] User not found" } };
+                if (!user?.id) return { error: { message: "[Get Digest Visible Thinkings] User not found" } };
 
                 const from = (page - 1) * pageSize;
                 const to = from + pageSize - 1;
 
                 let query = supabase
-                    .from('digests')
+                    .from('digest_visible_thinkings')
                     .select(`
-                        *
+                        id
+                        , workspace_id
+                        , content
+                        , for_date
+                        , category
                         , workspace:workspace_id!inner(
                             title
                             , workspace_members!inner(user_id)
@@ -40,7 +44,7 @@ export const digestAPI = createApi({
                 if (workspace_id) {
                     query = query.eq("workspace_id", workspace_id);
                 } else {
-                    // Dapatkan semua notes di mana current user adalah member dari workspace notes tersebut
+                    // Dapatkan semua digest visible thinkings di mana current user adalah member dari workspace digest visible thinkings tersebut
                     query = query.eq("workspace.workspace_members.user_id", user.id);
                 }
 
@@ -87,14 +91,14 @@ export const digestAPI = createApi({
             // ----------------------------------------
 
             providesTags: (result, error, { workspace_id }) => [
-                { type: 'Digest', id: workspace_id },
-                { type: 'Digest', id: 'LIST' },
+                { type: 'DigestVisibleThinking', id: workspace_id },
+                { type: 'DigestVisibleThinking', id: 'LIST' },
             ],
         }),
     }),
 });
 
 export const {
-    useGetDigestsQuery,
-    useLazyGetDigestsQuery,
-} = digestAPI
+    useGetDigestVisibleThinkingsQuery,
+    useLazyGetDigestVisibleThinkingsQuery,
+} = digestVisibleThinkingAPI

@@ -1,7 +1,7 @@
-import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonText, IonTitle, IonToolbar } from '@ionic/react';
+import { IonBackButton, IonButtons, IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Page.css';
-import DigestList from '../../../components/digest-list/DigestList';
+import DigestVisibleThinkingList from '../../../components/digest-visible-thinking/DigestVisibleThinkingList';
 
 const DigestsPage: React.FC = () => {
     const { name = 'Weekly Digests' } = useParams<{ name: string; }>();
@@ -9,7 +9,7 @@ const DigestsPage: React.FC = () => {
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
-                <IonToolbar>
+                <IonToolbar color={'light'} className='borderless'>
                     <IonButtons slot="start" className="ion-padding-start">
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
@@ -20,7 +20,7 @@ const DigestsPage: React.FC = () => {
             </IonHeader>
 
             <IonContent color={'light'} className='ion-padding'>
-                <DigestList />
+                <DigestVisibleThinkingList />
             </IonContent>
         </IonPage>
     );

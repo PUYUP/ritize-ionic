@@ -85,13 +85,13 @@ const RegisterPage: React.FC = () => {
     return (
         <IonPage>
             <IonHeader className='ion-no-border'>
-                <IonToolbar>
+                <IonToolbar color={'light'} className='borderless'>
                     <IonButtons slot='start' className='ion-padding-start'>
                         <IonBackButton defaultHref='/'></IonBackButton>
                     </IonButtons>
                 </IonToolbar>
             </IonHeader>
-            <IonContent className="ion-padding">
+            <IonContent color="light" className="ion-padding">
                 <div className="flex flex-col justify-center h-full max-w-md mx-auto p-4">
                     <div className="text-center mb-8">
                         <h3 className='block ion-text-center !mb-2'>

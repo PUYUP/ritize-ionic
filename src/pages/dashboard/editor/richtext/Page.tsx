@@ -707,29 +707,6 @@ const RichTextEditorPage: React.FC = () => {
     const handleSaveChanges = async () => {
         if (!selectedNoteRef?.current?.id) return;
 
-        // ambil semua pages yang ada di local db
-        // kumpulkan konten nya
-        const savedPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
-        const inserts = (savedPages ?? [])
-            .map((page: any) => {
-                // get content from ops
-                const decoder = new TextDecoder('utf-8');
-                const jsonString = decoder.decode(page.contentData);
-
-                if (!jsonString) return;
-
-                const json = JSON.parse(jsonString);
-                const pageContent = (json.ops ?? [])
-                    .map((op: any) => op.insert ?? "")
-                    .join("");
-
-                return pageContent;
-            })
-            .filter((content: string) => content.trim().length > 0);
-
-        // update lagi workspace_note content nya
-        const newContent = inserts.join("\n--------------------\n");
-
         // update page status menjadi published
         const updatedPages = pages.map(p => {
             return {
@@ -744,6 +721,7 @@ const RichTextEditorPage: React.FC = () => {
 
         // update note dari 'draft' ke 'publish'
         // tujuannya untuk start embedding
+        const newContent = pages.map((p) => p.contentText).join('\n');
         const res = await NotesRepository.updateNote({
             id: selectedNoteRef.current.id,
             status: 'published',

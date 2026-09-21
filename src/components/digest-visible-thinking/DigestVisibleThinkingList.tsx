@@ -1,12 +1,12 @@
 import { IonCard, IonCardContent, IonInfiniteScroll, IonInfiniteScrollContent, IonText } from '@ionic/react';
-import './DigestList.css';
+import './DigestVisibleThinkingList.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DigestTypes, useGetDigestsQuery } from '../../services/digest';
 import Swiper from 'swiper';
 import { FreeMode, Mousewheel, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/free-mode';
 import 'swiper/css/pagination';
+import { DigestVisibleThinkingTypes, useGetDigestVisibleThinkingsQuery } from '../../services/digest.visible.thinking';
 
 interface Props {
     workspaceId?: string;
@@ -30,9 +30,9 @@ const formatDateHeader = (dateKey: string): string => {
 
 interface DigestGroup {
     dateKey: string;
-    digests: DigestTypes[];
-    onShowOptions?: (item: DigestTypes) => void;
-    onRefreshPapers?: (item: DigestTypes) => void;
+    digests: DigestVisibleThinkingTypes[];
+    onShowOptions?: (item: DigestVisibleThinkingTypes) => void;
+    onRefreshPapers?: (item: DigestVisibleThinkingTypes) => void;
 }
 
 /**
@@ -40,8 +40,8 @@ interface DigestGroup {
  * The order of dates and digests within each group follows the original API order
  * (not re-sorted), to stay consistent with pagination/infinite scroll.
  */
-const groupDigestsByDate = (digests: DigestTypes[]): DigestGroup[] => {
-    const map = new Map<string, DigestTypes[]>();
+const groupDigestsByDate = (digests: DigestVisibleThinkingTypes[]): DigestGroup[] => {
+    const map = new Map<string, DigestVisibleThinkingTypes[]>();
 
     for (const digest of digests) {
         const key = getDateKey(digest.for_date);
@@ -53,7 +53,7 @@ const groupDigestsByDate = (digests: DigestTypes[]): DigestGroup[] => {
 };
 
 const DigestItem: React.FC<{
-    item: DigestTypes,
+    item: DigestVisibleThinkingTypes,
     isLast: boolean,
     workspaceId?: string,
 }> = ({
@@ -78,7 +78,7 @@ const DigestItem: React.FC<{
     }
 
 const DigestItems: React.FC<{
-    digests: DigestTypes[],
+    digests: DigestVisibleThinkingTypes[],
     date: string,
 }> = ({
     digests,
@@ -109,6 +109,9 @@ const DigestItems: React.FC<{
                 pagination: {
                     el: '.swiper-pagination',
                     clickable: true,
+                    renderBullet: function (index, className) {
+                        return '<div class="' + className + '">' + (index + 1) + '</div>';
+                    },
                 },
             });
 
@@ -119,13 +122,9 @@ const DigestItems: React.FC<{
         }, []);
 
         return (
-            <div className='h-full overflow-hidden digest-swiper'>
+            <div className='h-full overflow-hidden digest-vt-swiper'>
                 <div ref={pagesSwiperElRef} className='swiper h-full relative'>
-                    <div className='absolute top-4 right-4 left-0 z-50'>
-                        <div className="swiper-pagination !static flex justify-end"></div>
-                    </div>
-
-                    <div id="pages-list" className='swiper-wrapper flex flex-row h-full'>
+                    <div id="pages-list" className='swiper-wrapper flex flex-row h-full pb-18'>
                         {digests.map((item, index, array) => {
                             const isLast = index === array.length - 1;
                             return (
@@ -138,17 +137,21 @@ const DigestItems: React.FC<{
                             )
                         })}
                     </div>
+
+                    <div className='absolute bottom-4 right-4 left-4 z-50'>
+                        <div className="swiper-pagination !static flex justify-center flex-wrap gap-2"></div>
+                    </div>
                 </div>
             </div>
         )
     }
 
-const DigestList: React.FC<Props> = ({ workspaceId }) => {
+const DigestVisibleThinkingList: React.FC<Props> = ({ workspaceId }) => {
     const [ionScrollEl, setIonScrollEl] = useState<HTMLIonInfiniteScrollElement | null>(null);
     const [page, setPage] = useState(1);
 
     // RTK Query
-    const { data, isLoading, isFetching, isSuccess, isError } = useGetDigestsQuery({
+    const { data, isLoading, isFetching, isSuccess, isError } = useGetDigestVisibleThinkingsQuery({
         workspace_id: workspaceId,
         page: page,
         pageSize: 20,
@@ -234,4 +237,4 @@ const DigestList: React.FC<Props> = ({ workspaceId }) => {
     )
 }
 
-export default DigestList;
+export default DigestVisibleThinkingList;

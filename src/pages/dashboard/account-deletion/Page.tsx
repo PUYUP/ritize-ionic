@@ -33,7 +33,7 @@ const AccountDeletionPage: React.FC = () => {
         setIsLoading(true);
         try {
             const { error } = await supabase.from('account_deletion_requests').insert([{ email: data.email }]);
-            
+
             if (error) {
                 present({
                     message: error.message,
@@ -57,7 +57,7 @@ const AccountDeletionPage: React.FC = () => {
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
-                <IonToolbar>
+                <IonToolbar color={'light'} className='borderless'>
                     {!isSubmitted && (
                         <IonButtons slot="start" className="ion-padding-start">
                             <IonBackButton defaultHref="/dashboard" />

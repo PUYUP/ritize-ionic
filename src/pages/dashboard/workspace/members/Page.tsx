@@ -229,7 +229,7 @@ const WorkspaceMembersPage: React.FC = () => {
     return (
         <IonPage>
             <IonHeader className='ion-no-border'>
-                <IonToolbar>
+                <IonToolbar color={'light'} className='borderless'>
                     <IonButtons slot="start" className="ion-padding-start">
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
@@ -303,7 +303,7 @@ const WorkspaceMembersPage: React.FC = () => {
 
             <IonModal ref={modal} isOpen={showAddMembersModal} onDidDismiss={(event) => onDidDismiss(event)}>
                 <IonHeader className="ion-no-border">
-                    <IonToolbar>
+                    <IonToolbar color={'light'} className='borderless'>
                         <IonButtons slot="start" className="ion-padding-start">
                             <IonButton className="!m-0" fill='clear' shape="round" onClick={() => modal.current?.dismiss()}>
                                 <IonIcon icon={close} />

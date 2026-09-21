@@ -721,7 +721,7 @@ const FilesEditorPage: React.FC = () => {
     return (
         <IonPage>
             <IonHeader className='ion-no-border'>
-                <IonToolbar>
+                <IonToolbar color={'light'} className='borderless'>
                     <IonButtons slot="start" className="ion-padding-start">
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
@@ -951,7 +951,7 @@ const FilesEditorPage: React.FC = () => {
                 className='rounded-2xl'
             >
                 <IonHeader className="ion-no-border">
-                    <IonToolbar>
+                    <IonToolbar color={'light'} className='borderless'>
                         <IonButton slot="end" onClick={() => setViewImage(null)} shape="round" color={'light'} className="ion-margin-end">
                             <IonIcon icon={closeOutline} slot="icon-only" />
                         </IonButton>

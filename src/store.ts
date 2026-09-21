@@ -4,6 +4,7 @@ import { workspaceAPI } from './services/workspace'
 import { workspaceMemberAPI } from './services/workspace.member'
 import { notesAPI } from './services/notes'
 import { digestAPI } from './services/digest'
+import { digestVisibleThinkingAPI } from './services/digest.visible.thinking'
 
 export const store = configureStore({
     reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
         [workspaceMemberAPI.reducerPath]: workspaceMemberAPI.reducer,
         [notesAPI.reducerPath]: notesAPI.reducer,
         [digestAPI.reducerPath]: digestAPI.reducer,
+        [digestVisibleThinkingAPI.reducerPath]: digestVisibleThinkingAPI.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(
@@ -19,7 +21,8 @@ export const store = configureStore({
             workspaceAPI.middleware,
             workspaceMemberAPI.middleware,
             notesAPI.middleware,
-            digestAPI.middleware
+            digestAPI.middleware,
+            digestVisibleThinkingAPI.middleware,
         ),
 })
 

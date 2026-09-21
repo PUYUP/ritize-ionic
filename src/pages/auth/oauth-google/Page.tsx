@@ -137,7 +137,7 @@ const OAuthGooglePage: React.FC = () => {
 
     return (
         <IonPage>
-            <IonContent fullscreen className='ion-padding'>
+            <IonContent color={'light'} fullscreen className='ion-padding'>
                 {status === Status.LOADING && (
                     <div className='flex h-full items-center justify-center'>
                         <div className='flex gap-4 items-center'>

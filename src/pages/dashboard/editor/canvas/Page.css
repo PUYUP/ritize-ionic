@@ -51,7 +51,3 @@
     min-width: 36px !important;
     min-height: 36px !important;
 }
-
-ion-toolbar::part(background) {
-    background: transparent;
-}

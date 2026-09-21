@@ -10,12 +10,13 @@ import {
     IonNote,
 } from '@ionic/react';
 
-import { briefcaseOutline, homeOutline, logOutOutline, peopleOutline, schoolOutline, settingsOutline, skullOutline } from 'ionicons/icons';
+import { briefcaseOutline, homeOutline, logOutOutline, medicalOutline, peopleOutline, schoolOutline, settingsOutline, skullOutline } from 'ionicons/icons';
 import './Menu.css';
 import { useLocation } from 'react-router';
 import { useAuth } from '../utils/authContext';
 import { useEffect, useState } from 'react';
 import { getUser } from '../utils/authState';
+import { Preferences } from '@capacitor/preferences';
 
 interface AppPage {
     url: string;
@@ -36,6 +37,12 @@ const appPages: AppPage[] = [
         url: '/dashboard/workspace',
         iosIcon: schoolOutline,
         mdIcon: schoolOutline
+    },
+    {
+        title: 'Notes Chatbot',
+        url: '/dashboard/chatbot',
+        iosIcon: medicalOutline,
+        mdIcon: medicalOutline,
     },
     {
         title: 'Delete Account',
@@ -70,6 +77,14 @@ const Menu: React.FC = () => {
         fetchUser();
     }, []);
 
+    const logoutHandler = async () => {
+        await logout();
+        // clear all cache from localforage
+        await Preferences.clear();
+
+        localStorage.removeItem('capgo_social_login_google_state');
+    }
+
     return (
         <IonMenu contentId="main" type="overlay" className='border-r border-neutral-200'>
             <IonContent>
@@ -89,7 +104,7 @@ const Menu: React.FC = () => {
                     })}
 
                     <IonMenuToggle key={'logout'} autoHide={false}>
-                        <IonItem onClick={async () => logout()} routerDirection="none" lines="none" detail={false}>
+                        <IonItem onClick={async () => logoutHandler()} routerDirection="none" lines="none" detail={false}>
                             <IonIcon aria-hidden="true" slot="start" ios={logOutOutline} md={logOutOutline} className='w-8`' color={'danger'} />
                             <IonLabel className='pl-4' color={'danger'}>Logout</IonLabel>
                         </IonItem>

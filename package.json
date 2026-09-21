@@ -18,6 +18,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.110",
     "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor/android": "8.5.0",
@@ -43,6 +44,7 @@
     "@supabase/supabase-js": "^2.112.4",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
+    "ai": "^7.0.107",
     "better-auth": "^1.7.2",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.4.0",
@@ -54,16 +56,19 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.86.0",
+    "react-markdown": "^10.1.0",
     "react-number-format": "^5.4.5",
     "react-redux": "^9.3.0",
     "react-router": "^6.30.0",
     "react-router-dom": "^6.30.0",
     "reflect-metadata": "^0.2.2",
+    "remark-gfm": "^4.0.1",
     "rxjs": "^7.8.2",
     "slugify": "^1.6.9",
     "swiper": "^14.1.0",
     "tailwindcss": "^4.3.3",
-    "typeorm": "^0.3.31"
+    "typeorm": "^0.3.31",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.0",

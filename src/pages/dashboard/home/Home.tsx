@@ -1,8 +1,8 @@
-import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonMenuButton, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
+import { IonButton, IonButtons, IonContent, IonFab, IonFooter, IonHeader, IonIcon, IonMenuButton, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Home.css';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
-import { add, arrowForwardOutline } from 'ionicons/icons';
+import { add, arrowForwardOutline, chatboxEllipsesSharp } from 'ionicons/icons';
 import { getGreeting } from '../../../utils/dayGreeting';
 import WorkspaceStats from '../../../components/workspace-stats/WorkspaceStats';
 import { useEffect, useState } from 'react';
@@ -49,7 +49,7 @@ const HomePage: React.FC = () => {
     return (
         <IonPage>
             <IonHeader className="ion-no-border home-header">
-                <IonToolbar className='bg-white'>
+                <IonToolbar color={'light'} className='borderless'>
                     <IonButtons slot="start">
                         <IonMenuButton />
                     </IonButtons>
@@ -137,6 +137,21 @@ const HomePage: React.FC = () => {
 
                 </div>
             </IonContent>
+
+            <IonFooter color='light' className='ion-no-border ion-padding'>
+                <div className='flex justify-end'>
+                    <IonButton
+                        color={'dark'}
+                        shape="round"
+                        mode='ios'
+                        className='flex items-center gap-2'
+                        routerLink={'/dashboard/chatbot'}
+                    >
+                        <IonIcon slot="start" className='mr-2' icon={chatboxEllipsesSharp} />
+                        <IonText>Ask Note</IonText>
+                    </IonButton>
+                </div>
+            </IonFooter>
         </IonPage>
     );
 };

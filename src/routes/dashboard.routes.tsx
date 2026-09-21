@@ -12,6 +12,7 @@ import NotesPage from "../pages/dashboard/notes/Page";
 import MaterialsPage from "../pages/dashboard/materials/Page";
 import DigestsPage from "../pages/dashboard/digests/Page";
 import AccountDeletionPage from "../pages/dashboard/account-deletion/Page";
+import ChatbotPage from "../pages/dashboard/chatbot/Page";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -28,4 +29,5 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/materials", element: <MaterialsPage /> },
     { path: "/dashboard/digests", element: <DigestsPage /> },
     { path: "/dashboard/account-deletion", element: <AccountDeletionPage /> },
+    { path: "/dashboard/chatbot", element: <ChatbotPage /> },
 ];

@@ -148,7 +148,7 @@ const Page: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent className='ion-padding' scrollY={true} fullscreen>
+      <IonContent color="light" className='ion-padding' scrollY={true} fullscreen>
         <div className='flex flex-col w-full h-full ion-padding-top'>
           <div className='block ion-tcenter mt-auto mb-2'>
             <ShortFeature />

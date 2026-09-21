@@ -34,8 +34,8 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
             <IonCardContent className="ion-padding !px-4 !pt-0 -mt-2">
                 <table className="table text-xs w-full">
                     <tbody>
-                        <tr className="border-b border-neutral-200">
-                            <td className="w-26 !py-0.5">Type</td>
+                        <tr>
+                            <td className="w-20 !py-0.5">Type</td>
                             <td className="flex gap-1">
                                 :
                                 <div className="flex gap-2 items-center w-full">
@@ -52,8 +52,8 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                             </td>
                         </tr>
 
-                        <tr className="border-b border-neutral-200">
-                            <td className="w-26 !py-0.5">Notes</td>
+                        <tr>
+                            <td className="w-20 !py-0.5">Notes</td>
                             <td className="flex gap-1">
                                 :
                                 <div className="flex gap-2 items-center w-full">
@@ -67,7 +67,7 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                             </td>
                         </tr>
                         <tr>
-                            <td className="w-26 !py-0.5">Materials</td>
+                            <td className="w-20 !py-0.5">Materials</td>
                             <td className="flex gap-1">
                                 :
                                 <div className="flex gap-2 items-center w-full">

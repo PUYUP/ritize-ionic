@@ -9,3 +9,8 @@ export const getUser = async () => {
     const { value } = await Preferences.get({ key: "ritize_user" });
     return value ? JSON.parse(value) : null;
 }
+
+export const getSession = async () => {
+    const { value } = await Preferences.get({ key: "ritize_session" });
+    return value ? JSON.parse(value) : null;
+}

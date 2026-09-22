@@ -1,0 +1,62 @@
+ion-item.select-workspace {
+    --background: #fff;
+    --color: #000;
+
+    --border-color: #efefef;
+    --border-style: solid;
+    --border-width: 1px;
+
+    --border-radius: 12px;
+    --padding-start: 14px;
+
+    --ripple-color: black;
+    --detail-icon-color: black;
+    --detail-icon-opacity: 1;
+    --detail-icon-font-size: 20px;
+
+    --padding-top: 10px;
+    --padding-bottom: 10px;
+}
+
+ion-item.select-date {
+    --padding-top: 10px;
+    --padding-bottom: 10px;
+}
+
+ion-item.select-workspace::part(native),
+.workspace-selector ion-item::part(native) {
+    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+.workspace-selector ion-item {
+    --background: #fff;
+    --color: #000;
+
+    --border-color: #efefef;
+    --border-style: solid;
+    --border-width: 1px;
+
+    --border-radius: 12px;
+    --padding-start: 14px;
+
+    --ripple-color: black;
+    --detail-icon-color: black;
+    --detail-icon-opacity: 1;
+    --detail-icon-font-size: 20px;
+
+    --min-height: 60px;
+}
+
+ion-textarea {
+    --border-radius: 16px !important;
+}
+
+ion-picker-column-option.option-active {
+    border-bottom: 2px dashed black;
+}
+
+ion-modal.select-date .ion-page {
+    justify-content: start;
+    background-color: #f4f5f8;
+}

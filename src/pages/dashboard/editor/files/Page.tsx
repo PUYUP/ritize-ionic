@@ -760,7 +760,7 @@ const FilesEditorPage: React.FC = () => {
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent ref={ionContentRef} className="ion-padding">
+            <IonContent ref={ionContentRef} className="ion-padding" color={'light'}>
                 {pages.length === 0 && (
                     <div className='flex flex-col items-center justify-center h-full ion-padding'>
                         <IonIcon icon={albumsOutline} className="text-4xl mb-2"></IonIcon>

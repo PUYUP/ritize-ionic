@@ -2,6 +2,24 @@
 http://ionicframework.com/docs/theming/ */
 @import "tailwindcss";
 
+:root {
+    --ion-color-white: #ffffff;
+    --ion-color-white-rgb: 255, 255, 255;
+    --ion-color-white-contrast: #000000;
+    --ion-color-white-contrast-rgb: 0, 0, 0;
+    --ion-color-white-shade: #e0e0e0;
+    --ion-color-white-tint: #ffffff;
+}
+
+.ion-color-white {
+    --ion-color-base: var(--ion-color-white);
+    --ion-color-base-rgb: var(--ion-color-white-rgb);
+    --ion-color-contrast: var(--ion-color-white-contrast);
+    --ion-color-contrast-rgb: var(--ion-color-white-contrast-rgb);
+    --ion-color-shade: var(--ion-color-white-shade);
+    --ion-color-tint: var(--ion-color-white-tint);
+}
+
 h1,
 h2,
 h3,
@@ -13,12 +31,18 @@ ion-title,
     font-style: normal;
 }
 
+.oswald-font {
+    font-family: "Oswald", sans-serif;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
 .ion-no-background {
     --background: none;
 }
 
 ion-toolbar {
-    --min-height: 48px !important;
+    /* --min-height: 48px !important; */
     --ion-padding: 12px;
 }
 
@@ -45,16 +69,17 @@ ion-card-content {
 }
 
 ion-back-button,
-ion-toolbar ion-button {
+ion-toolbar ion-button:not(.normal-button) {
     min-width: auto !important;
     min-height: auto !important;
 }
 
 ion-back-button::part(native),
 ion-toolbar ion-button:not(.normal-button)::part(native) {
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
     padding: 0;
+    background-color: #fff;
     box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
 }
 
@@ -67,6 +92,38 @@ ion-header.ion-no-border ion-toolbar:not(.borderless)::part(container) {
     border-bottom: 1px solid var(--color-neutral-200);
 }
 
+ion-header ion-toolbar:first-of-type {
+    padding-top: calc(var(--ion-safe-area-top, 0) + 4px);
+}
+
 .split-pane-visible ion-header.home-header {
     display: none !important;
+}
+
+.ion-no-background {
+    --ion-item-background: transparent;
+}
+
+ion-item.clear {
+    --background: transparent;
+    --color: #000;
+    --border-width: 0;
+    --border-radius: 12px;
+    --padding-start: 14px;
+    --ripple-color: black;
+    --detail-icon-color: #424242;
+    --detail-icon-opacity: 1;
+    --detail-icon-font-size: 20px;
+    --padding-top: 10px;
+    --padding-bottom: 10px;
+}
+
+@media only screen and (min-width: 768px) and (min-height: 768px) {
+    ion-modal::part(content) {
+        border-radius: 16px;
+    }
+
+    ion-modal.auto-height {
+        --height: auto;
+    }
 }

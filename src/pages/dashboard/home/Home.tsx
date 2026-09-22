@@ -1,14 +1,16 @@
-import { IonButton, IonButtons, IonContent, IonFab, IonFooter, IonHeader, IonIcon, IonMenuButton, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
+import { IonButton, IonButtons, IonContent, IonFab, IonFooter, IonHeader, IonIcon, IonMenuButton, IonMenuToggle, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Home.css';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
-import { add, arrowForwardOutline, chatboxEllipsesSharp } from 'ionicons/icons';
+import { add, arrowForwardOutline, calendarOutline, chatboxEllipsesSharp, menuOutline, personCircleOutline, personOutline } from 'ionicons/icons';
 import { getGreeting } from '../../../utils/dayGreeting';
 import WorkspaceStats from '../../../components/workspace-stats/WorkspaceStats';
 import { useEffect, useState } from 'react';
 import { getUser } from '../../../utils/authState';
 import { useGetAllWorkspacesQuery, useLazyGetWorkspaceStatsQuery } from '../../../services/workspace';
 import { getInitials } from '../../../utils/generator';
+import LearnGraph from '../../../components/learn-graph/LearnGraph';
+import LearnStats from '../../../components/learn-stats/LearnStats';
 
 const HomePage: React.FC = () => {
     const ionRouter = useIonRouter();
@@ -48,27 +50,50 @@ const HomePage: React.FC = () => {
 
     return (
         <IonPage>
-            <IonHeader className="ion-no-border home-header">
+            <IonHeader className="ion-no-border">
                 <IonToolbar color={'light'} className='borderless'>
-                    <IonButtons slot="start">
-                        <IonMenuButton />
-                    </IonButtons>
-                    <IonTitle>{name}</IonTitle>
+                    <IonMenuToggle slot='start' className='ion-padding-start'>
+                        <IonButton fill={'solid'} shape="round" mode="md" color="white" className='normal-button'>
+                            <IonIcon icon={menuOutline} slot="icon-only" />
+                        </IonButton>
+                    </IonMenuToggle>
+
+                    <div slot='end' className='ion-padding-end'>
+                        <IonButton shape="round" mode="md" color="medium" className='normal-button mr-3'>
+                            <IonIcon icon={personOutline} slot="icon-only" />
+                        </IonButton>
+
+                        <IonButton shape="round" mode="md" color="medium" className='normal-button'>
+                            <IonIcon icon={calendarOutline} slot="icon-only" />
+                        </IonButton>
+                    </div>
                 </IonToolbar>
             </IonHeader>
 
             <IonContent color={'light'} fullscreen>
-                <div className='ion-padding'>
+                {/* <div className='ion-padding'>
                     <div className='flex items-center gap-3 mb-6'>
                         <div className='w-14 h-14 flex items-center justify-center bg-amber-300 rounded-full shadow'>
                             <IonText className='text-neutral-900 text-xl font-bold'>{initialName}</IonText>
                         </div>
                         <div className='block mb-1 leading-3 text-lg'>
                             <IonText className='block text-xs text-neutral-500 uppercase tracking-widest mb-2'>{getGreeting({ locale: 'en' })}</IonText>
-                            <IonText className='font-bold'>{user?.name}</IonText>
+                            <h2>
+                                <IonText className='font-bold'>{user?.name}</IonText>
+                            </h2>
                         </div>
                     </div>
+                </div> */}
 
+                <div className='ion-padding'>
+                    <LearnStats />
+                </div>
+
+                <div className='block ion-padding-top !pt-14'>
+                    <LearnGraph />
+                </div>
+
+                <div className='ion-padding'>
                     {/* <div className='text-base mb-4 text-neutral-800'>
                         <IonText>Start your notes...</IonText>
                     </div>
@@ -81,7 +106,7 @@ const HomePage: React.FC = () => {
                         onSetActiveTab={gotoPage}
                         note={{ todayCount: workspaceStats?.total_notes_today ?? 0, total: workspaceStats?.total_notes ?? 0 }}
                         material={{ todayCount: workspaceStats?.total_materials_today ?? 0, total: workspaceStats?.total_materials ?? 0 }}
-                        digest={{ todayCount: workspaceStats?.total_digests_today ?? 0, total: workspaceStats?.total_digests ?? 0 }}
+                        digest={{ todayCount: workspaceStats?.total_thinkings_today ?? 0, total: workspaceStats?.total_thinkings ?? 0 }}
                     />
                 </div>
 

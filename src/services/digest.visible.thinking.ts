@@ -34,6 +34,10 @@ export const digestVisibleThinkingAPI = createApi({
                         , content
                         , for_date
                         , category
+                        , note:workspace_note_id!inner(
+                            id
+                            , content
+                        )
                         , workspace:workspace_id!inner(
                             title
                             , workspace_members!inner(user_id)

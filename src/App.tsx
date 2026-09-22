@@ -52,7 +52,7 @@ const AppLayout: React.FC = () => {
 
 	return (
 		// Matikan efek SplitPane (when={false}) jika disableSplitPane bernilai true
-		<IonSplitPane contentId="main" when={disableSplitPane ? false : 'md'}>
+		<IonSplitPane contentId="main" when={disableSplitPane ? false : '2xl'}>
 			{!hideMenu && <Menu />}
 			<IonRouterOutlet id="main">
 				{mainRoutes.map((route) => (

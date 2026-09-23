@@ -1,4 +1,4 @@
-import { analyticsOutline, cloudUploadOutline, documentAttachOutline, fileTrayOutline, imageOutline, imagesOutline, micOutline, shapesOutline, textOutline } from 'ionicons/icons';
+import { analyticsOutline, chevronForwardOutline, cloudUploadOutline, documentAttachOutline, fileTrayOutline, imageOutline, imagesOutline, micOutline, shapesOutline, textOutline } from 'ionicons/icons';
 import './StartNote.css';
 import { IonCard, IonCardContent, IonIcon, IonText } from '@ionic/react';
 
@@ -6,58 +6,73 @@ interface StartNoteProps {
     workspace?: {
         id?: string;
         languageCode?: string;
+        sessionId?: string;
+    },
+    notesCount?: {
+        text?: number;
+        canvas?: number;
+        file?: number;
     }
 }
 
-const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
-    const workspaceId = workspace?.id
-    const languageCode = workspace?.languageCode
+const StartNote: React.FC<StartNoteProps> = ({ workspace, notesCount }) => {
+    const workspaceId = workspace?.id;
+    const languageCode = workspace?.languageCode;
+    const sessionId = workspace?.sessionId;
 
     return (
         <div id="startnote">
             <div className='grid grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4'>
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/richtext?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/richtext?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}${sessionId ? `&sessionId=${sessionId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
-                            <div className='w-8 h-8 flex items-center justify-center bg-[#E1F2F1] rounded-full mb-3'>
-                                <IonIcon icon={textOutline} className='text-xl text-[#008C88]' />
+                            <div className='flex items-center gap-1.5'>
+                                <div className='w-6 h-6 flex items-center justify-center bg-[#E1F2F1] rounded-full'>
+                                    <IonIcon icon={textOutline} className='text-base text-[#008C88]' />
+                                </div>
+
+                                <div className='block mt-0 mb-0'>
+                                    <IonText className="font-semibold text-sm text-neutral-700 albert-font">Texting</IonText>
+                                </div>
                             </div>
 
-                            <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700 albert-font">Texting</IonText>
-                            </div>
-
-                            <div className='block leading-3'>
+                            <div className='flex items-center justify-between leading-3 mt-2'>
                                 <IonText className='text-xs line-clamp-1'>
-                                    Keyboard device
+                                    {notesCount?.text !== undefined && notesCount?.text > 0 ? `${notesCount?.text} notes` : "Keyboard device"}
                                 </IonText>
+
+                                <IonIcon icon={chevronForwardOutline} className='text-sm'></IonIcon>
                             </div>
                         </IonCardContent>
                     </IonCard>
                 </div>
 
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/canvas?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/canvas?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}${sessionId ? `&sessionId=${sessionId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
-                            <div className='w-8 h-8 flex items-center justify-center bg-[#E9F4E5] rounded-full mb-3'>
-                                <IonIcon icon={shapesOutline} className='text-xl text-[#32A315]' />
+                            <div className='flex items-center gap-1.5'>
+                                <div className='w-6 h-6 flex items-center justify-center bg-[#E9F4E5] rounded-full'>
+                                    <IonIcon icon={shapesOutline} className='text-base text-[#32A315]' />
+                                </div>
+
+                                <div className='block mt-0 mb-0'>
+                                    <IonText className="font-semibold text-sm text-neutral-700 albert-font">Canvas</IonText>
+                                </div>
                             </div>
 
-                            <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700 albert-font">Canvas</IonText>
-                            </div>
-
-                            <div className='block leading-2'>
+                            <div className='flex items-center justify-between leading-3 mt-2'>
                                 <IonText className='text-xs line-clamp-1'>
-                                    Use stylus or finger
+                                    {notesCount?.canvas !== undefined && notesCount?.canvas > 0 ? `${notesCount?.canvas} notes` : "Use stylus or finger"}
                                 </IonText>
+
+                                <IonIcon icon={chevronForwardOutline} className='text-sm'></IonIcon>
                             </div>
                         </IonCardContent>
                     </IonCard>
                 </div>
 
                 <div className='flex flex-col items-center justify-center gap-4'>
-                    {/* <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/voice?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    {/* <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/voice?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}${sessionId ? `&sessionId=${sessionId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
                             <div className='w-8 h-8 flex items-center justify-center bg-[#EEE4FA] rounded-full mb-3'>
                                 <IonIcon icon={micOutline} className='text-xl text-[#5B00C9]' />
@@ -75,27 +90,31 @@ const StartNote: React.FC<StartNoteProps> = ({ workspace }) => {
                         </IonCardContent>
                     </IonCard> */}
 
-                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/files?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+                    <IonCard className='w-full rounded-xl' routerLink={`/dashboard/editor/files?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}${sessionId ? `&sessionId=${sessionId}` : ''}`} routerDirection='forward'>
                         <IonCardContent>
-                            <div className='w-8 h-8 flex items-center justify-center bg-[#EEE4FA] rounded-full mb-3'>
-                                <IonIcon icon={imagesOutline} className='text-xl text-[#5B00C9]' />
+                            <div className='flex items-center gap-1.5'>
+                                <div className='w-6 h-6 flex items-center justify-center bg-[#EEE4FA] rounded-full'>
+                                    <IonIcon icon={imagesOutline} className='text-base text-[#5B00C9]' />
+                                </div>
+
+                                <div className='block mt-0 mb-0'>
+                                    <IonText className="font-semibold text-sm text-neutral-700 albert-font">Upload</IonText>
+                                </div>
                             </div>
 
-                            <div className='block mt-0 mb-0'>
-                                <IonText className="font-semibold text-sm text-neutral-700 albert-font">Upload</IonText>
-                            </div>
-
-                            <div className='block leading-3 line-clamp-1'>
+                            <div className='flex items-center justify-between leading-3 mt-2'>
                                 <IonText className='text-xs line-clamp-1'>
-                                    Note in the book
+                                    {notesCount?.file !== undefined && notesCount?.file > 0 ? `${notesCount?.file} notes` : "Note in the book"}
                                 </IonText>
+
+                                <IonIcon icon={chevronForwardOutline} className='text-sm'></IonIcon>
                             </div>
                         </IonCardContent>
                     </IonCard>
                 </div>
             </div>
 
-            {/* <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/upload-image?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}`} routerDirection='forward'>
+            {/* <IonCard className='w-full rounded-xl mt-4' routerLink={`/dashboard/editor/upload-image?languageCode=${languageCode}${workspaceId ? `&workspaceId=${workspaceId}` : ''}${sessionId ? `&sessionId=${sessionId}` : ''}`} routerDirection='forward'>
                 <IonCardContent>
                     <div className='flex gap-3 items-center'>
                         <div className='w-8 h-8 flex items-center justify-center bg-[#FFF0D9] rounded-full'>

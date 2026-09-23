@@ -60,6 +60,8 @@ const CanvasEditorPage: React.FC = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const workspaceId = searchParams.get('workspaceId');
 	const noteId = searchParams.get('noteId');
+	const sessionId = searchParams.get('sessionId');
+	const pageId = searchParams.get('pageId');
 	const isProcessed = Boolean(searchParams.get('clusteredDate'));
 
 	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
@@ -342,9 +344,9 @@ const CanvasEditorPage: React.FC = () => {
 
 		(async () => {
 			if (!workspaceId) return;
-			await contentLoader(workspaceId, noteId);
+			await contentLoader(workspaceId, noteId, pageId);
 		})();
-	}, [noteId, workspaceId]);
+	}, [noteId, workspaceId, pageId]);
 
 	useIonViewDidLeave(() => {
 		setPages([]);
@@ -565,6 +567,7 @@ const CanvasEditorPage: React.FC = () => {
 				syncedId: p.syncedId,
 				workspaceId: p.workspaceId,
 				workspaceNoteId: p.workspaceNoteId,
+				learningSessionId: p.learningSessionId,
 				pageNum: p.pageNum,
 				isActive: p.id === page.id,
 				status: p.status,
@@ -609,6 +612,7 @@ const CanvasEditorPage: React.FC = () => {
 				workspaceId: p.workspaceId,
 				syncedId: p.syncedId,
 				workspaceNoteId: p.workspaceNoteId,
+				learningSessionId: p.learningSessionId,
 				pageNum: p.pageNum,
 				isActive: false
 			}));
@@ -621,6 +625,7 @@ const CanvasEditorPage: React.FC = () => {
 				pageNum: pages.length + 1,
 				workspaceId: selectedNoteRef.current.workspaceId,
 				workspaceNoteId: selectedNoteRef.current.id,
+				learningSessionId: sessionId ? sessionId : '',
 				isActive: true,
 				status: 'draft',
 				processingStatus: 'pending',
@@ -645,6 +650,7 @@ const CanvasEditorPage: React.FC = () => {
 	const initNote = async (workspaceId: string) => {
 		const entity = await NotesRepository.insertNote({
 			workspaceId: workspaceId,
+			learningSessionId: sessionId ? sessionId : '',
 			title: "Untitled Canvas",
 			content: "",
 			noteDatetime: new Date(),
@@ -666,7 +672,7 @@ const CanvasEditorPage: React.FC = () => {
 	// --- END CRUD NOTES ---
 
 	// Load / create the note and its pages.
-	const contentLoader = async (workspaceId: string, noteId: string | null = null) => {
+	const contentLoader = async (workspaceId: string, noteId: string | null = null, pageId: string | null = null) => {
 		let note: any | null = null;
 
 		if (noteId) {
@@ -676,7 +682,7 @@ const CanvasEditorPage: React.FC = () => {
 				console.log('load note from local database', note);
 			} else {
 				// 2. note tidak ada di local, load dari server
-				const { data: serverNote } = await getNoteById({ id: noteId, workspace_id: workspaceId });
+				const { data: serverNote } = await getNoteById({ id: noteId });
 				console.log('load note from server', serverNote);
 
 				// 3. karena dari server, inject ke local db
@@ -685,6 +691,7 @@ const CanvasEditorPage: React.FC = () => {
 					const nData = {
 						id: serverNote.id,
 						workspaceId: workspaceId,
+						learningSessionId: serverNote.learning_session_id ? serverNote.learning_session_id : '',
 						title: serverNote.title || "Untitled Note",
 						content: serverNote.content,
 						status: serverNote.status,
@@ -720,6 +727,7 @@ const CanvasEditorPage: React.FC = () => {
 									id: p.id,
 									workspaceId: p.workspace_id,
 									workspaceNoteId: p.workspace_note_id,
+									learningSessionId: p.learning_session_id ? p.learning_session_id : '',
 									contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
 									userId: p.user_id,
 									pageNum: p.page_num,
@@ -735,7 +743,7 @@ const CanvasEditorPage: React.FC = () => {
 						: [];
 
 					if (injectedPages.length > 0) {
-						const savedPages = await NotesRepository.addPagesBulk({ id: serverNote.id }, injectedPages);
+						const savedPages = await NotesRepository.addPagesBulk(injectedPages);
 						console.log("injected pages", savedPages);
 					} else {
 						// halaman belum ada, buat halaman baru
@@ -744,6 +752,7 @@ const CanvasEditorPage: React.FC = () => {
 							pageNum: 1,
 							workspaceId: workspaceId,
 							workspaceNoteId: note.id,
+							learningSessionId: sessionId ? sessionId : '',
 							isActive: true,
 							status: 'draft',
 							processingStatus: 'pending',
@@ -768,6 +777,7 @@ const CanvasEditorPage: React.FC = () => {
 				pageNum: 1,
 				workspaceId: workspaceId,
 				workspaceNoteId: note.id,
+				learningSessionId: sessionId ? sessionId : '',
 				isActive: true,
 				status: 'draft',
 				processingStatus: 'pending',
@@ -790,9 +800,17 @@ const CanvasEditorPage: React.FC = () => {
 			console.log('active note', note);
 
 			// get all pages
-			const savedPages = await NotesRepository.getPagesByNoteId(note.id);
+			let savedPages = await NotesRepository.getPagesByNoteId(note.id);
 			console.log('getting pages', savedPages);
-			setPages([...savedPages]);
+
+			if (pageId) {
+				savedPages = savedPages.map((p: Page) => ({
+					...p,
+					isActive: p.id === pageId,
+				}));
+			}
+
+			setPages(savedPages);
 
 			// get active page
 			const activePage = savedPages.find((p: Page) => p.isActive === true);
@@ -1187,12 +1205,13 @@ const CanvasEditorPage: React.FC = () => {
 							}
 
 							try {
-								await NotesRepository.deletePage(
-									pages[activeIndex].id,
-									pages[activeIndex].syncedId,
-									pages[activeIndex].workspaceId,
-									pages[activeIndex].workspaceNoteId,
-								);
+								await NotesRepository.deletePage({
+									pageId: pages[activeIndex].id,
+									syncedId: pages[activeIndex].syncedId,
+									workspaceId: pages[activeIndex].workspaceId,
+									workspaceNoteId: pages[activeIndex].workspaceNoteId,
+									syncToServer: true,
+								});
 
 								const remaining = pages.filter((_, idx) => idx !== activeIndex);
 
@@ -1224,6 +1243,7 @@ const CanvasEditorPage: React.FC = () => {
 									id: p.id,
 									workspaceId: p.workspaceId,
 									workspaceNoteId: p.workspaceNoteId,
+									learningSessionId: p.learningSessionId,
 									syncedId: p.syncedId,
 									pageNum: idx + 1,
 									isActive: idx === nextActiveIndex,

@@ -9,6 +9,7 @@ export type NoteTypes = {
     readonly created_at: string;
     user_id: string;
     workspace_id: string;
+    learning_session_id: string | null;
     title: string;
     content_type: NoteFormatTypes;
     content: string; // text extracted from around notes_pages
@@ -18,7 +19,7 @@ export type NoteTypes = {
     user?: any;
     pages?: NotePageTypes[];
     status?: 'draft' | 'published';
-    processingStatus?: 'pending' | 'processed';
+    processing_status?: 'pending' | 'processed';
     [key: string]: any;
 }
 
@@ -27,6 +28,7 @@ export type NotePageTypes = {
     user_id: string;
     workspace_id: string;
     workspace_note_id: string;
+    learning_session_id: string | null;
     page_num: number;
     title?: string | null;
     synced_at?: string | null;
@@ -48,6 +50,7 @@ export type PaginatedNotesResponse = {
 
 export type GetNotesByWorkspaceIdParams = {
     workspace_id?: string;
+    learning_session_id?: string;
     page?: number;      // default 1
     pageSize?: number;  // default 20
 }
@@ -73,6 +76,7 @@ export const notesAPI = createApi({
                     .insert({
                         user_id: user.id,
                         workspace_id: body.workspace_id,
+                        learning_session_id: body.learning_session_id,
                         title: body.title,
                         content_type: body.content_type,
                         content: body.content,
@@ -117,7 +121,7 @@ export const notesAPI = createApi({
                             // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                             // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                             // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: body.workspace_id as string, page: 1, pageSize: 20 },
+                            { workspace_id: body.workspace_id as string, learning_session_id: body.learning_session_id as string, page: 1, pageSize: 20 },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.id === body.id);
@@ -139,10 +143,9 @@ export const notesAPI = createApi({
                     );
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
-            // invalidatesTags: (result, error) => [{ type: 'Notes', id: 'LIST' }],
         }),
 
         // ...
@@ -207,7 +210,7 @@ export const notesAPI = createApi({
                             // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                             // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                             // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: body.workspace_id as string, page: 1, pageSize: 20 },
+                            { workspace_id: body.workspace_id as string, learning_session_id: body.learning_session_id as string, page: 1, pageSize: 20 },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.id === body.id);
@@ -222,6 +225,7 @@ export const notesAPI = createApi({
                                     // Add new note at the beginning (most recent)
                                     draft.notes.unshift({
                                         ...data,
+                                        content_preview: data.content,
                                         page_count: 1,
                                         pages_status: 'draft',
                                     });
@@ -231,10 +235,9 @@ export const notesAPI = createApi({
                     );
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
-            // invalidatesTags: (result, error) => [{ type: 'Notes', id: 'LIST' }],
         }),
 
         // ...
@@ -305,7 +308,7 @@ export const notesAPI = createApi({
                     // Anda bisa update lagi draft-nya di sini (Pessimistic Update).
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
         }),
@@ -313,12 +316,11 @@ export const notesAPI = createApi({
         // ...
         // Get single note by id
         // ...
-        getNoteById: builder.query<NoteTypes, { id: string, workspace_id: string }>({
-            queryFn: async ({ id, workspace_id }) => {
+        getNoteById: builder.query<NoteTypes, { id: string }>({
+            queryFn: async ({ id }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "User not found" } };
                 if (!id) return { error: { message: "Note ID is required" } };
-                if (!workspace_id) return { error: { message: "Workspace ID is required" } };
 
                 let { data, error } = await supabase
                     .from("workspace_notes_list")
@@ -345,7 +347,6 @@ export const notesAPI = createApi({
                         )
                     `)
                     .eq("id", id)
-                    .eq("workspace_id", workspace_id)
                     .limit(2, { foreignTable: "documents" })
                     .limit(1, { foreignTable: "workspace_notes_chunks" })
                     .single();
@@ -369,51 +370,13 @@ export const notesAPI = createApi({
 
                 return { data };
             },
-            async onQueryStarted({ id, workspace_id }, { dispatch, queryFulfilled }) {
-                // Manipulasi cache untuk query 'getNotesByWorkspaceId'
-                let patchResult: any;
-                try {
-                    // Tunggu sampai proses update ke database selesai
-                    const { data } = await queryFulfilled;
-
-                    patchResult = dispatch(
-                        notesAPI.util.updateQueryData(
-                            'getNotesByWorkspaceId',
-                            // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
-                            // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
-                            // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: workspace_id as string, page: 1, pageSize: 20 },
-                            (draft) => {
-                                // Cari note yang sedang diupdate di dalam array cache
-                                const noteIndex = draft.notes.findIndex((n) => n.id === id);
-                                if (noteIndex !== -1) {
-                                    // Update existing note
-                                    draft.notes[noteIndex] = {
-                                        ...draft.notes[noteIndex],
-                                        ...data,
-                                    };
-                                } else {
-                                    // Add new note at the beginning (most recent)
-                                    draft.notes.unshift({
-                                        ...data,
-                                        page_count: 1,
-                                    });
-                                }
-                            }
-                        )
-                    );
-                } catch {
-                    // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
-                }
-            },
         }),
 
         // ...
         // Get notes by workspace id (paginated)
         // ...
         getNotesByWorkspaceId: builder.query<PaginatedNotesResponse, GetNotesByWorkspaceIdParams>({
-            queryFn: async ({ workspace_id, page = 1, pageSize = 20 }) => {
+            queryFn: async ({ workspace_id, learning_session_id, page = 1, pageSize = 20 }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Get Notes] User not found" } };
 
@@ -430,6 +393,7 @@ export const notesAPI = createApi({
                             , status 
                             , content_text
                             , processing_status
+                            , page_num
                             , attachments(*, file:file_id(*))
                         )
                         , user!inner(id, name)
@@ -453,6 +417,8 @@ export const notesAPI = createApi({
 
                 if (workspace_id) {
                     query = query.eq("workspace_id", workspace_id);
+                } else if (learning_session_id) {
+                    query = query.eq("learning_session_id", learning_session_id);
                 } else {
                     // Dapatkan semua notes di mana current user adalah member dari workspace notes tersebut
                     query = query.eq("workspace.workspace_members.user_id", user.id);
@@ -460,6 +426,7 @@ export const notesAPI = createApi({
 
                 let { data, error, count } = await query
                     .order("created_at", { ascending: false })
+                    .order("page_num", { referencedTable: "pages", ascending: false })
                     .limit(2, { foreignTable: "documents" })
                     .limit(1, { foreignTable: "workspace_notes_chunks" })
                     .range(from, to);
@@ -576,7 +543,7 @@ export const notesAPI = createApi({
                     .single();
 
                 if (error) return { error: { message: error.message } };
-                return { data: data };
+                return { data: data! };
             },
             async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
@@ -608,13 +575,9 @@ export const notesAPI = createApi({
                     // Anda bisa update lagi draft-nya di sini (Pessimistic Update).
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
-            // invalidatesTags: (result, error) => [
-            //     { type: 'NotePages', id: 'LIST' },
-            //     { type: 'Notes', id: 'LIST' }
-            // ],
         }),
 
         // ...
@@ -714,7 +677,7 @@ export const notesAPI = createApi({
                     );
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
         }),
@@ -771,7 +734,7 @@ export const notesAPI = createApi({
 
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
         }),
@@ -818,7 +781,7 @@ export const notesAPI = createApi({
 
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
         }),
@@ -869,13 +832,9 @@ export const notesAPI = createApi({
                     // Anda bisa update lagi draft-nya di sini (Pessimistic Update).
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    patchResult.undo();
+                    if (patchResult) patchResult.undo();
                 }
             },
-            // invalidatesTags: [
-            //     { type: 'NotePages', id: 'LIST' },
-            //     { type: 'Notes', id: 'LIST' }
-            // ],
         })
     })
 });

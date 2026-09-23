@@ -16,6 +16,9 @@ export class Page {
     @Column()
     workspaceNoteId!: string;
 
+    @Column({ nullable: true })
+    learningSessionId!: string;
+
     @Column('varchar', { nullable: true })
     title!: string | null;
 

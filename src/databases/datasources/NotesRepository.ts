@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import notesDataSource from '../datasources/NotesDataSource';
 import { Note } from '../entities/notes/notes';
 import { Page } from '../entities/notes/pages'; // Sesuaikan path dengan lokasi file Page kamu
@@ -68,7 +68,14 @@ class NotesRepository {
         });
     }
 
-    async insertNote(data: Partial<Note>): Promise<Note> {
+    async getUnsyncedNote(contentType: string = 'text'): Promise<Note | null> {
+        return this.noteRepo.findOne({
+            where: { syncedId: IsNull(), contentType: contentType } as any,
+            relations: ['pages'],
+        });
+    }
+
+    async insertNote(data: Partial<Note>, syncToServer: boolean = true): Promise<Note> {
         return this.enqueueWrite(async () => {
             const user = await getUser();
             const entity = this.noteRepo.create({
@@ -78,13 +85,14 @@ class NotesRepository {
             const note = await this.noteRepo.save(entity);
             await this.saveWebStore();
 
-            if (note) {
-                store
+            if (syncToServer && note) {
+                await store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
                         body: this.removeEmpty({
                             id: note.id,
                             user_id: user.id,
                             workspace_id: note.workspaceId,
+                            learning_session_id: note.learningSessionId,
                             synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
                             synced_id: note.syncedId,
                             content_type: note.contentType as NoteFormatTypes,
@@ -94,15 +102,14 @@ class NotesRepository {
                             status: note.status,
                             processing_status: note.processingStatus,
                         })
-                    }))
-                    .unwrap();
+                    }));
             }
 
             return note;
         });
     }
 
-    async upsertNote(data: Partial<Note>, conflictPaths: string[] = ['id']): Promise<Note | null> {
+    async upsertNote(data: Partial<Note>, conflictPaths: string[] = ['id'], syncToServer: boolean = true): Promise<Note | null> {
         return this.enqueueWrite(async () => {
             const user = await getUser();
             const result = await this.noteRepo.upsert(this.removeEmpty(data as any), conflictPaths);
@@ -112,13 +119,14 @@ class NotesRepository {
 
             const note = await this.getNoteById(insertedId);
 
-            if (note) {
-                store
+            if (note && syncToServer) {
+                await store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
                         body: this.removeEmpty({
                             id: note.id,
                             user_id: user.id,
                             workspace_id: note.workspaceId,
+                            learning_session_id: note.learningSessionId,
                             synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
                             synced_id: note.syncedId,
                             content_type: note.contentType as NoteFormatTypes,
@@ -129,8 +137,7 @@ class NotesRepository {
                             processing_status: note.processingStatus,
                             attributes: note.attributes,
                         })
-                    }))
-                    .unwrap();
+                    }));
             }
 
             return note;
@@ -146,12 +153,13 @@ class NotesRepository {
             const note = await this.getNoteById(data.id as string);
 
             if (note && syncToServer) {
-                store
+                await store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
                         body: this.removeEmpty({
                             id: note.id,
                             user_id: user.id,
                             workspace_id: note.workspaceId,
+                            learning_session_id: note.learningSessionId,
                             synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
                             synced_id: note.syncedId,
                             content_type: note.contentType as NoteFormatTypes,
@@ -170,15 +178,17 @@ class NotesRepository {
         });
     }
 
-    async deleteNote(id: string, workspaceId: string): Promise<boolean> {
+    async deleteNote(id: string, workspaceId: string, syncToServer: boolean = true): Promise<boolean> {
         const result = await this.noteRepo.delete(id);
         await this.saveWebStore();
 
         // delete from database
-        store.dispatch(notesAPI.endpoints.deleteNote.initiate({
-            id: id,
-            workspace_id: workspaceId,
-        }));
+        if (syncToServer) {
+            await store.dispatch(notesAPI.endpoints.deleteNote.initiate({
+                id: id,
+                workspace_id: workspaceId,
+            }));
+        }
 
         return (result.affected ?? 0) > 0;
     }
@@ -188,7 +198,7 @@ class NotesRepository {
     // --------------------------------------------------
 
     /** Tambah Page baru ke sebuah Note */
-    async addPage(note: Partial<Note>, data: Partial<Page>): Promise<Page> {
+    async addPage(note: Partial<Note>, data: Partial<Page>, syncToServer: boolean = true): Promise<Page> {
         return this.enqueueWrite(async () => {
             const user = await getUser();
             // Karena relasinya ada pada Note, kita pasangkan id-nya
@@ -201,7 +211,7 @@ class NotesRepository {
             const savedPage = await this.pageRepo.save(page);
             await this.saveWebStore();
 
-            if (savedPage) {
+            if (syncToServer && savedPage) {
                 let objString = null;
                 if (savedPage.contentData) {
                     const decoder = new TextDecoder('utf-8');
@@ -209,12 +219,13 @@ class NotesRepository {
                     objString = jsonString ? JSON.parse(jsonString) : {};
                 }
 
-                store
+                await store
                     .dispatch(notesAPI.endpoints.insertNotePage.initiate({
                         body: this.removeEmpty({
                             id: savedPage.id,
                             user_id: savedPage.userId,
                             workspace_id: savedPage.workspaceId,
+                            learning_session_id: savedPage.learningSessionId,
                             workspace_note_id: savedPage.workspaceNoteId,
                             synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
                             synced_id: savedPage.syncedId,
@@ -237,7 +248,7 @@ class NotesRepository {
     }
 
     /** Bulk insert beberapa Page baru sekaligus ke dalam satu Note */
-    async addPagesBulk(note: Partial<Note>, dataList: Partial<Page>[]): Promise<Page[]> {
+    async addPagesBulk(dataList: Partial<Page>[], syncToServer: boolean = true): Promise<Page[]> {
         const user = await getUser();
 
         const pages = dataList.map((data) =>
@@ -253,41 +264,111 @@ class NotesRepository {
 
         // Sync semua page baru ke server secara paralel
         // Bangun payload sync untuk semua page sekaligus
-        const updatingPages = savedPages.map((savedPage) => {
-            let objString = null;
-            if (savedPage.contentData) {
-                const decoder = new TextDecoder('utf-8');
-                const jsonString = decoder.decode(savedPage.contentData);
-                objString = jsonString ? JSON.parse(jsonString) : {};
-            }
+        if (syncToServer) {
+            const updatingPages = savedPages.map((savedPage) => {
+                let objString = null;
+                if (savedPage.contentData) {
+                    const decoder = new TextDecoder('utf-8');
+                    const jsonString = decoder.decode(savedPage.contentData);
+                    objString = jsonString ? JSON.parse(jsonString) : {};
+                }
 
-            return {
-                id: savedPage.id,
-                user_id: savedPage.userId,
-                workspace_id: savedPage.workspaceId,
-                workspace_note_id: savedPage.workspaceNoteId,
-                synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
-                synced_id: savedPage.syncedId,
-                content_data: objString,
-                content_text: savedPage.contentText ? savedPage.contentText : "",
-                content_extracted: savedPage.contentExtracted ? savedPage.contentExtracted : null,
-                page_num: savedPage.pageNum,
-                title: savedPage.title,
-                is_active: savedPage.isActive,
-                status: savedPage.status,
-                processing_status: savedPage.processingStatus,
-            };
-        });
-
-        // Kirim satu request bulk ke server, bukan banyak request paralel
-        await store
-            .dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages }))
-            .unwrap()
-            .catch((err) => {
-                console.error('Gagal sync pages ke server:', err);
+                return {
+                    id: savedPage.id,
+                    user_id: savedPage.userId,
+                    workspace_id: savedPage.workspaceId,
+                    learning_session_id: savedPage.learningSessionId,
+                    workspace_note_id: savedPage.workspaceNoteId,
+                    synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
+                    synced_id: savedPage.syncedId,
+                    content_data: objString,
+                    content_text: savedPage.contentText ? savedPage.contentText : "",
+                    content_extracted: savedPage.contentExtracted ? savedPage.contentExtracted : null,
+                    page_num: savedPage.pageNum,
+                    title: savedPage.title,
+                    is_active: savedPage.isActive,
+                    status: savedPage.status,
+                    processing_status: savedPage.processingStatus,
+                };
             });
 
+            // Kirim satu request bulk ke server, bukan banyak request paralel
+            await store
+                .dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages }))
+                .unwrap()
+                .catch((err) => {
+                    console.error('Gagal sync pages ke server:', err);
+                });
+        }
+
         return savedPages;
+    }
+
+    /**
+     * Bulk upsert untuk daftar pages, mirip upsertNote tapi untuk banyak pages sekaligus.
+     * repo.upsert() TypeORM bisa langsung menerima array entity untuk insert/update sekaligus.
+     */
+    async upsertPagesBulk(
+        pages: Partial<Page>[],
+        conflictPaths: string[] = ['id'],
+        syncToServer: boolean = true
+    ): Promise<Page[]> {
+        return this.enqueueWrite(async () => {
+            const user = await getUser();
+
+            const result = await this.pageRepo.upsert(
+                pages.map((p) => this.removeEmpty(p as any)),
+                conflictPaths
+            );
+            await this.saveWebStore();
+
+            // Ambil ulang tiap page (insert baru maupun update) berdasarkan id hasil upsert
+            const ids = (result.identifiers ?? [])
+                .map((identifier) => identifier?.id)
+                .filter((id) => id !== undefined);
+
+            const results: Page[] = [];
+            for (const id of ids) {
+                const page = await this.getPageById(id);
+                if (page) results.push(page);
+            }
+
+            if (results.length && syncToServer) {
+                const upsertingPages = results.map((page) => {
+                    let objString = null;
+                    if (page.contentData) {
+                        const decoder = new TextDecoder('utf-8');
+                        const jsonString = decoder.decode(page.contentData);
+                        objString = jsonString ? JSON.parse(jsonString) : {};
+                    }
+
+                    return this.removeEmpty({
+                        id: page.id,
+                        user_id: page.userId ?? user.id,
+                        workspace_id: page.workspaceId,
+                        workspace_note_id: page.workspaceNoteId,
+                        learning_session_id: page.learningSessionId,
+                        synced_at: page.syncedAt ? page.syncedAt.toISOString() : new Date().toISOString(),
+                        synced_id: page.syncedId,
+                        page_num: page.pageNum,
+                        title: page.title,
+                        is_active: page.isActive,
+                        status: page.status,
+                        processing_status: page.processingStatus,
+                        content_data: objString,
+                        content_text: page.contentText ? page.contentText : "",
+                        content_extracted: page.contentExtracted ? page.contentExtracted : null,
+                        attributes: page.attributes,
+                    });
+                });
+
+                await store
+                    .dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: upsertingPages }))
+                    .unwrap();
+            }
+
+            return results;
+        });
     }
 
     /** Ambil semua Page berdasarkan Note ID */
@@ -327,13 +408,14 @@ class NotesRepository {
                         objString = jsonString ? JSON.parse(jsonString) : {};
                     }
 
-                    store
+                    await store
                         .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
                             body: this.removeEmpty({
                                 id: savedPage.id,
                                 user_id: savedPage.userId,
                                 workspace_id: savedPage.workspaceId,
                                 workspace_note_id: savedPage.workspaceNoteId,
+                                learning_session_id: savedPage.learningSessionId,
                                 synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
                                 synced_id: savedPage.syncedId,
                                 content_data: objString,
@@ -374,7 +456,7 @@ class NotesRepository {
                         objString = jsonString ? JSON.parse(jsonString) : {};
                     }
 
-                    store
+                    await store
                         .dispatch(notesAPI.endpoints.microUpdateNotePage.initiate({
                             id: pageId,
                             data: this.removeEmpty({
@@ -416,52 +498,60 @@ class NotesRepository {
         }
 
         // langsung update ke supabase
-        const updatingPages = pages.map((p) => {
-            let objString = null;
-            if (p.contentData) {
-                const decoder = new TextDecoder('utf-8');
-                const jsonString = decoder.decode(p.contentData);
-                objString = jsonString ? JSON.parse(jsonString) : {};
-            }
-
-            return this.removeEmpty({
-                id: p.id,
-                user_id: p.userId,
-                workspace_id: p.workspaceId,
-                workspace_note_id: p.workspaceNoteId,
-                synced_at: p.syncedAt ? p.syncedAt.toISOString() : new Date().toISOString(),
-                synced_id: p.syncedId,
-                page_num: p.pageNum,
-                title: p.title,
-                is_active: p.isActive,
-                status: p.status,
-                processing_status: p.processingStatus,
-                content_data: objString,
-                content_text: p.contentText ? p.contentText : "",
-                content_extracted: p.contentExtracted ? p.contentExtracted : null,
-                attributes: p.attributes,
-            })
-        });
-
         if (syncToServer) {
-            store.dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages })).unwrap();
+            const updatingPages = pages.map((p) => {
+                let objString = null;
+                if (p.contentData) {
+                    const decoder = new TextDecoder('utf-8');
+                    const jsonString = decoder.decode(p.contentData);
+                    objString = jsonString ? JSON.parse(jsonString) : {};
+                }
+
+                return this.removeEmpty({
+                    id: p.id,
+                    user_id: p.userId,
+                    workspace_id: p.workspaceId,
+                    workspace_note_id: p.workspaceNoteId,
+                    learning_session_id: p.learningSessionId,
+                    synced_at: p.syncedAt ? p.syncedAt.toISOString() : new Date().toISOString(),
+                    synced_id: p.syncedId,
+                    page_num: p.pageNum,
+                    title: p.title,
+                    is_active: p.isActive,
+                    status: p.status,
+                    processing_status: p.processingStatus,
+                    content_data: objString,
+                    content_text: p.contentText ? p.contentText : "",
+                    content_extracted: p.contentExtracted ? p.contentExtracted : null,
+                    attributes: p.attributes,
+                })
+            });
+
+            await store.dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages })).unwrap();
         }
 
         return results;
     }
 
     /** Hapus 1 halaman Page */
-    async deletePage(
-        pageId: string,
-        syncedId: string | null = null,
-        workspaceId: string,
-        workspaceNoteId: string,
-    ): Promise<boolean> {
+    async deletePage({
+        pageId,
+        syncedId,
+        workspaceId,
+        workspaceNoteId,
+        syncToServer = true
+    }: {
+        pageId: string;
+        syncedId: string | null | undefined;
+        workspaceId: string;
+        workspaceNoteId: string;
+        syncToServer?: boolean;
+    }): Promise<boolean> {
         const result = await this.pageRepo.delete(pageId);
         await this.saveWebStore();
 
-        if (syncedId) {
-            store
+        if (syncedId && syncToServer) {
+            await store
                 .dispatch(notesAPI.endpoints.deleteNotePage.initiate({
                     synced_id: syncedId,
                     workspace_id: workspaceId,

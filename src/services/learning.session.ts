@@ -4,6 +4,11 @@ import { supabase } from "../lib/supabase";
 
 export type LearningSessionTypes = {
     readonly id: string;
+    readonly workspace: any;
+    readonly pages_text: any[];
+    readonly pages_canvas: any[];
+    readonly pages_file: any[];
+
     started_at: string;
     ended_at: string;
     workspace_id: string;
@@ -103,6 +108,50 @@ export const learningSessionAPI = createApi({
         }),
 
         // ...
+        // get learning session by id with full data
+        // ...
+        getLearningSessionById: builder.query<LearningSessionTypes, string>({
+            queryFn: async (id) => {
+                const { data, error } = await supabase
+                    .from("workspace_learning_sessions")
+                    .select(`
+                        *
+                        , pages_text:workspace_notes_pages(
+                            id
+                            , note:workspace_note_id!inner(
+                                content_type
+                            )
+                        )
+                        , pages_canvas:workspace_notes_pages(
+                            id
+                            , note:workspace_note_id!inner(
+                                content_type
+                            )
+                        )
+                        , pages_file:workspace_notes_pages(
+                            id
+                            , note:workspace_note_id!inner(
+                                content_type
+                            )
+                        )
+                        , workspace:workspace_id!inner(*)
+                    `)
+                    .eq("id", id)
+                    .eq("pages_text.note.content_type", "text")
+                    .eq("pages_canvas.note.content_type", "canvas")
+                    .eq("pages_file.note.content_type", "file")
+                    .single();
+
+                if (error) {
+                    return { error: { message: error.message ?? 'Failed to fetch learning session' } };
+                }
+
+                return { data: { ...data } };
+            },
+            providesTags: (result, error, id) => [{ type: 'LearningSession', id }],
+        }),
+
+        // ...
         // Get learning sessions by workspace id (paginated)
         // ...
         getLearningSessionsByWorkspaceId: builder.query<PaginatedLearningSessionsResponse, GetLearningSessionsByWorkspaceIdParams>({
@@ -187,4 +236,6 @@ export const {
     useCreateSessionMutation,
     useGetLearningSessionsByWorkspaceIdQuery,
     useLazyGetLearningSessionsByWorkspaceIdQuery,
+    useGetLearningSessionByIdQuery,
+    useLazyGetLearningSessionByIdQuery,
 } = learningSessionAPI;

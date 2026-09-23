@@ -14,6 +14,7 @@ import { PageAddStatusField1788926641499 } from "./1788926641499-PageAddStatusFi
 import { MetadataToAttributes1789113847556 } from "./1789113847556-MetadataToAttributes";
 import { AddProcessingStatusField1789214332042 } from "./1789214332042-AddProcessingStatusField";
 import { AddProcessingStatusField1789214572157 } from "./1789214572157-AddProcessingStatusField";
+import { AddLearningSessionId1790083341498 } from "./1790083341498-AddLearningSessionId";
 
 export {
     InitialNotes1787674018377,
@@ -32,4 +33,5 @@ export {
     MetadataToAttributes1789113847556,
     AddProcessingStatusField1789214332042,
     AddProcessingStatusField1789214572157,
+    AddLearningSessionId1790083341498,
 };

@@ -320,7 +320,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
     }
 
     const refreshPapers = async (item: NoteTypes) => {
-        await getNoteById({ id: item.id, workspace_id: workspaceId as string });
+        await getNoteById({ id: item.id });
     }
 
     if (isLoading && page === 1) {

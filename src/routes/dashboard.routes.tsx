@@ -14,6 +14,8 @@ import DigestsPage from "../pages/dashboard/digests/Page";
 import AccountDeletionPage from "../pages/dashboard/account-deletion/Page";
 import ChatbotPage from "../pages/dashboard/chatbot/Page";
 import SessionEditorPage from "../pages/dashboard/editor/session/Page";
+import SessionsPage from "../pages/dashboard/workspace/sessions/Page";
+import SessionDetailPage from "../pages/dashboard/workspace/sessions/detail/Page";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -25,6 +27,8 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/editor/workspace/:id", element: <WorkspaceEditorPage /> },
     { path: "/dashboard/workspace", element: <WorkspacePage /> },
     { path: "/dashboard/workspace/:id", element: <WorkspaceDetailPage /> },
+    { path: "/dashboard/workspace/:id/sessions", element: <SessionsPage /> },
+    { path: "/dashboard/workspace/:id/sessions/:sessionId", element: <SessionDetailPage /> },
     { path: "/dashboard/workspace/:id/members", element: <WorkspaceMembersPage /> },
     { path: "/dashboard/notes", element: <NotesPage /> },
     { path: "/dashboard/materials", element: <MaterialsPage /> },

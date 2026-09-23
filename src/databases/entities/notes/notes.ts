@@ -14,6 +14,9 @@ export class Note {
     workspaceId!: string;
 
     @Column({ nullable: true })
+    learningSessionId!: string;
+
+    @Column({ nullable: true })
     title!: string;
 
     @Column({ nullable: true })

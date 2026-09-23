@@ -33,6 +33,8 @@ import { useSearchParams } from 'react-router-dom';
 import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 import { generateUUID } from '../../../../utils/generator';
+import { getUser } from '../../../../utils/authState';
+import { useGetLearningSessionByIdQuery } from '../../../../services/learning.session';
 
 const AUTOSAVE_THROTTLE_MS = 1000;
 
@@ -60,6 +62,8 @@ const RichTextEditorPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
     const noteId = searchParams.get('noteId');
+    const sessionId = searchParams.get('sessionId');
+    const pageId = searchParams.get('pageId');
     const isProcessed = Boolean(searchParams.get('clusteredDate'));
 
     const ionContentRef = useRef<HTMLIonContentElement>(null);
@@ -104,15 +108,28 @@ const RichTextEditorPage: React.FC = () => {
     // Menyimpan halaman yang sedang aktif agar tidak menjadi null saat unmount
     const selectedPageRef = useRef<Partial<Page> | null>(null);
     const selectedNoteRef = useRef<Partial<Note> | null>(null);
+    const selectedSessionRef = useRef<{ id: string } | null>(null);
 
     // Gunakan useRef untuk menyimpan state awal tanpa memicu re-render
     const initialDelta = useRef<any>(null);
     const initialLength = useRef<number>(0);
 
+    // Sumber kebenaran baseline: delta terakhir yang KITA TAHU sama dengan
+    // server. HANYA ditulis di contentLoader (saat load awal / page baru)
+    // dan handleSaveChanges (setelah sync berhasil). Effect yang me-load
+    // konten ke editor cuma BACA ini, gak pernah nulis — supaya gak sirkular
+    // kayak sebelumnya.
+    const serverBaselineRef = useRef<Record<string, { delta: Delta; length: number }>>({});
+
+    const setServerBaseline = useCallback((pageId: string, delta: Delta, length: number) => {
+        serverBaselineRef.current[pageId] = { delta, length };
+    }, []);
+
     // RTK Query
-    const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
+    const [getNoteById] = useLazyGetNoteByIdQuery();
     const [upsertNote] = useUpsertNoteMutation();
     const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
+    const { data: sessionData, error, isLoading, isFetching } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
 
     const updateIsDirty = useCallback((value: boolean) => {
         setIsDirty(value);
@@ -164,32 +181,28 @@ const RichTextEditorPage: React.FC = () => {
                 processingStatus: isDraft
                     ? 'pending'
                     : (hasSignificantChange ? 'pending' : 'processed'),
-            });
+            }, false);
 
             console.log('selected page id: ', page.id, ' is updated');
 
             // Cegah update state jika halaman sudah di-reset oleh useIonViewDidLeave
             if (isPageActiveRef.current) {
-                setPages((prevPages) =>
-                    prevPages.map((p) => (p.id === page.id ? {
-                        ...p,
-                        contentData: bufferData,
-                        contentText: contentText,
-                        status: isDraft
-                            ? 'draft'
-                            : (hasSignificantChange ? 'draft' : 'published'),
-                        processingStatus: isDraft
-                            ? 'pending'
-                            : (hasSignificantChange ? 'pending' : 'processed'),
-                    } : p))
-                );
+                const updatedPages = pages.map((p) => (p.id === page.id ? {
+                    ...p,
+                    contentData: bufferData,
+                    contentText: contentText,
+                    status: (isDraft ? 'draft' : (hasSignificantChange ? 'draft' : 'published')) as any,
+                    processingStatus: (isDraft ? 'pending' : (hasSignificantChange ? 'pending' : 'processed')) as any,
+                } : p));
+
+                setPages(updatedPages);
 
                 // collect the contents
-                const contents = pages.map((p) => p.contentText).join('\n');
+                const contents = updatedPages.map((p) => p.contentText).join('\n');
                 await NotesRepository.updateNote({
                     id: selectedNoteRef.current?.id,
                     content: contents,
-                });
+                }, false);
             }
         } catch (err) {
             console.error('Failed to save document', err);
@@ -255,6 +268,7 @@ const RichTextEditorPage: React.FC = () => {
         const result = calculateQuillChange(
             initialQuillDataRef.current,
             quill.getContents(),
+
             initialQuillLengthRef.current,
             quill.getLength(),
             5 // Threshold 10%
@@ -325,9 +339,9 @@ const RichTextEditorPage: React.FC = () => {
 
         (async () => {
             if (!workspaceId) return;
-            await contentLoader(workspaceId, noteId);
+            await contentLoader(workspaceId, noteId, pageId);
         })();
-    }, [noteId, workspaceId]);
+    }, [noteId, workspaceId, pageId]);
 
     useIonViewDidLeave(() => {
         setPages([]);
@@ -347,6 +361,10 @@ const RichTextEditorPage: React.FC = () => {
     useEffect(() => {
         selectedNoteRef.current = selectedNote;
     }, [selectedNote]);
+
+    useEffect(() => {
+        selectedSessionRef.current = { id: sessionId ?? '' };
+    }, [sessionId]);
 
     // Initialize the pages Swiper once and clean it up on unmount.
     useEffect(() => {
@@ -400,47 +418,48 @@ const RichTextEditorPage: React.FC = () => {
 
     // Load content data for the active page into the editor.
     useEffect(() => {
-        if (!selectedPage) return;
+        if (!selectedPage?.id) return;
+        const pageId = selectedPage.id;
 
         const loadContentData = async () => {
             const contentData = selectedPage?.contentData;
-
-            // Halaman baru dibuka — biarkan edit pertama user langsung
-            // tersimpan, jangan mewarisi window throttle halaman sebelumnya.
             lastPersistedAtRef.current = 0;
 
+            let loadedDelta: Delta;
+            let loadedLength: number;
+
             if (contentData) {
-                try {
-                    const decoder = new TextDecoder('utf-8');
-                    const jsonString = decoder.decode(contentData);
+                const decoder = new TextDecoder('utf-8');
+                const jsonString = decoder.decode(contentData);
+                if (!jsonString) return;
 
-                    if (!jsonString) return;
+                loadedDelta = new Delta(JSON.parse(jsonString));
+                if (quillRef.current) quillRef.current.setContents(loadedDelta);
+                loadedLength = quillRef.current?.getLength() ?? 0;
 
-                    const json = JSON.parse(jsonString);
-
-                    if (quillRef.current) {
-                        quillRef.current.setContents(new Delta(json));
-                        setInitialState(new Delta(json));
-                        setInitialLength(quillRef.current.getLength());
-                    }
-
-                    setHasContent(true);
-                    // Seed the dedupe ref so the onChange this triggers
-                    // doesn't cause an immediate, redundant re-save.
-                    lastSavedDataRef.current = jsonString;
-                } catch (error) {
-                    console.error('Failed to parse saved content', error);
-                }
+                setHasContent(true);
+                lastSavedDataRef.current = jsonString;
             } else {
+                loadedDelta = new Delta();
+                loadedLength = 1;
                 setHasContent(false);
                 lastSavedDataRef.current = null;
-
                 setTimeout(() => {
-                    if (quillRef.current) {
-                        quillRef.current.setContents(new Delta());
-                    }
+                    if (quillRef.current) quillRef.current.setContents(new Delta());
                 }, 100);
             }
+
+            // BACA saja. Fallback di sini cuma jaga-jaga kalau ada bug di
+            // contentLoader yang bikin baseline belum ke-set — jalur normal
+            // seharusnya selalu ketemu.
+            const baseline = serverBaselineRef.current[pageId] ?? { delta: loadedDelta, length: loadedLength };
+            setInitialState(baseline.delta);
+            setInitialLength(baseline.length);
+
+            // Dihitung ULANG tiap revisit, dari baseline yang gak pernah
+            // bergeser — bukan di-reset ke false.
+            const result = calculateQuillChange(baseline.delta, loadedDelta, baseline.length, loadedLength, 5);
+            setHasSignificantChange(result.isReachedLimit);
         };
 
         loadContentData();
@@ -454,11 +473,11 @@ const RichTextEditorPage: React.FC = () => {
         try {
             // Flush any unsaved edits on the OUTGOING page before touching
             // selectedPage / swapping the editor's content.
-            if (!isProcessed) await flushPendingSave();
+            // if (!isProcessed) await flushPendingSave();
 
             const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
             if (!isProcessed) {
-                await NotesRepository.updatePagesBulk(updatedPages);
+                await NotesRepository.updatePagesBulk(updatedPages, false);
             }
 
             const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
@@ -486,11 +505,11 @@ const RichTextEditorPage: React.FC = () => {
         if (!selectedNoteRef.current?.id) return;
 
         try {
-            await flushPendingSave();
+            // await flushPendingSave();
 
             const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
             if (prevPages.length > 0) {
-                await NotesRepository.updatePagesBulk(prevPages);
+                await NotesRepository.updatePagesBulk(prevPages, false);
             }
 
             await createPage(selectedNoteRef.current, {
@@ -500,9 +519,10 @@ const RichTextEditorPage: React.FC = () => {
                 isActive: true,
                 status: 'draft',
                 processingStatus: 'pending',
-                syncedAt: new Date(),
-                syncedId: generateUUID(),
-            });
+                // syncedAt: new Date(),
+                // syncedId: generateUUID(),
+                learningSessionId: selectedSessionRef.current?.id ?? '',
+            }, false);
 
             const updatedPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
             setPages(updatedPages);
@@ -518,39 +538,67 @@ const RichTextEditorPage: React.FC = () => {
     };
 
     // --- CRUD NOTES ---
-    const initNote = async (workspaceId: string) => {
+    const initNote = async (workspaceId: string, sessionId: string | null = null) => {
         const entity = await NotesRepository.insertNote({
             workspaceId: workspaceId,
             title: "Untitled Note",
             content: "",
             noteDatetime: new Date(),
             contentType: "text",
-            syncedId: generateUUID(),
-            syncedAt: new Date(),
+            // syncedId: generateUUID(),
+            // syncedAt: new Date(),
             status: 'draft',
             processingStatus: 'pending',
-        });
+            learningSessionId: sessionId ? sessionId : '',
+        }, false);
         return entity;
     }
 
-    const createPage = async (note: Partial<Note>, data: Partial<Page>): Promise<Page> => {
-        const entity = await NotesRepository.addPage({ id: note.id }, data);
+    const createPage = async (note: Partial<Note>, data: Partial<Page>, syncToServer: boolean = true): Promise<Page> => {
+        const entity = await NotesRepository.addPage({ id: note.id }, data, syncToServer);
+        setServerBaseline(entity.id, new Delta(), 1);
         return entity;
     }
     // --- END CRUD NOTES ---
 
     // Load / create the note and its pages.
-    const contentLoader = async (workspaceId: string, noteId: string | null = null) => {
+    const contentLoader = async (workspaceId: string, noteId: string | null = null, pageId: string | null = null) => {
         let note: any | null = null;
+        let hasUnsynced: boolean = false;
 
         if (noteId) {
             // 1. load dari local database dulu
             note = await NotesRepository.getNoteById(noteId);
             if (note) {
                 console.log('load note from local database', note);
+
+                // tapi butuh data asli dari server untuk membandingkan perubahan
+                const { data: serverNote } = await getNoteById({ id: noteId });
+                console.log('note dari local: load note from server', serverNote);
+
+                // set baseline
+                // Isi baseline utk page yang BELUM punya entry (belum pernah kesentuh
+                // sesi ini). Kalau sudah ada, JANGAN ditimpa — itu prinsip utamanya.
+                serverNote?.pages?.forEach((p: NotePageTypes) => {
+                    if (serverBaselineRef.current[p.id]) return;
+
+                    if (p.content_data) {
+                        try {
+                            const decoder = new TextDecoder('utf-8');
+                            const x = Buffer.from(JSON.stringify(p.content_data));
+                            const delta = new Delta(JSON.parse(decoder.decode(x)));
+                            setServerBaseline(p.id, delta, delta.length());
+                        } catch (err) {
+                            console.error('Failed to set baseline for page', p.id, err);
+                            setServerBaseline(p.id, new Delta(), 1);
+                        }
+                    } else {
+                        setServerBaseline(p.id, new Delta(), 1);
+                    }
+                });
             } else {
                 // 2. note tidak ada di local, load dari server
-                const { data: serverNote } = await getNoteById({ id: noteId, workspace_id: workspaceId });
+                const { data: serverNote } = await getNoteById({ id: noteId });
                 console.log('load note from server', serverNote);
 
                 // 3. karena dari server, inject ke local db
@@ -567,22 +615,23 @@ const RichTextEditorPage: React.FC = () => {
                         contentType: serverNote.content_type as NoteFormatTypes,
                         syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
                         syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at) : new Date(),
+                        learningSessionId: sessionId ? sessionId : '',
                     }
 
-                    note = await NotesRepository.insertNote(nData);
+                    note = await NotesRepository.insertNote(nData, false);
                     console.log('injected note', note);
 
                     // di server belum punya synced_id -> update server
-                    if (!serverNote.synced_id) {
-                        console.log('adding synced id to existing note');
-                        await upsertNote({
-                            body: {
-                                id: serverNote.id,
-                                synced_id: newSyncedId,
-                                synced_at: new Date().toISOString(),
-                            }
-                        }).unwrap();
-                    }
+                    // if (!serverNote.synced_id) {
+                    //     console.log('adding synced id to existing note');
+                    //     await upsertNote({
+                    //         body: {
+                    //             id: serverNote.id,
+                    //             synced_id: newSyncedId,
+                    //             synced_at: new Date().toISOString(),
+                    //         }
+                    //     });
+                    // }
 
                     // 4. lanjut insert pages nya jika ada
                     const injectedPages = serverNote.pages
@@ -605,12 +654,13 @@ const RichTextEditorPage: React.FC = () => {
                                     syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
                                     note: { id: serverNote.id },
                                     attributes: p.attributes,
+                                    learningSessionId: sessionId ? sessionId : '',
                                 }
                             })
                         : [];
 
                     if (injectedPages.length > 0) {
-                        const savedPages = await NotesRepository.addPagesBulk({ id: serverNote.id }, injectedPages);
+                        const savedPages = await NotesRepository.addPagesBulk(injectedPages, false);
                         console.log("injected pages", savedPages);
                     } else {
                         // halaman belum ada, buat halaman baru
@@ -622,21 +672,32 @@ const RichTextEditorPage: React.FC = () => {
                             isActive: true,
                             status: 'draft',
                             processingStatus: 'pending',
-                            syncedAt: new Date(),
-                            syncedId: generateUUID(),
-                        });
+                            // syncedAt: new Date(),
+                            // syncedId: generateUUID(),
+                            learningSessionId: sessionId ? sessionId : '',
+                        }, false);
 
                         console.log('note first page injected', page);
                     }
                 }
             }
+        } else {
+            // 0. cek apakah ada unsynced note
+            // ini note dari local database
+            const unsyncedNote = await NotesRepository.getUnsyncedNote('text');
+            if (unsyncedNote) {
+                hasUnsynced = true;
+                note = unsyncedNote;
+            }
+
+            console.log('load unsynced note', unsyncedNote);
         }
 
         // 4. setelah dari local db dan server masih juga tidak ada
         // 5. buat note baru
         if (note === null) {
             // Brand-new note: there was never a server record to fetch.
-            note = await initNote(workspaceId);
+            note = await initNote(workspaceId, sessionId);
             console.log('create new note', note);
 
             const page = await createPage({ id: note.id }, {
@@ -646,9 +707,10 @@ const RichTextEditorPage: React.FC = () => {
                 isActive: true,
                 status: 'draft',
                 processingStatus: 'pending',
-                syncedAt: new Date(),
-                syncedId: generateUUID(),
-            });
+                // syncedAt: new Date(),
+                // syncedId: generateUUID(),
+                learningSessionId: sessionId ? sessionId : '',
+            }, false);
             console.log('create page note didn\'t exist', page);
         }
 
@@ -659,9 +721,36 @@ const RichTextEditorPage: React.FC = () => {
             console.log('active note', note);
 
             // get all pages
-            const savedPages = await NotesRepository.getPagesByNoteId(note.id);
+            let savedPages = await NotesRepository.getPagesByNoteId(note.id);
             console.log('getting pages', savedPages);
-            setPages([...savedPages]);
+
+            if (pageId) {
+                savedPages = savedPages.map((p: Page) => ({
+                    ...p,
+                    isActive: p.id === pageId,
+                }));
+            }
+
+            setPages(savedPages);
+
+            // Isi baseline utk page yang BELUM punya entry (belum pernah kesentuh
+            // sesi ini). Kalau sudah ada, JANGAN ditimpa — itu prinsip utamanya.
+            savedPages.forEach((p: Page) => {
+                if (serverBaselineRef.current[p.id]) return;
+
+                if (p.contentData) {
+                    try {
+                        const decoder = new TextDecoder('utf-8');
+                        const delta = new Delta(JSON.parse(decoder.decode(p.contentData)));
+                        setServerBaseline(p.id, delta, delta.length());
+                    } catch (e) {
+                        console.error('Failed to set baseline for page', p.id, e);
+                        setServerBaseline(p.id, new Delta(), 1);
+                    }
+                } else {
+                    setServerBaseline(p.id, new Delta(), 1);
+                }
+            });
 
             // get active page
             const activePage = savedPages.find((p: Page) => p.isActive === true);
@@ -673,9 +762,9 @@ const RichTextEditorPage: React.FC = () => {
 
         // di url params tidak ada noteId
         // set dengan yang baru
-        if (!noteId) {
-            handleUpdateUrlWithNoteId(note.id);
-        }
+        // if (!noteId && !hasUnsynced) {
+        //     handleUpdateUrlWithNoteId(note.id);
+        // }
     }
 
     // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
@@ -706,31 +795,69 @@ const RichTextEditorPage: React.FC = () => {
     // ...
     const handleSaveChanges = async () => {
         if (!selectedNoteRef?.current?.id) return;
-
-        // update page status menjadi published
-        const updatedPages = pages.map(p => {
-            return {
-                ...p,
-                status: 'published' as any,
-            };
-        });
-
-        // update semua pages as published
-        await NotesRepository.updatePagesBulk(updatedPages);
-        setPages(updatedPages);
+        const user = await getUser();
 
         // update note dari 'draft' ke 'publish'
         // tujuannya untuk start embedding
         const newContent = pages.map((p) => p.contentText).join('\n');
-        const res = await NotesRepository.updateNote({
-            id: selectedNoteRef.current.id,
+        const res = await NotesRepository.upsertNote({
+            id: selectedNoteRef.current.id || generateUUID(),
+            userId: user.id,
             status: 'published',
             processingStatus: 'pending',
+            contentType: 'text',
+            noteDatetime: sessionData?.ended_at ? new Date(sessionData?.ended_at) : new Date(),
             content: newContent,
-        });
+            syncedId: selectedNoteRef.current.syncedId || generateUUID(),
+            syncedAt: new Date(),
+            learningSessionId: selectedNoteRef.current.learningSessionId,
+            workspaceId: selectedNoteRef.current.workspaceId,
+        }, ['id'], true);
 
-        setSelectedNote(res);
-        presentToast('Note saved successfully!', 1000);
+        if (res) {
+            const updatedPages = pages.map(p => ({
+                ...p,
+                workspaceId: res.workspaceId,
+                status: 'published' as any,
+                syncedId: p.syncedId || generateUUID(),
+                syncedAt: new Date(),
+            }));
+
+            await NotesRepository.upsertPagesBulk(updatedPages);
+            setPages(updatedPages);
+            setSelectedNote(res);
+
+            const activePageId = selectedPageRef.current?.id;
+
+            updatedPages.forEach((p) => {
+                if (p.id === activePageId && quillRef.current) {
+                    // Halaman aktif: isi quill sekarang PERSIS yang baru dikirim
+                    // ke server — paling akurat, gak perlu decode ulang.
+                    setServerBaseline(p.id, quillRef.current.getContents(), quillRef.current.getLength());
+                    return;
+                }
+                if (p.contentData) {
+                    try {
+                        const decoder = new TextDecoder('utf-8');
+                        const delta = new Delta(JSON.parse(decoder.decode(p.contentData)));
+                        setServerBaseline(p.id, delta, delta.length());
+                    } catch (e) {
+                        console.error('Failed to refresh baseline for page', p.id, e);
+                    }
+                } else {
+                    setServerBaseline(p.id, new Delta(), 1);
+                }
+            });
+
+            if (activePageId) {
+                const b = serverBaselineRef.current[activePageId];
+                setInitialState(b?.delta ?? new Delta());
+                setInitialLength(b?.length ?? 1);
+            }
+            setHasSignificantChange(false);
+
+            presentToast('Note saved successfully!', 1000);
+        }
     }
 
     // 1. Simpan "Fingerprint" / State Awal saat editor siap
@@ -801,14 +928,14 @@ const RichTextEditorPage: React.FC = () => {
                                 <IonButtons slot="end" className="ion-padding-end">
                                     <IonButton
                                         fill="solid"
-                                        color="primary"
+                                        color="dark"
                                         size="small"
                                         mode="ios"
                                         shape="round"
                                         className="normal-button"
                                         style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
                                         onClick={handleSaveChanges}
-                                        disabled={!hasSignificantChange && pages.some(p => p.status === 'published')}
+                                        disabled={!pages.some(p => p.status === 'draft')}
                                     >
                                         Save Changes
                                     </IonButton>
@@ -957,12 +1084,13 @@ const RichTextEditorPage: React.FC = () => {
                             }
 
                             try {
-                                await NotesRepository.deletePage(
-                                    pages[activeIndex].id,
-                                    pages[activeIndex].syncedId,
-                                    pages[activeIndex].workspaceId,
-                                    pages[activeIndex].workspaceNoteId,
-                                );
+                                await NotesRepository.deletePage({
+                                    pageId: pages[activeIndex].id,
+                                    syncedId: pages[activeIndex].syncedId || null,
+                                    workspaceId: pages[activeIndex].workspaceId,
+                                    workspaceNoteId: pages[activeIndex].workspaceNoteId,
+                                    syncToServer: true,
+                                });
 
                                 const remaining = pages.filter((_, idx) => idx !== activeIndex);
 
@@ -983,7 +1111,7 @@ const RichTextEditorPage: React.FC = () => {
                                     isActive: idx === nextActiveIndex,
                                 }));
 
-                                await NotesRepository.updatePagesBulk(reindexed);
+                                await NotesRepository.updatePagesBulk(reindexed, false);
                                 setPages(reindexed);
                                 setIsDirty(false);
 

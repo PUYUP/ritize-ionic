@@ -1,4 +1,4 @@
-import { IonBackButton, IonBadge, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonDatetime, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonPage, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
+import { IonBackButton, IonBadge, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonDatetime, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonPage, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
 import { checkmarkOutline, closeOutline, timeOutline, timeSharp } from 'ionicons/icons';
 import { useRef, useState } from 'react';
@@ -16,6 +16,8 @@ type SessionFormValues = {
 };
 
 function SessionEditorPage() {
+    const ionRouter = useIonRouter();
+
     // Mutation
     const [createSession, { isLoading }] = useCreateSessionMutation();
 
@@ -121,15 +123,22 @@ function SessionEditorPage() {
             started_at: data.startedAt,
             ended_at: data.endedAt,
             title: data.topic,
-            status: 'ongoing',
+            status: 'completed',
             duration_seconds: durationSeconds,
         }
 
-        await createSession({ body: payload });
+        const { data: res, error } = await createSession({ body: payload });
+        if (error) {
+            return;
+        }
+
         reset();
         setSelectedDateTemp(undefined);
         setShowSelectDatetimeModal({ isOpen: false, type: 'startedAt' });
         setShowWorkspacesModal(false);
+
+        // redirect to session detail
+        ionRouter.push(`/dashboard/workspace/${res.workspace_id}/sessions/${res.id}`);
     };
 
     // Page lifecycle

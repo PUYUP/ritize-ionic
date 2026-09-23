@@ -178,7 +178,7 @@ const FilesEditorPage: React.FC = () => {
                 console.log('load note from local database', note);
             } else {
                 // 2. note tidak ada di local, load dari server
-                const { data: serverNote } = await getNoteById({ id: noteId, workspace_id: workspaceId });
+                const { data: serverNote } = await getNoteById({ id: noteId });
                 console.log('load note from server', serverNote);
 
                 // 3. karena dari server, inject ke local db
@@ -237,7 +237,7 @@ const FilesEditorPage: React.FC = () => {
                         : [];
 
                     if (injectedPages.length > 0) {
-                        const savedPages = await NotesRepository.addPagesBulk({ id: serverNote.id }, injectedPages);
+                        const savedPages = await NotesRepository.addPagesBulk(injectedPages);
                         console.log("injected pages", savedPages);
                     }
                 }
@@ -902,12 +902,13 @@ const FilesEditorPage: React.FC = () => {
                             }
 
                             // delete page from db
-                            await NotesRepository.deletePage(
-                                pages[activeIndex].id,
-                                pages[activeIndex].syncedId,
-                                pages[activeIndex].workspaceId,
-                                pages[activeIndex].workspaceNoteId,
-                            );
+                            await NotesRepository.deletePage({
+                                pageId: pages[activeIndex].id,
+                                syncedId: pages[activeIndex].syncedId,
+                                workspaceId: pages[activeIndex].workspaceId,
+                                workspaceNoteId: pages[activeIndex].workspaceNoteId,
+                                syncToServer: true,
+                            });
 
                             const filtered = pages.filter((_, idx) => idx !== activeIndex);
 

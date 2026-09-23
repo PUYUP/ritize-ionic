@@ -68,6 +68,12 @@ class NotesRepository {
         });
     }
 
+    async getUnsyncedPagesBySessionId(sessionId: string): Promise<Page[]> {
+        return this.pageRepo.find({
+            where: { learningSessionId: sessionId, syncedId: IsNull() } as any,
+        });
+    }
+
     async getUnsyncedNote(contentType: string = 'text'): Promise<Note | null> {
         return this.noteRepo.findOne({
             where: { syncedId: IsNull(), contentType: contentType } as any,

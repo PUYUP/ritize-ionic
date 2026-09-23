@@ -711,6 +711,7 @@ const RichTextEditorPage: React.FC = () => {
                 // syncedId: generateUUID(),
                 learningSessionId: sessionId ? sessionId : '',
             }, false);
+
             console.log('create page note didn\'t exist', page);
         }
 
@@ -1076,6 +1077,9 @@ const RichTextEditorPage: React.FC = () => {
                             const activeIndex = pages.findIndex((p) => p.id === selectedPage.id);
                             if (activeIndex === -1) return;
 
+                            // jika sudah ter-sync ke database hapus di server
+                            const isSynced = pages[activeIndex].syncedId !== null;
+
                             // Don't let a pending autosave resurrect the page
                             // we're about to delete.
                             if (autosaveTimer.current) {
@@ -1089,7 +1093,7 @@ const RichTextEditorPage: React.FC = () => {
                                     syncedId: pages[activeIndex].syncedId || null,
                                     workspaceId: pages[activeIndex].workspaceId,
                                     workspaceNoteId: pages[activeIndex].workspaceNoteId,
-                                    syncToServer: true,
+                                    syncToServer: isSynced ? true : false,
                                 });
 
                                 const remaining = pages.filter((_, idx) => idx !== activeIndex);
@@ -1111,7 +1115,7 @@ const RichTextEditorPage: React.FC = () => {
                                     isActive: idx === nextActiveIndex,
                                 }));
 
-                                await NotesRepository.updatePagesBulk(reindexed, false);
+                                await NotesRepository.updatePagesBulk(reindexed, isSynced ? true : false);
                                 setPages(reindexed);
                                 setIsDirty(false);
 

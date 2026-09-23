@@ -3,10 +3,11 @@ import { format } from 'date-fns';
 import './NoteListSessioned.css';
 import { briefcaseOutline, chevronForwardOutline, closeOutline, documentText, ellipsisVertical, imageOutline, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
-import { NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
+import { NotePageTypes, NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
 import { getUser } from '../../utils/authState';
 import NotesRepository from '../../databases/datasources/NotesRepository';
+import { Page } from '../../databases/entities/notes';
 
 interface Props {
     workspaceId?: string;
@@ -164,6 +165,7 @@ const NoteItemMinimal: React.FC<{
     user: { id: string },
     workspaceId?: string,
     learningSessionId?: string,
+    unsyncedPages?: Page[],
     onShowOptions?: (item: NoteTypes) => void,
     onRefreshPapers?: (item: NoteTypes) => void
 }> = ({
@@ -172,6 +174,7 @@ const NoteItemMinimal: React.FC<{
     user,
     workspaceId,
     learningSessionId,
+    unsyncedPages,
     onShowOptions,
     onRefreshPapers
 }) => {
@@ -241,6 +244,18 @@ const NoteItemMinimal: React.FC<{
             badgeColor = 'text-gray-500';
         }
 
+        // filter unsynced pages
+        const _pages = unsyncedPages
+            ?.filter(up => up.workspaceNoteId === item.id)
+            ?.map(up => ({
+                id: up.id,
+                page_num: up.pageNum,
+                status: up.status,
+                content_text: up.contentText,
+                workspace_id: up.workspaceId,
+                workspace_note_id: up.workspaceNoteId,
+            })) as NotePageTypes[];
+
         return (
             <div className='block'>
                 <div className='flex mb-1 items-center'>
@@ -270,7 +285,7 @@ const NoteItemMinimal: React.FC<{
                 <div className='pl-8'>
                     {item.content_type == 'text' && (
                         <div className='flex flex-col gap-3'>
-                            {item.pages?.map(p => {
+                            {[..._pages, ...item?.pages ? item.pages : []]?.map(p => {
                                 let statusColor = 'text-neutral-500';
                                 if (p.status == 'published') {
                                     statusColor = 'text-green-800';
@@ -287,7 +302,7 @@ const NoteItemMinimal: React.FC<{
                                                         </div>
 
                                                         <IonText className='text-neutral-400'>&bull;</IonText>
-                                                        <IonText className={`${statusColor} tracking-wider`}>{p.status}</IonText>
+                                                        <IonText className={`${statusColor} tracking-wider`}>{p.status == 'published' ? 'saved' : 'draft'}</IonText>
                                                     </div>
                                                     {p.content_text && (
                                                         <div
@@ -313,7 +328,7 @@ const NoteItemMinimal: React.FC<{
                     {item.content_type == 'canvas' && (
                         <Link to={linkTo}>
                             <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
-                                {item.pages?.map((p: any) => {
+                                {item.pages?.map((p: NotePageTypes) => {
                                     const mediaLink = p?.attachments?.[0]?.file?.media_link;
 
                                     return (
@@ -426,6 +441,7 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
     const [selectedNote, setSelectedNote] = useState<NoteTypes | null>(null);
     const [user, setUser] = useState({ id: '' });
     const [page, setPage] = useState(1);
+    const [unsyncedPages, setUnsyncedPages] = useState<Page[]>([]);
 
     // RTK Query
     const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
@@ -452,8 +468,14 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
         (async () => {
             const u = await getUser();
             setUser(u);
+
+            // unscyned pages
+            if (learningSessionId) {
+                const unsyncedPages = await NotesRepository.getUnsyncedPagesBySessionId(learningSessionId);
+                setUnsyncedPages(unsyncedPages);
+            }
         })()
-    }, []);
+    }, [learningSessionId]);
 
     useEffect(() => {
         if (isSuccess && !isFetching) {
@@ -527,6 +549,7 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
                                         learningSessionId={learningSessionId}
                                         onShowOptions={optionsHandler}
                                         onRefreshPapers={refreshPapers}
+                                        unsyncedPages={unsyncedPages}
                                     />
                                 )
                             })}

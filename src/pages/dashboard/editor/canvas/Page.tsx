@@ -33,9 +33,11 @@ import { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { Note, Page } from '../../../../databases/entities/notes';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
-import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
+import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 import { blobToBase64, generateUUID } from '../../../../utils/generator';
+import { getUser } from '../../../../utils/authState';
+import { useGetLearningSessionByIdQuery } from '../../../../services/learning.session';
 
 const AUTOSAVE_THROTTLE_MS = 1000;
 const DEBOUNCE_DELAY = 300;
@@ -93,6 +95,7 @@ const CanvasEditorPage: React.FC = () => {
 	// Menyimpan halaman yang sedang aktif agar tidak menjadi null saat unmount
 	const selectedPageRef = useRef<Partial<Page> | null>(null);
 	const selectedNoteRef = useRef<Partial<Note> | null>(null);
+	const selectedSessionRef = useRef<{ id: string } | null>(null);
 
 	const width = useDeviceWidth();
 
@@ -112,10 +115,21 @@ const CanvasEditorPage: React.FC = () => {
 	// Ref untuk menyimpan timer debounce
 	const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+	// Sumber kebenaran baseline: elements terakhir yang KITA TAHU sama dengan
+	// server. HANYA ditulis di contentLoader (saat load awal / page baru)
+	// dan handleSaveChanges (setelah sync berhasil). Effect yang me-load
+	// konten ke kanvas cuma BACA ini, gak pernah nulis — supaya gak sirkular
+	// kayak sebelumnya.
+	const serverBaselineRef = useRef<Record<string, { elements: ExcalidrawElement[] | null; length: number }>>({});
+
+	const setServerBaseline = useCallback((pageId: string, elements: ExcalidrawElement[] | null, length: number) => {
+		serverBaselineRef.current[pageId] = { elements, length };
+	}, []);
+
 	// RTK Query
-	const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
-	const [upsertNote] = useUpsertNoteMutation();
+	const [getNoteById] = useLazyGetNoteByIdQuery();
 	const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
+	const { data: sessionData } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
 
 	const updateIsDirty = useCallback((value: boolean) => {
 		isDirtyRef.current = value;
@@ -223,6 +237,7 @@ const CanvasEditorPage: React.FC = () => {
 					prevPages.map((p) => (p.id === page.id ? {
 						...p,
 						contentData: bufferData,
+						contentExtracted: { fileData: fileData },
 						status: isDraft
 							? 'draft'
 							: (hasSignificantChange ? 'draft' : 'published'),
@@ -295,11 +310,12 @@ const CanvasEditorPage: React.FC = () => {
 		files: BinaryFiles
 	) => {
 		const visibleElements = elements.filter((el) => !el.isDeleted);
-		const hasElement = visibleElements.length > 0;
-		setHasContent(hasElement);
+		setHasContent(visibleElements.length > 0);
 
-		// tidak punya element jangan di proses
-		if (!hasElement) return;
+		// NOTE: tidak ada early-return di sini kalau kanvas kosong. Kalau
+		// user menghapus semua elemen, itu tetap harus ter-autosave (sama
+		// seperti handleTextChange di editor teks membiarkan isDeltaEmpty
+		// menentukan apakah ditulis null, bukan skip prosesnya sama sekali).
 
 		updateIsDirty(true);
 
@@ -372,6 +388,10 @@ const CanvasEditorPage: React.FC = () => {
 	useEffect(() => {
 		selectedNoteRef.current = selectedNote;
 	}, [selectedNote]);
+
+	useEffect(() => {
+		selectedSessionRef.current = { id: sessionId ?? '' };
+	}, [sessionId]);
 
 	useEffect(() => {
 		menuController.swipeGesture(false);
@@ -474,7 +494,8 @@ const CanvasEditorPage: React.FC = () => {
 
 	// Load content data for the active page into the canvas.
 	useEffect(() => {
-		if (!excalidrawAPI || !selectedPage) return;
+		if (!excalidrawAPI || !selectedPage?.id) return;
+		const pageId = selectedPage.id;
 
 		const loadContentData = async () => {
 			const contentData = selectedPage?.contentData;
@@ -497,6 +518,8 @@ const CanvasEditorPage: React.FC = () => {
 			isProgrammaticUpdateRef.current = false;
 			latestCanvasStateRef.current = null;
 
+			let loadedElements: ExcalidrawElement[] = [];
+
 			if (contentData) {
 				try {
 					const decoder = new TextDecoder('utf-8');
@@ -505,26 +528,39 @@ const CanvasEditorPage: React.FC = () => {
 					if (!jsonString) return;
 
 					const json = JSON.parse(jsonString);
+					loadedElements = json.elements ?? [];
 
-					setHasContent(!isElementsEmpty(json.elements));
+					setHasContent(!isElementsEmpty(loadedElements));
 					lastSavedDataRef.current = jsonString;
 
 					setTimeout(() => {
+						// Restore file/image binernya dulu sebelum elements
+						// di-render, supaya gambar yang sudah pernah
+						// ditempel di kanvas tidak hilang saat reload.
+						if (json.files && excalidrawAPI.addFiles) {
+							try {
+								excalidrawAPI.addFiles(Object.values(json.files));
+							} catch (fileErr) {
+								console.error('Failed to restore embedded files', fileErr);
+							}
+						}
+
 						excalidrawAPI.updateScene({
-							elements: json.elements,
+							elements: loadedElements,
 							appState: {
 								...json.appState,
 								...excalidrawAppProps.appState,
 							},
 						});
-
-						// Set initial state untuk membandingkan perubahan
-						setInitialState(json.elements);
 					}, 100);
 				} catch (error) {
 					console.error('Failed to parse saved content', error);
+					loadedElements = [];
+					setHasContent(false);
+					lastSavedDataRef.current = null;
 				}
 			} else {
+				loadedElements = [];
 				setHasContent(false);
 				lastSavedDataRef.current = null;
 
@@ -535,6 +571,16 @@ const CanvasEditorPage: React.FC = () => {
 					});
 				}, 100);
 			}
+
+			// BACA saja. Fallback di sini cuma jaga-jaga kalau ada bug di
+			// contentLoader yang bikin baseline belum ke-set — jalur normal
+			// seharusnya selalu ketemu.
+			const baseline = serverBaselineRef.current[pageId] ?? { elements: loadedElements, length: loadedElements.length };
+			setInitialState(baseline.elements ?? []);
+
+			// Dihitung ULANG tiap revisit, dari baseline yang gak pernah
+			// bergeser — bukan di-reset ke false.
+			setHasSignificantChange(checkNetChange(loadedElements));
 		};
 
 		loadContentData();
@@ -565,39 +611,24 @@ const CanvasEditorPage: React.FC = () => {
 		try {
 			// Flush any unsaved edits on the OUTGOING page before touching
 			// selectedPage / swapping the canvas' content.
-			if (!isProcessed) await flushPendingSave();
+			await flushPendingSave();
 
-			const updatedPages = pages.map((p) => ({
-				id: p.id,
-				syncedId: p.syncedId,
-				workspaceId: p.workspaceId,
-				workspaceNoteId: p.workspaceNoteId,
-				learningSessionId: p.learningSessionId,
-				pageNum: p.pageNum,
-				isActive: p.id === page.id,
-				status: p.status,
-				processingStatus: p.processingStatus,
-			}));
+			const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
+			await NotesRepository.updatePagesBulk(updatedPages, false);
 
-			if (!isProcessed) {
-				await NotesRepository.updatePagesBulk(updatedPages);
+			const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
+			if (isProcessed) {
+				// fake isActive indicator
+				setPages(prev => {
+					return prev.map((p) => ({ ...p, isActive: p.id === page.id }));
+				});
+			} else {
+				setPages(currentPages);
 			}
 
-			if (selectedNote) {
-				const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
-				if (isProcessed) {
-					// fake isActive indicator
-					setPages(prev => {
-						return prev.map((p) => ({ ...p, isActive: p.id === page.id }));
-					});
-				} else {
-					setPages(currentPages);
-				}
-
-				const freshSelectedPage = currentPages.find((p) => p.id === page.id);
-				if (freshSelectedPage) {
-					setSelectedPage(freshSelectedPage);
-				}
+			const freshSelectedPage = currentPages.find((p) => p.id === page.id);
+			if (freshSelectedPage) {
+				setSelectedPage(freshSelectedPage);
 			}
 		} catch (err) {
 			console.error('Failed to switch page', err);
@@ -612,31 +643,22 @@ const CanvasEditorPage: React.FC = () => {
 		try {
 			await flushPendingSave();
 
-			const prevPages = pages.map((p: Page) => ({
-				id: p.id,
-				workspaceId: p.workspaceId,
-				syncedId: p.syncedId,
-				workspaceNoteId: p.workspaceNoteId,
-				learningSessionId: p.learningSessionId,
-				pageNum: p.pageNum,
-				isActive: false
-			}));
-
+			const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
 			if (prevPages.length > 0) {
-				await NotesRepository.updatePagesBulk(prevPages);
+				await NotesRepository.updatePagesBulk(prevPages, false);
 			}
 
 			await createPage(selectedNoteRef.current, {
+				id: generateUUID(),
 				pageNum: pages.length + 1,
 				workspaceId: selectedNoteRef.current.workspaceId,
 				workspaceNoteId: selectedNoteRef.current.id,
-				learningSessionId: sessionId ? sessionId : '',
 				isActive: true,
 				status: 'draft',
 				processingStatus: 'pending',
-				syncedAt: new Date().toISOString(),
-				syncedId: generateUUID(),
-			});
+				createdAt: new Date().toISOString(),
+				learningSessionId: selectedSessionRef.current?.id ?? '',
+			}, false);
 
 			const updatedPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
 			setPages(updatedPages);
@@ -652,26 +674,31 @@ const CanvasEditorPage: React.FC = () => {
 	};
 
 	// --- CRUD NOTES ---
-	const initNote = async (workspaceId: string) => {
+	const initNote = async (workspaceId: string, sessionId: string | null = null) => {
+		const user = await getUser();
 		const entity = await NotesRepository.insertNote({
 			workspaceId: workspaceId,
-			learningSessionId: sessionId ? sessionId : '',
-			title: "Untitled Canvas",
+			userId: user?.id ?? '',
+			title: "Untitled Note",
 			content: "",
-			noteDatetime: new Date().toISOString(),
-			// NOTE: verify "canvas" is a valid member of your NoteFormatTypes
-			// union — swap for whatever value your backend/schema expects.
+			noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
+			createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
 			contentType: "canvas",
-			syncedId: generateUUID(),
-			syncedAt: new Date().toISOString(),
 			status: 'draft',
 			processingStatus: 'pending',
-		});
+			learningSessionId: sessionId ? sessionId : '',
+		}, false);
 		return entity;
 	}
 
-	const createPage = async (note: Partial<Note>, data: Partial<Page>): Promise<Page> => {
-		const entity = await NotesRepository.addPage({ id: note.id }, data);
+	const createPage = async (note: Partial<Note>, data: Partial<Page>, syncToServer: boolean = true): Promise<Page> => {
+		const user = await getUser();
+		const entity = await NotesRepository.addPage(
+			{ id: note.id },
+			{ ...data, userId: user.id ?? '' },
+			syncToServer
+		);
+		setServerBaseline(entity.id, [], 1);
 		return entity;
 	}
 	// --- END CRUD NOTES ---
@@ -685,6 +712,32 @@ const CanvasEditorPage: React.FC = () => {
 			note = await NotesRepository.getNoteById(noteId);
 			if (note) {
 				console.log('load note from local database', note);
+
+				// tapi butuh data asli dari server untuk membandingkan perubahan
+				const { data: serverNote } = await getNoteById({ id: noteId });
+				console.log('note dari local: load note from server', serverNote);
+
+				// set baseline
+				// Isi baseline utk page yang BELUM punya entry (belum pernah kesentuh
+				// sesi ini). Kalau sudah ada, JANGAN ditimpa — itu prinsip utamanya.
+				serverNote?.pages?.forEach((p: NotePageTypes) => {
+					if (serverBaselineRef.current[p.id]) return;
+
+					if (p.content_data) {
+						try {
+							const decoder = new TextDecoder('utf-8');
+							const x = Buffer.from(JSON.stringify(p.content_data));
+							const parsed = JSON.parse(decoder.decode(x));
+							const elements: ExcalidrawElement[] = parsed?.elements ?? [];
+							setServerBaseline(p.id, elements, elements.length);
+						} catch (err) {
+							console.error('Failed to set baseline for page', p.id, err);
+							setServerBaseline(p.id, [], 1);
+						}
+					} else {
+						setServerBaseline(p.id, [], 1);
+					}
+				});
 			} else {
 				// 2. note tidak ada di local, load dari server
 				const { data: serverNote } = await getNoteById({ id: noteId });
@@ -696,31 +749,20 @@ const CanvasEditorPage: React.FC = () => {
 					const nData = {
 						id: serverNote.id,
 						workspaceId: workspaceId,
-						learningSessionId: serverNote.learning_session_id ? serverNote.learning_session_id : '',
 						title: serverNote.title || "Untitled Note",
 						content: serverNote.content,
 						status: serverNote.status,
 						processingStatus: serverNote.processing_status,
-						noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime).toISOString() : new Date().toISOString(),
+						noteDatetime: serverNote.note_datetime ? serverNote.note_datetime : new Date().toISOString(),
 						contentType: serverNote.content_type as NoteFormatTypes,
 						syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
-						syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at).toISOString() : new Date().toISOString(),
+						syncedAt: serverNote.synced_at ? serverNote.synced_at : new Date().toISOString(),
+						createdAt: serverNote.created_at ? serverNote.created_at : new Date().toISOString(),
+						learningSessionId: sessionId ? sessionId : '',
 					}
 
-					note = await NotesRepository.insertNote(nData);
+					note = await NotesRepository.insertNote(nData, false);
 					console.log('injected note', note);
-
-					// di server belum punya synced_id -> update server
-					if (!serverNote.synced_id) {
-						console.log('adding synced id to existing note');
-						await upsertNote({
-							body: {
-								id: serverNote.id,
-								synced_id: newSyncedId,
-								synced_at: new Date().toISOString(),
-							}
-						}).unwrap();
-					}
 
 					// 4. lanjut insert pages nya jika ada
 					const injectedPages = serverNote.pages
@@ -732,7 +774,6 @@ const CanvasEditorPage: React.FC = () => {
 									id: p.id,
 									workspaceId: p.workspace_id,
 									workspaceNoteId: p.workspace_note_id,
-									learningSessionId: p.learning_session_id ? p.learning_session_id : '',
 									contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
 									userId: p.user_id,
 									pageNum: p.page_num,
@@ -740,62 +781,68 @@ const CanvasEditorPage: React.FC = () => {
 									processingStatus: p.processing_status,
 									isActive: p.is_active,
 									syncedId: p.synced_id ? p.synced_id : generateUUID(),
-									syncedAt: p.synced_at ? new Date(p.synced_at).toISOString() : new Date().toISOString(),
+									syncedAt: p.synced_at ? p.synced_at : new Date().toISOString(),
+									createdAt: p.created_at ? p.created_at : new Date().toISOString(),
 									note: { id: serverNote.id },
 									attributes: p.attributes,
+									learningSessionId: sessionId ? sessionId : '',
 								}
 							})
 						: [];
 
 					if (injectedPages.length > 0) {
-						const savedPages = await NotesRepository.addPagesBulk(injectedPages);
+						const savedPages = await NotesRepository.addPagesBulk(injectedPages, false);
 						console.log("injected pages", savedPages);
 					} else {
 						// halaman belum ada, buat halaman baru
 						// di local db dan server juga
 						const page = await createPage({ id: note.id }, {
+							id: generateUUID(),
 							pageNum: 1,
 							workspaceId: workspaceId,
 							workspaceNoteId: note.id,
-							learningSessionId: sessionId ? sessionId : '',
 							isActive: true,
 							status: 'draft',
 							processingStatus: 'pending',
-							syncedAt: new Date().toISOString(),
-							syncedId: generateUUID(),
-						});
+							createdAt: new Date().toISOString(),
+							learningSessionId: sessionId ? sessionId : '',
+						}, false);
 
 						console.log('note first page injected', page);
 					}
 				}
 			}
+		} else {
+			// 0. cek apakah ada unsynced note
+			// ini note dari local database
+			const unsyncedNote = await NotesRepository.getUnsyncedNote('canvas');
+			if (unsyncedNote) {
+				note = unsyncedNote;
+			}
+
+			console.log('load unsynced note', unsyncedNote);
 		}
 
 		// 4. setelah dari local db dan server masih juga tidak ada
 		// 5. buat note baru
 		if (note === null) {
 			// Brand-new note: there was never a server record to fetch.
-			note = await initNote(workspaceId);
+			note = await initNote(workspaceId, sessionId);
 			console.log('create new note', note);
 
 			const page = await createPage({ id: note.id }, {
+				id: generateUUID(),
 				pageNum: 1,
 				workspaceId: workspaceId,
 				workspaceNoteId: note.id,
-				learningSessionId: sessionId ? sessionId : '',
 				isActive: true,
 				status: 'draft',
 				processingStatus: 'pending',
-				syncedAt: new Date().toISOString(),
-				syncedId: generateUUID(),
-			});
+				createdAt: new Date().toISOString(),
+				learningSessionId: sessionId ? sessionId : '',
+			}, false);
+
 			console.log('create page note didn\'t exist', page);
-		}
-		else if (gettingNoteError) {
-			// noteId was provided, nothing local, and the server
-			// fetch failed — surface this instead of a silently
-			// blank editor.
-			presentToast({ message: 'Could not load this note.', duration: 2500, color: 'danger' });
 		}
 
 		// setelah semuanya diatas beres
@@ -817,18 +864,32 @@ const CanvasEditorPage: React.FC = () => {
 
 			setPages(savedPages);
 
+			// Isi baseline utk page yang BELUM punya entry (belum pernah kesentuh
+			// sesi ini). Kalau sudah ada, JANGAN ditimpa — itu prinsip utamanya.
+			savedPages.forEach((p: Page) => {
+				if (serverBaselineRef.current[p.id]) return;
+
+				if (p.contentData) {
+					try {
+						const decoder = new TextDecoder('utf-8');
+						const parsed = JSON.parse(decoder.decode(p.contentData));
+						const elements: ExcalidrawElement[] = parsed?.elements ?? [];
+						setServerBaseline(p.id, elements, elements.length);
+					} catch (e) {
+						console.error('Failed to set baseline for page', p.id, e);
+						setServerBaseline(p.id, [], 1);
+					}
+				} else {
+					setServerBaseline(p.id, [], 1);
+				}
+			});
+
 			// get active page
 			const activePage = savedPages.find((p: Page) => p.isActive === true);
 			if (activePage) {
 				setSelectedPage(activePage);
 				console.log('active page', activePage);
 			}
-		}
-
-		// di url params tidak ada noteId
-		// set dengan yang baru
-		if (!noteId) {
-			handleUpdateUrlWithNoteId(note.id);
 		}
 	}
 
@@ -869,35 +930,84 @@ const CanvasEditorPage: React.FC = () => {
 	// ...
 	const handleSaveChanges = async () => {
 		if (!selectedNoteRef?.current?.id) return;
-		isProgrammaticUpdateRef.current = false;
-
-		const updatedPages = pages.map(p => {
-			return {
-				...p,
-				status: 'published' as any,
-			};
-		});
-
-		// update semua pages as published
-		await NotesRepository.updatePagesBulk(updatedPages);
-		setPages(updatedPages);
+		const user = await getUser();
 
 		// update note dari 'draft' ke 'publish'
 		// tujuannya untuk start embedding
-		await NotesRepository.updateNote({
-			id: selectedNoteRef.current.id,
+		const res = await NotesRepository.upsertNote({
+			id: selectedNoteRef.current.id || generateUUID(),
+			userId: user.id,
 			status: 'published',
-		});
+			processingStatus: 'pending',
+			contentType: 'canvas',
+			noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
+			createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
+			// Canvas tidak punya representasi teks polos seperti Quill —
+			// pertahankan content yang sudah ada (biasanya kosong).
+			content: selectedNoteRef.current?.content ?? '',
+			syncedId: selectedNoteRef.current.syncedId || generateUUID(),
+			syncedAt: new Date().toISOString(),
+			learningSessionId: selectedNoteRef.current.learningSessionId,
+			workspaceId: selectedNoteRef.current.workspaceId,
+		}, ['id'], true);
 
-		setSelectedNote((prev: Note | null) => {
-			if (!prev) return prev;
-			return {
-				...prev,
-				status: 'published',
-			};
-		});
+		if (res) {
+			const updatedPages = pages.map(p => ({
+				...p,
+				workspaceId: res.workspaceId,
+				status: 'published' as any,
+				syncedId: p.syncedId || generateUUID(),
+				syncedAt: new Date().toISOString(),
+				createdAt: new Date().toISOString(),
+			}));
 
-		presentToast('Note saved successfully!', 1000);
+			console.log(updatedPages);
+
+			await NotesRepository.upsertPagesBulk(updatedPages);
+			setPages(updatedPages);
+			setSelectedNote(res);
+
+			const activePageId = selectedPageRef.current?.id;
+
+			updatedPages.forEach((p) => {
+				if (p.id === activePageId) {
+					// Halaman aktif: pakai elements yang sekarang PERSIS ada
+					// di kanvas — paling akurat, gak perlu decode ulang.
+					const liveElements = latestCanvasStateRef.current?.elements
+						?? excalidrawAPI?.getSceneElementsIncludingDeleted()
+						?? [];
+					const snapshot = [...liveElements];
+					setServerBaseline(p.id, snapshot, snapshot.length);
+					return;
+				}
+				if (p.contentData) {
+					try {
+						const decoder = new TextDecoder('utf-8');
+						const parsed = JSON.parse(decoder.decode(p.contentData));
+						const elements: ExcalidrawElement[] = parsed?.elements ?? [];
+						setServerBaseline(p.id, elements, elements.length);
+					} catch (e) {
+						console.error('Failed to refresh baseline for page', p.id, e);
+					}
+				} else {
+					setServerBaseline(p.id, [], 1);
+				}
+			});
+
+			if (activePageId) {
+				const b = serverBaselineRef.current[activePageId];
+				setInitialState(b?.elements ?? []);
+			}
+
+			setHasSignificantChange(false);
+			presentToast('Note saved successfully!', 1000);
+		}
+
+		// di url params tidak ada noteId
+		// set dengan yang baru
+		if (!noteId && res) {
+			handleUpdateUrlWithNoteId(res.id);
+		}
 	}
 
 	// 1. Fungsi untuk merekam kondisi awal (di-wrap dengan useCallback)
@@ -975,14 +1085,14 @@ const CanvasEditorPage: React.FC = () => {
 								<IonButtons slot="end" className="ion-padding-end">
 									<IonButton
 										fill="solid"
-										color="primary"
+										color="dark"
 										size="small"
 										mode="ios"
 										shape="round"
 										className="normal-button"
 										style={{ '--padding-top': '6px', '--padding-bottom': '6px' }}
 										onClick={handleSaveChanges}
-										disabled={!hasSignificantChange && pages.some(p => p.status === 'published')}
+										disabled={!pages.some(p => p.status === 'draft')}
 									>
 										Save Changes
 									</IonButton>
@@ -1021,7 +1131,7 @@ const CanvasEditorPage: React.FC = () => {
 							if (api) setIsLoaded(true);
 						}}
 						onChange={(elements, appState, files) => {
-							if (!excalidrawAPI || !isDeletedRef) return;
+							if (!excalidrawAPI || isDeletedRef.current) return;
 
 							if (isProgrammaticUpdateRef.current == true) {
 								// Cek apakah perubahan sudah mencapai 10%

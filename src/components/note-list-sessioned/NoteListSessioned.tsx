@@ -210,7 +210,10 @@ const NoteItemMinimal: React.FC<{
                     {item.content_type == 'canvas' && (
                         <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
                             {item.pages?.map((p: NotePageTypes) => {
-                                const mediaLink = p?.attachments?.[0]?.file?.media_link;
+                                let mediaLink = p?.content_extracted?.fileData;
+                                if (p?.attachments?.length > 0) {
+                                    mediaLink = p?.attachments?.[0]?.file?.media_link;
+                                }
 
                                 return (
                                     <IonCard key={p.id} className='rounded-xl' routerLink={`${linkTo}&pageId=${p.id}`}>
@@ -273,13 +276,13 @@ const NoteItemMinimal: React.FC<{
                     )}
 
                     {(item.status === 'published' && item.pages_status == 'published') && (
-                        <div className='block mt-auto border-t border-neutral-200'>
-                            <div className='py-3'>
-                                <div className='ion-padding-start mb-2'>
-                                    <IonText className='!text-neutral-800 tracking-widest uppercase !text-xs'>Relevant papers:</IonText>
+                        <div className='block mt-auto'>
+                            <div className='py-3 px-3'>
+                                <div className='mb-2'>
+                                    <IonText className='!text-neutral-400 tracking-widest uppercase !text-xs albert-font'>Relevant papers:</IonText>
                                 </div>
                                 {item.documents?.length > 0 && (
-                                    <div className='flex flex-col gap-2 ion-padding-start ion-padding-end'>
+                                    <div className='flex flex-col gap-2'>
                                         {item?.documents?.slice(0, 2).map((doc: any, index: number, array: any) => {
                                             return (
                                                 <Link key={doc.id} to={doc.paper.pdf_url} target="_blank" rel="noopener noreferrer">

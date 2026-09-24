@@ -40,7 +40,7 @@ export type NotePageTypes = {
     is_active: boolean;
     content_data: Blob;
     content_text?: string;
-    content_extracted?: Record<string, any> | Array<any> | null;
+    content_extracted?: Record<string, any> | Array<any> | any | null;
     attributes?: any;
     status?: 'draft' | 'published';
     processing_status?: 'pending' | 'processed';
@@ -428,6 +428,7 @@ export const notesAPI = createApi({
                             , content_text
                             , processing_status
                             , page_num
+                            , content_extracted
                             , attachments(*, file:file_id(*))
                         )
                         , user!inner(id, name)
@@ -502,6 +503,7 @@ export const notesAPI = createApi({
                                 user_id: p.userId,
                                 is_active: p.isActive,
                                 content_data: objString,
+                                content_extracted: p.contentExtracted || null,
                             }
                         });
 

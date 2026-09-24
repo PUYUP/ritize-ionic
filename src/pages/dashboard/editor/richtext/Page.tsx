@@ -30,7 +30,7 @@ import 'swiper/css';
 import 'swiper/css/free-mode';
 import NotesRepository from '../../../../databases/datasources/NotesRepository';
 import { useSearchParams } from 'react-router-dom';
-import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from '../../../../services/notes';
+import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery } from '../../../../services/notes';
 import { useGetWorkspaceByIdQuery } from '../../../../services/workspace';
 import { generateUUID } from '../../../../utils/generator';
 import { getUser } from '../../../../utils/authState';
@@ -477,12 +477,10 @@ const RichTextEditorPage: React.FC = () => {
         try {
             // Flush any unsaved edits on the OUTGOING page before touching
             // selectedPage / swapping the editor's content.
-            // if (!isProcessed) await flushPendingSave();
+            await flushPendingSave();
 
             const updatedPages = pages.map((p) => ({ ...p, isActive: p.id === page.id }));
-            if (!isProcessed) {
-                await NotesRepository.updatePagesBulk(updatedPages, false);
-            }
+            await NotesRepository.updatePagesBulk(updatedPages, false);
 
             const currentPages = await NotesRepository.getPagesByNoteId(selectedNoteRef.current.id);
             if (isProcessed) {
@@ -509,7 +507,7 @@ const RichTextEditorPage: React.FC = () => {
         if (!selectedNoteRef.current?.id) return;
 
         try {
-            // await flushPendingSave();
+            await flushPendingSave();
 
             const prevPages = pages.map((p: Page) => ({ ...p, isActive: false }));
             if (prevPages.length > 0) {
@@ -525,8 +523,6 @@ const RichTextEditorPage: React.FC = () => {
                 status: 'draft',
                 processingStatus: 'pending',
                 createdAt: new Date().toISOString(),
-                // syncedAt: new Date().toISOString(),
-                // syncedId: generateUUID(),
                 learningSessionId: selectedSessionRef.current?.id ?? '',
             }, false);
 
@@ -554,8 +550,6 @@ const RichTextEditorPage: React.FC = () => {
             noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
             createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
             contentType: "text",
-            // syncedId: generateUUID(),
-            // syncedAt: new Date().toISOString(),
             status: 'draft',
             processingStatus: 'pending',
             learningSessionId: sessionId ? sessionId : '',
@@ -586,7 +580,7 @@ const RichTextEditorPage: React.FC = () => {
                 console.log('load note from local database', note);
 
                 // tapi butuh data asli dari server untuk membandingkan perubahan
-                const { data: serverNote, error } = await getNoteById({ id: noteId });
+                const { data: serverNote } = await getNoteById({ id: noteId });
                 console.log('note dari local: load note from server', serverNote);
 
                 // set baseline
@@ -635,18 +629,6 @@ const RichTextEditorPage: React.FC = () => {
                     note = await NotesRepository.insertNote(nData, false);
                     console.log('injected note', note);
 
-                    // di server belum punya synced_id -> update server
-                    // if (!serverNote.synced_id) {
-                    //     console.log('adding synced id to existing note');
-                    //     await upsertNote({
-                    //         body: {
-                    //             id: serverNote.id,
-                    //             synced_id: newSyncedId,
-                    //             synced_at: new Date().toISOString(),
-                    //         }
-                    //     });
-                    // }
-
                     // 4. lanjut insert pages nya jika ada
                     const injectedPages = serverNote.pages
                         ? serverNote.pages
@@ -688,8 +670,6 @@ const RichTextEditorPage: React.FC = () => {
                             isActive: true,
                             status: 'draft',
                             processingStatus: 'pending',
-                            // syncedAt: new Date().toISOString(),
-                            // syncedId: generateUUID(),
                             createdAt: new Date().toISOString(),
                             learningSessionId: sessionId ? sessionId : '',
                         }, false);
@@ -724,8 +704,6 @@ const RichTextEditorPage: React.FC = () => {
                 isActive: true,
                 status: 'draft',
                 processingStatus: 'pending',
-                // syncedAt: new Date().toISOString(),
-                // syncedId: generateUUID(),
                 createdAt: new Date().toISOString(),
                 learningSessionId: sessionId ? sessionId : '',
             }, false);

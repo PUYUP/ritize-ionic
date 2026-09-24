@@ -39,7 +39,7 @@ import { blobToBase64, generateUUID } from '../../../../utils/generator';
 import { getUser } from '../../../../utils/authState';
 import { useGetLearningSessionByIdQuery } from '../../../../services/learning.session';
 
-const AUTOSAVE_THROTTLE_MS = 1000;
+const AUTOSAVE_THROTTLE_MS = 500;
 const DEBOUNCE_DELAY = 300;
 
 /**
@@ -682,7 +682,7 @@ const CanvasEditorPage: React.FC = () => {
 			title: "Untitled Note",
 			content: "",
 			noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
-			createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
+			createdAt: new Date().toISOString(),
 			contentType: "canvas",
 			status: 'draft',
 			processingStatus: 'pending',
@@ -942,7 +942,7 @@ const CanvasEditorPage: React.FC = () => {
 			processingStatus: 'pending',
 			contentType: 'canvas',
 			noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
-			createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
+			createdAt: new Date().toISOString(),
 			// Canvas tidak punya representasi teks polos seperti Quill —
 			// pertahankan content yang sudah ada (biasanya kosong).
 			content: selectedNoteRef.current?.content ?? '',
@@ -1310,6 +1310,9 @@ const CanvasEditorPage: React.FC = () => {
 							const activeIndex = pages.findIndex((p) => p.id === selectedPage.id);
 							if (activeIndex === -1) return;
 
+							// jika sudah ter-sync ke database hapus di server
+							const isSynced = pages[activeIndex].syncedId !== null;
+
 							// tandai sebagai aksi hapus
 							isDeletedRef.current = true;
 
@@ -1326,7 +1329,7 @@ const CanvasEditorPage: React.FC = () => {
 									workspaceId: pages[activeIndex].workspaceId,
 									workspaceNoteId: pages[activeIndex].workspaceNoteId,
 									learningSessionId: pages[activeIndex].learningSessionId,
-									syncToServer: true,
+									syncToServer: isSynced ? true : false,
 								});
 
 								const remaining = pages.filter((_, idx) => idx !== activeIndex);
@@ -1355,15 +1358,18 @@ const CanvasEditorPage: React.FC = () => {
 									isActive: idx === nextActiveIndex,
 								}));
 
-								await NotesRepository.updatePagesBulk(remaining.map((p, idx) => ({
-									id: p.id,
-									workspaceId: p.workspaceId,
-									workspaceNoteId: p.workspaceNoteId,
-									learningSessionId: p.learningSessionId,
-									syncedId: p.syncedId,
-									pageNum: idx + 1,
-									isActive: idx === nextActiveIndex,
-								})));
+								await NotesRepository.updatePagesBulk(
+									remaining.map((p, idx) => ({
+										id: p.id,
+										workspaceId: p.workspaceId,
+										workspaceNoteId: p.workspaceNoteId,
+										learningSessionId: p.learningSessionId,
+										syncedId: p.syncedId,
+										pageNum: idx + 1,
+										isActive: idx === nextActiveIndex,
+									}),
+										isSynced ? true : false // delete in the server to?
+									));
 
 								setPages([...reAssign]);
 								updateIsDirty(false);

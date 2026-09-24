@@ -43,6 +43,10 @@ const SessionDetailPage: React.FC = () => {
         end: (sessionData?.duration_seconds ?? 0) * 1000 // intervalToDuration expects milliseconds
     });
 
+    // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+    const totalHours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+    const minutes = duration.minutes ?? 0;
+
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -76,12 +80,12 @@ const SessionDetailPage: React.FC = () => {
                                 <IonIcon icon={timeOutline} className='text-4xl text-neutral-600' />
                                 <div className='text-3xl font-bold text-neutral-900 !my-0 oswald-font flex gap-2'>
                                     <IonText>
-                                        {duration.hours ? duration.hours : 0}
+                                        {totalHours}
                                         <span className="font-normal text-2xl text-neutral-600">h</span>
                                     </IonText>
 
                                     <IonText>
-                                        {duration.minutes ? duration.minutes : 0}
+                                        {minutes}
                                         <span className="font-normal text-2xl text-neutral-600">m</span>
                                     </IonText>
                                 </div>

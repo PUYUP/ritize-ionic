@@ -36,7 +36,7 @@ import { generateUUID } from '../../../../utils/generator';
 import { getUser } from '../../../../utils/authState';
 import { useGetLearningSessionByIdQuery } from '../../../../services/learning.session';
 
-const AUTOSAVE_THROTTLE_MS = 1000;
+const AUTOSAVE_THROTTLE_MS = 500;
 
 /**
  * A delta is "empty" only if it has no text AND no embeds (images, formulas,
@@ -548,7 +548,7 @@ const RichTextEditorPage: React.FC = () => {
             title: "Untitled Note",
             content: "",
             noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
-            createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
+            createdAt: new Date().toISOString(),
             contentType: "text",
             status: 'draft',
             processingStatus: 'pending',
@@ -799,7 +799,7 @@ const RichTextEditorPage: React.FC = () => {
             processingStatus: 'pending',
             contentType: 'text',
             noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
-            createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
+            createdAt: new Date().toISOString(),
             content: newContent,
             syncedId: selectedNoteRef.current.syncedId || generateUUID(),
             syncedAt: new Date().toISOString(),

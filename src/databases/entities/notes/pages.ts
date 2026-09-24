@@ -28,10 +28,10 @@ export class Page {
     @Column()
     isActive!: boolean;
 
-    @Column('datetime', { nullable: true })
+    @Column('varchar', { nullable: true })
     syncedAt!: string | null;
 
-    @Column('datetime', { nullable: true })
+    @Column('varchar', { nullable: true })
     createdAt!: string | null;
 
     @Column('uuid', { nullable: true })

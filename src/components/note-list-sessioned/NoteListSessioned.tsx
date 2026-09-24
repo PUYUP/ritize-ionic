@@ -401,13 +401,13 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
                     <div key={dateKey} className='block flex flex-col w-full gap-4 relative'>
                         <div className='absolute left-[12px] top-6 bottom-2 border-l-1 border-dashed border-neutral-300'></div>
 
-                        {/* <div className='block'>
+                        <div className='block'>
                             <IonText className='font-semibold text-neutral-800'>
                                 <h3 className='!text-base !my-0'>
                                     {formatDateHeader(dateKey)}
                                 </h3>
                             </IonText>
-                        </div> */}
+                        </div>
 
                         <div className='grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 xl:gap-5'>
                             {notes.map((item, index, array) => {

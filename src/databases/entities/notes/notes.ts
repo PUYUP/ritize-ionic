@@ -22,7 +22,7 @@ export class Note {
     @Column({ nullable: true })
     content!: string;
 
-    @Column('datetime', { nullable: true })
+    @Column('varchar', { nullable: true })
     noteDatetime!: string | null;
 
     @Column()
@@ -31,10 +31,10 @@ export class Note {
     @OneToMany(() => Page, page => page.note)
     pages!: Page[];
 
-    @Column('datetime', { nullable: true })
+    @Column('varchar', { nullable: true })
     syncedAt!: string | null;
 
-    @Column('datetime', { nullable: true })
+    @Column('varchar', { nullable: true })
     createdAt!: string | null;
 
     @Column('uuid', { nullable: true })

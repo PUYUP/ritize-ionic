@@ -40,7 +40,7 @@ const SessionDetailPage: React.FC = () => {
 
     const duration = intervalToDuration({
         start: 0,
-        end: (sessionData?.duration_seconds ?? 0) * 100 // intervalToDuration expects milliseconds
+        end: (sessionData?.duration_seconds ?? 0) * 1000 // intervalToDuration expects milliseconds
     });
 
     return (
@@ -76,12 +76,12 @@ const SessionDetailPage: React.FC = () => {
                                 <IonIcon icon={timeOutline} className='text-4xl text-neutral-600' />
                                 <div className='text-3xl font-bold text-neutral-900 !my-0 oswald-font flex gap-2'>
                                     <IonText>
-                                        {duration.hours}
+                                        {duration.hours ? duration.hours : 0}
                                         <span className="font-normal text-2xl text-neutral-600">h</span>
                                     </IonText>
 
                                     <IonText>
-                                        {duration.minutes}
+                                        {duration.minutes ? duration.minutes : 0}
                                         <span className="font-normal text-2xl text-neutral-600">m</span>
                                     </IonText>
                                 </div>

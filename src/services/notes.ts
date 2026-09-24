@@ -181,6 +181,7 @@ export const notesAPI = createApi({
                             id
                             , learning_session_id
                             , synced_id
+                            , synced_at
                             , status 
                             , content_text
                             , processing_status
@@ -422,6 +423,7 @@ export const notesAPI = createApi({
                             id
                             , learning_session_id
                             , synced_id
+                            , synced_at
                             , status 
                             , content_text
                             , processing_status
@@ -854,7 +856,20 @@ export const notesAPI = createApi({
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === learningSessionId);
+                                if (noteIndex === -1) return;
+
                                 draft.notes[noteIndex].pages_status = data.some((p) => p.status === 'draft') ? 'draft' : 'published';
+
+                                // update pages
+                                if (draft.notes[noteIndex].pages) {
+                                    draft.notes[noteIndex].pages = draft.notes[noteIndex].pages.map(page => {
+                                        const newPage = data.find((p) => p.id === page.id);
+                                        return {
+                                            ...page,
+                                            ...(newPage ? newPage : {}),
+                                        }
+                                    });
+                                }
                             }
                         )
                     );

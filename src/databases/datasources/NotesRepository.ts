@@ -341,9 +341,6 @@ class NotesRepository {
     ): Promise<Page[]> {
         return this.enqueueWrite(async () => {
             const user = await getUser();
-            const workspaceId = pages[0].workspaceId;
-            const sessionId = pages[0].learningSessionId;
-
             const result = await this.pageRepo.upsert(
                 pages.map((p) => this.removeEmpty(p as any)),
                 conflictPaths

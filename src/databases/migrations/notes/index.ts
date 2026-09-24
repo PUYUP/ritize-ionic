@@ -17,6 +17,7 @@ import { AddProcessingStatusField1789214572157 } from "./1789214572157-AddProces
 import { AddLearningSessionId1790083341498 } from "./1790083341498-AddLearningSessionId";
 import { AddedCreatedAt1790178183725 } from "./1790178183725-AddedCreatedAt";
 import { ChangeDateToString1790226804897 } from "./1790226804897-ChangeDateToString";
+import { ChangeDatetimeToStr1790231983220 } from "./1790231983220-ChangeDatetimeToStr";
 
 export {
     InitialNotes1787674018377,
@@ -38,4 +39,5 @@ export {
     AddLearningSessionId1790083341498,
     AddedCreatedAt1790178183725,
     ChangeDateToString1790226804897,
+    ChangeDatetimeToStr1790231983220,
 };

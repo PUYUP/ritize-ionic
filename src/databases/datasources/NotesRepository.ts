@@ -6,6 +6,7 @@ import sqliteParams from '../sqliteParams';
 import { getUser } from '../../utils/authState';
 import { NoteFormatTypes, notesAPI } from '../../services/notes';
 import { store } from '../../store';
+import { format } from 'date-fns';
 
 class NotesRepository {
     // Antrian sederhana: setiap write dijalankan setelah write sebelumnya selesai
@@ -68,9 +69,22 @@ class NotesRepository {
         });
     }
 
+    async getUnsyncedNotesBySessionId(sessionId: string): Promise<Note[]> {
+        return this.noteRepo.find({
+            where: { learningSessionId: sessionId, syncedId: IsNull() } as any,
+            relations: ['pages'],
+        });
+    }
+
     async getUnsyncedPagesBySessionId(sessionId: string): Promise<Page[]> {
         return this.pageRepo.find({
             where: { learningSessionId: sessionId, syncedId: IsNull() } as any,
+        });
+    }
+
+    async getUnsyncedPagesByNoteId(noteId: string): Promise<Page[]> {
+        return this.pageRepo.find({
+            where: { workspaceNoteId: noteId, syncedId: IsNull() } as any,
         });
     }
 
@@ -91,19 +105,21 @@ class NotesRepository {
             const note = await this.noteRepo.save(entity);
             await this.saveWebStore();
 
-            if (syncToServer && note) {
+            if (note) {
                 await store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
+                        syncToServer: syncToServer,
                         body: this.removeEmpty({
                             id: note.id,
                             user_id: user.id,
                             workspace_id: note.workspaceId,
                             learning_session_id: note.learningSessionId,
-                            synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
+                            created_at: note.createdAt ? note.createdAt : new Date().toISOString(),
+                            synced_at: note.syncedAt ? note.syncedAt : new Date().toISOString(),
                             synced_id: note.syncedId,
                             content_type: note.contentType as NoteFormatTypes,
                             content: note.content,
-                            note_datetime: note.noteDatetime.toDateString(),
+                            note_datetime: note.noteDatetime ? new Date(note.noteDatetime).toISOString() : new Date().toISOString(),
                             title: note.title,
                             status: note.status,
                             processing_status: note.processingStatus,
@@ -125,19 +141,21 @@ class NotesRepository {
 
             const note = await this.getNoteById(insertedId);
 
-            if (note && syncToServer) {
+            if (note) {
                 await store
                     .dispatch(notesAPI.endpoints.upsertNote.initiate({
+                        syncToServer: syncToServer,
                         body: this.removeEmpty({
                             id: note.id,
                             user_id: user.id,
                             workspace_id: note.workspaceId,
                             learning_session_id: note.learningSessionId,
-                            synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
+                            created_at: note.createdAt ? note.createdAt : new Date().toISOString(),
+                            synced_at: note.syncedAt ? note.syncedAt : new Date().toISOString(),
                             synced_id: note.syncedId,
                             content_type: note.contentType as NoteFormatTypes,
                             content: note.content,
-                            note_datetime: note.noteDatetime.toDateString(),
+                            note_datetime: note.noteDatetime ? new Date(note.noteDatetime).toISOString() : new Date().toISOString(),
                             title: note.title,
                             status: note.status,
                             processing_status: note.processingStatus,
@@ -166,11 +184,11 @@ class NotesRepository {
                             user_id: user.id,
                             workspace_id: note.workspaceId,
                             learning_session_id: note.learningSessionId,
-                            synced_at: note.syncedAt ? note.syncedAt.toISOString() : new Date().toISOString(),
+                            synced_at: note.syncedAt ? note.syncedAt : new Date().toISOString(),
                             synced_id: note.syncedId,
                             content_type: note.contentType as NoteFormatTypes,
                             content: note.content,
-                            note_datetime: note.noteDatetime.toDateString(),
+                            note_datetime: note.noteDatetime ? new Date(note.noteDatetime).toISOString() : new Date().toISOString(),
                             title: note.title,
                             status: note.status,
                             processing_status: note.processingStatus,
@@ -184,17 +202,17 @@ class NotesRepository {
         });
     }
 
-    async deleteNote(id: string, workspaceId: string, syncToServer: boolean = true): Promise<boolean> {
+    async deleteNote(id: string, workspaceId: string, learningSessionId: string, syncToServer: boolean = true): Promise<boolean> {
         const result = await this.noteRepo.delete(id);
         await this.saveWebStore();
 
         // delete from database
-        if (syncToServer) {
-            await store.dispatch(notesAPI.endpoints.deleteNote.initiate({
-                id: id,
-                workspace_id: workspaceId,
-            }));
-        }
+        await store.dispatch(notesAPI.endpoints.deleteNote.initiate({
+            id: id,
+            workspace_id: workspaceId,
+            learning_session_id: learningSessionId,
+            syncToServer: syncToServer,
+        }));
 
         return (result.affected ?? 0) > 0;
     }
@@ -217,7 +235,7 @@ class NotesRepository {
             const savedPage = await this.pageRepo.save(page);
             await this.saveWebStore();
 
-            if (syncToServer && savedPage) {
+            if (savedPage) {
                 let objString = null;
                 if (savedPage.contentData) {
                     const decoder = new TextDecoder('utf-8');
@@ -227,13 +245,15 @@ class NotesRepository {
 
                 await store
                     .dispatch(notesAPI.endpoints.insertNotePage.initiate({
+                        syncToServer: syncToServer,
                         body: this.removeEmpty({
                             id: savedPage.id,
                             user_id: savedPage.userId,
                             workspace_id: savedPage.workspaceId,
                             learning_session_id: savedPage.learningSessionId,
                             workspace_note_id: savedPage.workspaceNoteId,
-                            synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
+                            created_at: note.createdAt ? note.createdAt : new Date().toISOString(),
+                            synced_at: savedPage.syncedAt ? savedPage.syncedAt : new Date().toISOString(),
                             synced_id: savedPage.syncedId,
                             content_data: objString,
                             content_text: savedPage.contentText ? savedPage.contentText : "",
@@ -256,7 +276,6 @@ class NotesRepository {
     /** Bulk insert beberapa Page baru sekaligus ke dalam satu Note */
     async addPagesBulk(dataList: Partial<Page>[], syncToServer: boolean = true): Promise<Page[]> {
         const user = await getUser();
-
         const pages = dataList.map((data) =>
             this.pageRepo.create({
                 ...data,
@@ -270,42 +289,43 @@ class NotesRepository {
 
         // Sync semua page baru ke server secara paralel
         // Bangun payload sync untuk semua page sekaligus
-        if (syncToServer) {
-            const updatingPages = savedPages.map((savedPage) => {
-                let objString = null;
-                if (savedPage.contentData) {
-                    const decoder = new TextDecoder('utf-8');
-                    const jsonString = decoder.decode(savedPage.contentData);
-                    objString = jsonString ? JSON.parse(jsonString) : {};
-                }
+        const updatingPages = savedPages.map((savedPage) => {
+            let objString = null;
+            if (savedPage.contentData) {
+                const decoder = new TextDecoder('utf-8');
+                const jsonString = decoder.decode(savedPage.contentData);
+                objString = jsonString ? JSON.parse(jsonString) : {};
+            }
 
-                return {
-                    id: savedPage.id,
-                    user_id: savedPage.userId,
-                    workspace_id: savedPage.workspaceId,
-                    learning_session_id: savedPage.learningSessionId,
-                    workspace_note_id: savedPage.workspaceNoteId,
-                    synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
-                    synced_id: savedPage.syncedId,
-                    content_data: objString,
-                    content_text: savedPage.contentText ? savedPage.contentText : "",
-                    content_extracted: savedPage.contentExtracted ? savedPage.contentExtracted : null,
-                    page_num: savedPage.pageNum,
-                    title: savedPage.title,
-                    is_active: savedPage.isActive,
-                    status: savedPage.status,
-                    processing_status: savedPage.processingStatus,
-                };
+            return {
+                id: savedPage.id,
+                user_id: savedPage.userId,
+                workspace_id: savedPage.workspaceId,
+                learning_session_id: savedPage.learningSessionId,
+                workspace_note_id: savedPage.workspaceNoteId,
+                synced_at: savedPage.syncedAt ? savedPage.syncedAt : new Date().toISOString(),
+                synced_id: savedPage.syncedId,
+                content_data: objString,
+                content_text: savedPage.contentText ? savedPage.contentText : "",
+                content_extracted: savedPage.contentExtracted ? savedPage.contentExtracted : null,
+                page_num: savedPage.pageNum,
+                title: savedPage.title,
+                is_active: savedPage.isActive,
+                status: savedPage.status,
+                processing_status: savedPage.processingStatus,
+            };
+        });
+
+        // Kirim satu request bulk ke server, bukan banyak request paralel
+        await store
+            .dispatch(notesAPI.endpoints.upsertNotePages.initiate({
+                pages: updatingPages,
+                syncToServer: syncToServer
+            }))
+            .unwrap()
+            .catch((err) => {
+                console.error('Gagal sync pages ke server:', err);
             });
-
-            // Kirim satu request bulk ke server, bukan banyak request paralel
-            await store
-                .dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages }))
-                .unwrap()
-                .catch((err) => {
-                    console.error('Gagal sync pages ke server:', err);
-                });
-        }
 
         return savedPages;
     }
@@ -321,6 +341,8 @@ class NotesRepository {
     ): Promise<Page[]> {
         return this.enqueueWrite(async () => {
             const user = await getUser();
+            const workspaceId = pages[0].workspaceId;
+            const sessionId = pages[0].learningSessionId;
 
             const result = await this.pageRepo.upsert(
                 pages.map((p) => this.removeEmpty(p as any)),
@@ -339,7 +361,7 @@ class NotesRepository {
                 if (page) results.push(page);
             }
 
-            if (results.length && syncToServer) {
+            if (results.length) {
                 const upsertingPages = results.map((page) => {
                     let objString = null;
                     if (page.contentData) {
@@ -354,7 +376,7 @@ class NotesRepository {
                         workspace_id: page.workspaceId,
                         workspace_note_id: page.workspaceNoteId,
                         learning_session_id: page.learningSessionId,
-                        synced_at: page.syncedAt ? page.syncedAt.toISOString() : new Date().toISOString(),
+                        synced_at: page.syncedAt ? page.syncedAt : new Date().toISOString(),
                         synced_id: page.syncedId,
                         page_num: page.pageNum,
                         title: page.title,
@@ -369,8 +391,14 @@ class NotesRepository {
                 });
 
                 await store
-                    .dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: upsertingPages }))
-                    .unwrap();
+                    .dispatch(notesAPI.endpoints.upsertNotePages.initiate({
+                        pages: upsertingPages,
+                        syncToServer: syncToServer
+                    }))
+                    .unwrap()
+                    .catch((err) => {
+                        console.error('Gagal sync pages ke server:', err);
+                    });
             }
 
             return results;
@@ -405,38 +433,37 @@ class NotesRepository {
             const savedPage = await this.getPageById(pageId);
 
             // Update bulk langsung ke supabase jangan 1 per 1
-            if (syncToServer) {
-                if (savedPage) {
-                    let objString = null;
-                    if (savedPage.contentData) {
-                        const decoder = new TextDecoder('utf-8');
-                        const jsonString = decoder.decode(savedPage.contentData);
-                        objString = jsonString ? JSON.parse(jsonString) : {};
-                    }
-
-                    await store
-                        .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
-                            body: this.removeEmpty({
-                                id: savedPage.id,
-                                user_id: savedPage.userId,
-                                workspace_id: savedPage.workspaceId,
-                                workspace_note_id: savedPage.workspaceNoteId,
-                                learning_session_id: savedPage.learningSessionId,
-                                synced_at: savedPage.syncedAt ? savedPage.syncedAt.toISOString() : new Date().toISOString(),
-                                synced_id: savedPage.syncedId,
-                                content_data: objString,
-                                content_text: savedPage.contentText ? savedPage.contentText : "",
-                                content_extracted: savedPage.contentExtracted ? savedPage.contentExtracted : null,
-                                attributes: savedPage.attributes,
-                                page_num: savedPage.pageNum,
-                                title: savedPage.title,
-                                is_active: savedPage.isActive,
-                                status: savedPage.status,
-                                processing_status: savedPage.processingStatus,
-                            })
-                        }))
-                        .unwrap();
+            if (savedPage) {
+                let objString = null;
+                if (savedPage.contentData) {
+                    const decoder = new TextDecoder('utf-8');
+                    const jsonString = decoder.decode(savedPage.contentData);
+                    objString = jsonString ? JSON.parse(jsonString) : {};
                 }
+
+                await store
+                    .dispatch(notesAPI.endpoints.upsertNotePage.initiate({
+                        syncToServer: syncToServer,
+                        body: this.removeEmpty({
+                            id: savedPage.id,
+                            user_id: savedPage.userId,
+                            workspace_id: savedPage.workspaceId,
+                            workspace_note_id: savedPage.workspaceNoteId,
+                            learning_session_id: savedPage.learningSessionId,
+                            synced_at: savedPage.syncedAt ? savedPage.syncedAt : new Date().toISOString(),
+                            synced_id: savedPage.syncedId,
+                            content_data: objString,
+                            content_text: savedPage.contentText ? savedPage.contentText : "",
+                            content_extracted: savedPage.contentExtracted ? savedPage.contentExtracted : null,
+                            attributes: savedPage.attributes,
+                            page_num: savedPage.pageNum,
+                            title: savedPage.title,
+                            is_active: savedPage.isActive,
+                            status: savedPage.status,
+                            processing_status: savedPage.processingStatus,
+                        })
+                    }))
+                    .unwrap();
             }
 
             return savedPage;
@@ -453,31 +480,35 @@ class NotesRepository {
             const savedPage = await this.getPageById(pageId);
 
             // Update bulk langsung ke supabase jangan 1 per 1
-            if (syncToServer) {
-                if (savedPage) {
-                    let objString = null;
-                    if (data.contentData) {
-                        const decoder = new TextDecoder('utf-8');
-                        const jsonString = decoder.decode(data.contentData);
-                        objString = jsonString ? JSON.parse(jsonString) : {};
-                    }
-
-                    await store
-                        .dispatch(notesAPI.endpoints.microUpdateNotePage.initiate({
-                            id: pageId,
-                            data: this.removeEmpty({
-                                synced_at: data.syncedAt ? data.syncedAt.toISOString() : new Date().toISOString(),
-                                content_data: objString,
-                                content_text: data.contentText ? data.contentText : "",
-                                content_extracted: data.contentExtracted,
-                                page_num: data.pageNum,
-                                is_active: data.isActive,
-                                status: data.status,
-                                processing_status: data.processingStatus,
-                            })
-                        }))
-                        .unwrap();
+            if (savedPage) {
+                let objString = null;
+                if (data.contentData) {
+                    const decoder = new TextDecoder('utf-8');
+                    const jsonString = decoder.decode(data.contentData);
+                    objString = jsonString ? JSON.parse(jsonString) : {};
                 }
+
+                await store
+                    .dispatch(notesAPI.endpoints.microUpdateNotePage.initiate({
+                        id: pageId,
+                        syncToServer: syncToServer,
+                        data: this.removeEmpty({
+                            id: data.id,
+                            user_id: data.userId,
+                            workspace_id: data.workspaceId,
+                            workspace_note_id: data.workspaceNoteId,
+                            learning_session_id: data.learningSessionId,
+                            synced_at: data.syncedAt ? data.syncedAt : new Date().toISOString(),
+                            content_data: objString,
+                            content_text: data.contentText ? data.contentText : "",
+                            content_extracted: data.contentExtracted,
+                            page_num: data.pageNum,
+                            is_active: data.isActive,
+                            status: data.status,
+                            processing_status: data.processingStatus,
+                        })
+                    }))
+                    .unwrap();
             }
 
             return savedPage;
@@ -504,37 +535,43 @@ class NotesRepository {
         }
 
         // langsung update ke supabase
-        if (syncToServer) {
-            const updatingPages = pages.map((p) => {
-                let objString = null;
-                if (p.contentData) {
-                    const decoder = new TextDecoder('utf-8');
-                    const jsonString = decoder.decode(p.contentData);
-                    objString = jsonString ? JSON.parse(jsonString) : {};
-                }
+        const updatingPages = pages.map((p) => {
+            let objString = null;
+            if (p.contentData) {
+                const decoder = new TextDecoder('utf-8');
+                const jsonString = decoder.decode(p.contentData);
+                objString = jsonString ? JSON.parse(jsonString) : {};
+            }
 
-                return this.removeEmpty({
-                    id: p.id,
-                    user_id: p.userId,
-                    workspace_id: p.workspaceId,
-                    workspace_note_id: p.workspaceNoteId,
-                    learning_session_id: p.learningSessionId,
-                    synced_at: p.syncedAt ? p.syncedAt.toISOString() : new Date().toISOString(),
-                    synced_id: p.syncedId,
-                    page_num: p.pageNum,
-                    title: p.title,
-                    is_active: p.isActive,
-                    status: p.status,
-                    processing_status: p.processingStatus,
-                    content_data: objString,
-                    content_text: p.contentText ? p.contentText : "",
-                    content_extracted: p.contentExtracted ? p.contentExtracted : null,
-                    attributes: p.attributes,
-                })
+            return this.removeEmpty({
+                id: p.id,
+                user_id: p.userId,
+                workspace_id: p.workspaceId,
+                workspace_note_id: p.workspaceNoteId,
+                learning_session_id: p.learningSessionId,
+                synced_at: p.syncedAt ? p.syncedAt : new Date().toISOString(),
+                synced_id: p.syncedId,
+                page_num: p.pageNum,
+                title: p.title,
+                is_active: p.isActive,
+                status: p.status,
+                processing_status: p.processingStatus,
+                content_data: objString,
+                content_text: p.contentText ? p.contentText : "",
+                content_extracted: p.contentExtracted ? p.contentExtracted : null,
+                attributes: p.attributes,
+            })
+        });
+
+        await store.dispatch(notesAPI.endpoints.upsertNotePages
+            .initiate({
+                pages: updatingPages,
+                syncToServer: syncToServer
+            }))
+            .unwrap()
+            .catch((err) => {
+                console.error('Gagal sync pages ke server:', err);
             });
-
-            await store.dispatch(notesAPI.endpoints.upsertNotePages.initiate({ pages: updatingPages })).unwrap();
-        }
 
         return results;
     }
@@ -542,29 +579,29 @@ class NotesRepository {
     /** Hapus 1 halaman Page */
     async deletePage({
         pageId,
-        syncedId,
         workspaceId,
         workspaceNoteId,
+        learningSessionId,
         syncToServer = true
     }: {
         pageId: string;
-        syncedId: string | null | undefined;
         workspaceId: string;
         workspaceNoteId: string;
+        learningSessionId: string;
         syncToServer?: boolean;
     }): Promise<boolean> {
         const result = await this.pageRepo.delete(pageId);
         await this.saveWebStore();
 
-        if (syncedId && syncToServer) {
-            await store
-                .dispatch(notesAPI.endpoints.deleteNotePage.initiate({
-                    synced_id: syncedId,
-                    workspace_id: workspaceId,
-                    workspace_note_id: workspaceNoteId,
-                }))
-                .unwrap();
-        }
+        await store
+            .dispatch(notesAPI.endpoints.deleteNotePage.initiate({
+                page_id: pageId,
+                workspace_id: workspaceId,
+                workspace_note_id: workspaceNoteId,
+                learning_session_id: learningSessionId,
+                syncToServer: syncToServer,
+            }))
+            .unwrap();
 
         return (result.affected ?? 0) > 0;
     }

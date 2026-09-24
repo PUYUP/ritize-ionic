@@ -1,13 +1,12 @@
 import { IonActionSheet, IonAlert, IonButton, IonCard, IonCardContent, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent, IonItem, IonLabel, IonSpinner, IonText, useIonRouter, useIonToast } from '@ionic/react';
 import { format } from 'date-fns';
 import './NoteListSessioned.css';
-import { briefcaseOutline, chevronForwardOutline, closeOutline, documentText, ellipsisVertical, imageOutline, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
+import { chevronForwardOutline, closeOutline, documentText, ellipsisVertical, imageOutline, pencilOutline, shapesOutline, textOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { NotePageTypes, NoteTypes, useGetNotesByWorkspaceIdQuery, useLazyGetNoteByIdQuery } from '../../services/notes';
 import { Link } from 'react-router-dom';
 import { getUser } from '../../utils/authState';
 import NotesRepository from '../../databases/datasources/NotesRepository';
-import { Page } from '../../databases/entities/notes';
 
 interface Props {
     workspaceId?: string;
@@ -54,118 +53,12 @@ const groupNotesByDate = (notes: NoteTypes[]): NoteGroup[] => {
     return [...map.entries()].map(([dateKey, groupNotes]) => ({ dateKey, notes: groupNotes }));
 };
 
-const NoteItem: React.FC<{
-    item: NoteTypes,
-    isLast: boolean,
-    user: { id: string },
-    workspaceId?: string,
-    learningSessionId?: string,
-    onShowOptions?: (item: NoteTypes) => void,
-    onRefreshPapers?: (item: NoteTypes) => void
-}> = ({
-    item,
-    isLast,
-    user,
-    workspaceId,
-    learningSessionId,
-    onShowOptions,
-    onRefreshPapers
-}) => {
-        const { content_preview } = item;
-
-        let editor: string = 'richtext';
-
-        if (item.content_type == 'canvas') {
-            editor = 'canvas';
-        } else if (item.content_type == 'file') {
-            editor = 'files';
-        }
-
-        let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}${item.clustered_date ? `&clusteredDate=${item.clustered_date}` : ''}`;
-
-        // if not the creator, view the note as a normal viewer
-        if (item.user.id !== user.id) {
-            linkTo = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}&clusteredDate=1`;
-        }
-
-        let badgeBackground: string = 'bg-yellow-200';
-        let badgeColor: string = 'text-yellow-800';
-
-        if (item.pages_status == 'published') {
-            badgeBackground = 'bg-green-200';
-            badgeColor = 'text-green-800';
-        }
-
-        if (item.clustered_date) {
-            badgeBackground = 'bg-purple-200';
-            badgeColor = 'text-purple-800';
-        }
-
-        if (item.page_count <= 0) {
-            badgeBackground = 'bg-gray-200';
-            badgeColor = 'text-gray-500';
-        }
-
-        return (
-            <IonCard className='rounded-xl'>
-                <IonCardContent className='!p-0 h-full'>
-                    <div className="w-full h-full flex flex-col">
-                        <div className='ion-padding'>
-                            <div className='flex'>
-                                <Link to={linkTo} className='block w-full flex-1'>
-                                    <div className='flex gap-1 !m-0 items-center !text-sm flex-wrap'>
-                                        <div className={`flex items-center gap-1.5 ${badgeBackground} rounded-full px-1.5 py-0.5 leading-3`}>
-                                            {item.content_type === 'text' && <IonIcon icon={textOutline} className={`text-base ${badgeColor}`} />}
-                                            {item.content_type === 'canvas' && <IonIcon icon={shapesOutline} className={`text-base ${badgeColor}`} />}
-                                            {item.content_type === 'file' && <IonIcon icon={imageOutline} className={`text-base ${badgeColor}`} />}
-
-                                            {(!item.clustered_date || item.clustered_date == '') && (
-                                                <IonText className={`text-sm flex gap-1 ${badgeColor}`}>
-                                                    <span className='font-semibold'>{item.page_count || 0}</span>
-                                                    {item.pages_status == 'published' ? (item.page_count > 0 ? 'saved' : 'empty') : 'draft'}
-                                                </IonText>
-                                            )}
-
-                                            {(item.clustered_date) && (
-                                                <IonText className={`text-sm flex gap-1 ${badgeColor}`}>Materialized</IonText>
-                                            )}
-                                        </div>
-                                        <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                        <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'MM/dd/yy')}</IonText>
-                                        <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                        <IonText className='text-sm text-neutral-500'>{format(item.created_at, 'HH:mm')}</IonText>
-                                    </div>
-
-                                    {item.workspace?.scope === 'group' && <IonText color="dark font-semibold text-base block mt-1 albert-font">{item.user.name}</IonText>}
-                                </Link>
-
-                                <div className='ml-auto'>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        {item.workspace && !workspaceId && (
-                            <div className='flex items-center gap-2 text-orange-700 mb-2 ion-padding-start ion-padding-end'>
-                                <IonIcon icon={briefcaseOutline}></IonIcon>
-                                <IonText className='text-xs'>{item.workspace.title}</IonText>
-                            </div>
-                        )}
-
-
-                    </div>
-                </IonCardContent>
-            </IonCard>
-        )
-    }
-
 const NoteItemMinimal: React.FC<{
     item: NoteTypes,
     isLast: boolean,
     user: { id: string },
     workspaceId?: string,
     learningSessionId?: string,
-    unsyncedPages?: Page[],
     onShowOptions?: (item: NoteTypes) => void,
     onRefreshPapers?: (item: NoteTypes) => void
 }> = ({
@@ -174,7 +67,6 @@ const NoteItemMinimal: React.FC<{
     user,
     workspaceId,
     learningSessionId,
-    unsyncedPages,
     onShowOptions,
     onRefreshPapers
 }) => {
@@ -189,9 +81,9 @@ const NoteItemMinimal: React.FC<{
         let linkTo: string = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}${item.clustered_date ? `&clusteredDate=${item.clustered_date}` : ''}${learningSessionId ? `&sessionId=${learningSessionId}` : ''}`;
 
         // if not the creator, view the note as a normal viewer
-        if (item.user.id !== user.id) {
-            linkTo = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}&clusteredDate=1${learningSessionId ? `&sessionId=${learningSessionId}` : ''}`;
-        }
+        // if (item?.user?.id !== user.id) {
+        //     linkTo = `/dashboard/editor/${editor}?workspaceId=${item.workspace_id}&noteId=${item.id}&clusteredDate=1${learningSessionId ? `&sessionId=${learningSessionId}` : ''}`;
+        // }
 
         const refreshPapers = async (item: NoteTypes) => {
             onRefreshPapers?.(item);
@@ -244,18 +136,6 @@ const NoteItemMinimal: React.FC<{
             badgeColor = 'text-gray-500';
         }
 
-        // filter unsynced pages
-        const _pages = unsyncedPages
-            ?.filter(up => up.workspaceNoteId === item.id)
-            ?.map(up => ({
-                id: up.id,
-                page_num: up.pageNum,
-                status: up.status,
-                content_text: up.contentText,
-                workspace_id: up.workspaceId,
-                workspace_note_id: up.workspaceNoteId,
-            })) as NotePageTypes[];
-
         return (
             <div className='block'>
                 <div className='flex mb-1 items-center'>
@@ -266,14 +146,15 @@ const NoteItemMinimal: React.FC<{
                             {item.content_type === 'file' && <IonIcon icon={imageOutline} className={`text-sm ${circleColor}`} />}
                         </div>
 
-                        <div className='albert-font flex gap-2 items-center'>
+                        <div className='albert-font flex gap-3 items-center items-center'>
                             <IonText className='font-normal text-neutral-600 text-base oswald-font'>{format(item.created_at, 'HH:mm')}</IonText>
+                            <IonText className='text-neutral-500 font-normal text-sm pt-0.5'>{item.pages?.length ?? 0} pages</IonText>
                         </div>
                     </div>
 
                     <div className='ml-auto'>
                         <div className='flex gap-2'>
-                            {(user.id === item.user.id && !item.clustered_date) && (
+                            {!item.clustered_date && (
                                 <IonButton shape='round' mode="ios" size='small' color={'light'} disabled={Boolean(item.clustered_date)} onClick={async () => await optionsHandler(item)}>
                                     <IonIcon icon={ellipsisVertical} slot='icon-only' className='text-neutral-500' />
                                 </IonButton>
@@ -285,17 +166,18 @@ const NoteItemMinimal: React.FC<{
                 <div className='pl-8'>
                     {item.content_type == 'text' && (
                         <div className='flex flex-col gap-3'>
-                            {[..._pages, ...item?.pages ? item.pages : []]?.map(p => {
+                            {[...(item?.pages ?? [])]?.sort((a, b) => (b.page_num || 0) - (a.page_num || 0)).map(p => {
                                 let statusColor = 'text-neutral-500';
                                 if (p.status == 'published') {
                                     statusColor = 'text-green-800';
                                 }
+
                                 return (
                                     <IonCard key={p.id} className='rounded-xl' routerLink={`${linkTo}&pageId=${p.id}`}>
                                         <IonCardContent>
                                             <div className='flex gap-2'>
                                                 <div className='flex-1 min-w-0'>  {/* flex-0 → flex-1, tambah min-w-0 */}
-                                                    <div className='flex gap-2 albert-font text-[10px] uppercase items-center mb-1'>
+                                                    <div className='flex gap-2 albert-font text-[10px] uppercase items-center'>
                                                         <div className='flex gap-1 items-center'>
                                                             <IonIcon className='text-xs text-neutral-400' icon={documentText} />
                                                             <IonText className='text-xs'>{p.page_num}</IonText>
@@ -307,7 +189,7 @@ const NoteItemMinimal: React.FC<{
                                                     {p.content_text && (
                                                         <div
                                                             dangerouslySetInnerHTML={{ __html: p.content_text }}
-                                                            className='text-neutral-700 text-sm leading-5 line-clamp-2 w-full'
+                                                            className='text-neutral-700 text-sm leading-5 line-clamp-2 w-full mt-1'
                                                         />
                                                     )}
                                                 </div>
@@ -326,39 +208,37 @@ const NoteItemMinimal: React.FC<{
                     )}
 
                     {item.content_type == 'canvas' && (
-                        <Link to={linkTo}>
-                            <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
-                                {item.pages?.map((p: NotePageTypes) => {
-                                    const mediaLink = p?.attachments?.[0]?.file?.media_link;
+                        <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
+                            {item.pages?.map((p: NotePageTypes) => {
+                                const mediaLink = p?.attachments?.[0]?.file?.media_link;
 
-                                    return (
-                                        <IonCard key={p.id} className='rounded-xl' routerLink={`${linkTo}&pageId=${p.id}`}>
-                                            <IonCardContent className='relative'>
-                                                <div className="relative aspect-square overflow-hidden">
-                                                    <div className='absolute left-0 right-0 bottom-0 top-0 rounded-xl flex items-center justify-center'>
-                                                        {mediaLink && <img src={mediaLink} className='w-full h-full object-cover' />}
-                                                        {!mediaLink && (
-                                                            <IonText className='text-xs text-center' color="medium">Currently is draft</IonText>
-                                                        )}
-                                                    </div>
+                                return (
+                                    <IonCard key={p.id} className='rounded-xl' routerLink={`${linkTo}&pageId=${p.id}`}>
+                                        <IonCardContent className='relative'>
+                                            <div className="relative aspect-square overflow-hidden">
+                                                <div className='absolute left-0 right-0 bottom-0 top-0 rounded-xl flex items-center justify-center'>
+                                                    {mediaLink && <img src={mediaLink} className='w-full h-full object-cover' />}
+                                                    {!mediaLink && (
+                                                        <IonText className='text-xs text-center' color="medium">Currently is draft</IonText>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className='absolute flex justify-between bottom-2 left-2 right-2'>
+                                                <div className='flex items-center gap-1'>
+                                                    <IonIcon className='text-xs text-neutral-400' icon={documentText} />
+                                                    <IonText className='text-xs'>{p.page_num}</IonText>
                                                 </div>
 
-                                                <div className='absolute flex justify-between bottom-2 left-2 right-2'>
-                                                    <div className='flex items-center gap-1'>
-                                                        <IonIcon className='text-xs text-neutral-400' icon={documentText} />
-                                                        <IonText className='text-xs'>{p.page_num}</IonText>
-                                                    </div>
-
-                                                    <IonButton shape='round' size='small' color={'light'} className='min-w-[16px] min-h-[16px]'>
-                                                        <IonIcon icon={chevronForwardOutline} className='text-xs' slot='icon-only'></IonIcon>
-                                                    </IonButton>
-                                                </div>
-                                            </IonCardContent>
-                                        </IonCard>
-                                    )
-                                })}
-                            </div>
-                        </Link>
+                                                <IonButton shape='round' size='small' color={'light'} className='min-w-[16px] min-h-[16px]'>
+                                                    <IonIcon icon={chevronForwardOutline} className='text-xs' slot='icon-only'></IonIcon>
+                                                </IonButton>
+                                            </div>
+                                        </IonCardContent>
+                                    </IonCard>
+                                )
+                            })}
+                        </div>
                     )}
 
                     {(item.content_type == 'file' && item.page_count > 0) && (
@@ -441,10 +321,9 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
     const [selectedNote, setSelectedNote] = useState<NoteTypes | null>(null);
     const [user, setUser] = useState({ id: '' });
     const [page, setPage] = useState(1);
-    const [unsyncedPages, setUnsyncedPages] = useState<Page[]>([]);
 
     // RTK Query
-    const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
+    const [getNoteById] = useLazyGetNoteByIdQuery();
     const { data, isLoading, isFetching, isSuccess, isError } = useGetNotesByWorkspaceIdQuery({
         workspace_id: workspaceId,
         learning_session_id: learningSessionId,
@@ -468,12 +347,6 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
         (async () => {
             const u = await getUser();
             setUser(u);
-
-            // unscyned pages
-            if (learningSessionId) {
-                const unsyncedPages = await NotesRepository.getUnsyncedPagesBySessionId(learningSessionId);
-                setUnsyncedPages(unsyncedPages);
-            }
         })()
     }, [learningSessionId]);
 
@@ -523,18 +396,18 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
 
     return (
         <>
-            <div id="notelist" className='flex flex-col gap-4 notes-list ion-padding'>
+            <div id="notelist" className='flex flex-col gap-4 notes-list ion-padding mt-3'>
                 {groupedNotes.map(({ dateKey, notes }) => (
                     <div key={dateKey} className='block flex flex-col w-full gap-4 relative'>
                         <div className='absolute left-[12px] top-6 bottom-2 border-l-1 border-dashed border-neutral-300'></div>
 
-                        <div className='block'>
+                        {/* <div className='block'>
                             <IonText className='font-semibold text-neutral-800'>
                                 <h3 className='!text-base !my-0'>
                                     {formatDateHeader(dateKey)}
                                 </h3>
                             </IonText>
-                        </div>
+                        </div> */}
 
                         <div className='grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 xl:gap-5'>
                             {notes.map((item, index, array) => {
@@ -549,7 +422,6 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
                                         learningSessionId={learningSessionId}
                                         onShowOptions={optionsHandler}
                                         onRefreshPapers={refreshPapers}
-                                        unsyncedPages={unsyncedPages}
                                     />
                                 )
                             })}
@@ -630,7 +502,12 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
                         role: 'destructive',
                         handler: async () => {
                             if (!selectedNote) return;
-                            await NotesRepository.deleteNote(selectedNote.id, selectedNote.workspace_id);
+                            await NotesRepository.deleteNote(
+                                selectedNote.id,
+                                selectedNote.workspace_id,
+                                selectedNote.learning_session_id || '',
+                                selectedNote?.synced_id ? true : false,
+                            );
                             await presentToast({ message: 'Note deleted successfully', duration: 750, color: 'success' })
                             setShowDeleteAlert(false);
                             setSelectedNote(null);

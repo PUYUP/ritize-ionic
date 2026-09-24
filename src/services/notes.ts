@@ -1,6 +1,9 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getUser } from "../utils/authState";
 import { supabase } from '../lib/supabase';
+import NotesRepository from '../databases/datasources/NotesRepository';
+import { Note, Page } from '../databases/entities/notes';
+import { format } from 'date-fns';
 
 export type NoteFormatTypes = 'text' | 'canvas' | 'file';
 
@@ -33,6 +36,7 @@ export type NotePageTypes = {
     title?: string | null;
     synced_at?: string | null;
     synced_id?: string | null;
+    created_at?: string | null;
     is_active: boolean;
     content_data: Blob;
     content_text?: string;
@@ -121,7 +125,12 @@ export const notesAPI = createApi({
                             // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                             // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                             // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: body.workspace_id as string, learning_session_id: body.learning_session_id as string, page: 1, pageSize: 20 },
+                            {
+                                workspace_id: body.workspace_id as string,
+                                learning_session_id: body.learning_session_id as string,
+                                page: 1,
+                                pageSize: 20
+                            },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.id === body.id);
@@ -151,13 +160,17 @@ export const notesAPI = createApi({
         // ...
         // Upsert single note (insert kalau belum ada, update kalau synced_id sudah ada)
         // ...
-        upsertNote: builder.mutation<NoteTypes, { body: Partial<NoteTypes> }>({
-            queryFn: async ({ body }) => {
+        upsertNote: builder.mutation<NoteTypes, { body: Partial<NoteTypes>, syncToServer?: boolean }>({
+            queryFn: async ({ body, syncToServer = true }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Upsert Note] User not found" } };
                 if (!body.id) return { error: { message: "[Upsert Note] Note ID is required for upsert" } };
                 if (!body.workspace_id) return { error: { message: "[Upsert Note] Workspace ID is required" } };
                 if (!body.content_type) return { error: { message: "[Upsert Note] Content type is required" } };
+
+                if (!syncToServer) {
+                    return { data: body };
+                }
 
                 const { data, error } = await supabase
                     .from("workspace_notes_list")
@@ -166,6 +179,7 @@ export const notesAPI = createApi({
                         *
                         , pages:workspace_notes_pages(
                             id
+                            , learning_session_id
                             , synced_id
                             , status 
                             , content_text
@@ -200,6 +214,9 @@ export const notesAPI = createApi({
             async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
                 let patchResult: any;
+
+                console.log('upser note', body);
+
                 try {
                     // Tunggu sampai proses update ke database selesai
                     const { data } = await queryFulfilled;
@@ -210,7 +227,12 @@ export const notesAPI = createApi({
                             // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                             // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                             // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: body.workspace_id as string, learning_session_id: body.learning_session_id as string, page: 1, pageSize: 20 },
+                            {
+                                workspace_id: body.workspace_id as string,
+                                learning_session_id: body.learning_session_id as string,
+                                page: 1,
+                                pageSize: 20
+                            },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.id === body.id);
@@ -271,10 +293,14 @@ export const notesAPI = createApi({
         // ...
         // Delete note
         // ...
-        deleteNote: builder.mutation<void, { id: string, workspace_id: string }>({
-            queryFn: async ({ id, workspace_id }) => {
+        deleteNote: builder.mutation<void, { id: string, workspace_id: string, learning_session_id?: string, syncToServer?: boolean }>({
+            queryFn: async ({ id, workspace_id, learning_session_id, syncToServer = true }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "User not found" } };
+
+                if (!syncToServer) {
+                    return { data: undefined };
+                }
 
                 const { error } = await supabase
                     .from("workspace_notes")
@@ -285,7 +311,7 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data: undefined };
             },
-            async onQueryStarted({ id, workspace_id }, { dispatch, queryFulfilled }) {
+            async onQueryStarted({ id, workspace_id, learning_session_id, syncToServer }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
                 const patchResult = dispatch(
                     notesAPI.util.updateQueryData(
@@ -293,7 +319,12 @@ export const notesAPI = createApi({
                         // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                         // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                         // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                        { workspace_id: workspace_id as string, page: 1, pageSize: 20 },
+                        {
+                            workspace_id: workspace_id as string,
+                            learning_session_id: learning_session_id as string,
+                            page: 1,
+                            pageSize: 20
+                        },
                         (draft) => {
                             draft.notes = draft.notes.filter((note) => note.id !== id);
                         }
@@ -389,6 +420,7 @@ export const notesAPI = createApi({
                         *
                         , pages:workspace_notes_pages(
                             id
+                            , learning_session_id
                             , synced_id
                             , status 
                             , content_text
@@ -441,15 +473,72 @@ export const notesAPI = createApi({
                 }
 
                 if (data) {
+                    let pagesDraft: NotePageTypes[] = [];
+                    let notesDraft: NoteTypes[] = [];
+
+                    if (learning_session_id) {
+                        const _pagesDraft = await NotesRepository.getUnsyncedPagesBySessionId(learning_session_id);
+                        pagesDraft = _pagesDraft.map(p => {
+                            let objString = null;
+                            if (p.contentData) {
+                                const decoder = new TextDecoder('utf-8');
+                                const jsonString = decoder.decode(p.contentData);
+                                objString = jsonString ? JSON.parse(jsonString) : {};
+                            }
+
+                            return {
+                                id: p.id,
+                                workspace_id: p.workspaceId,
+                                workspace_note_id: p.workspaceNoteId,
+                                learning_session_id: p.learningSessionId,
+                                synced_id: p.syncedId,
+                                attachments: [],
+                                processing_status: p.processingStatus,
+                                status: p.status,
+                                page_num: p.pageNum,
+                                content_text: p.contentText || "",
+                                user_id: p.userId,
+                                is_active: p.isActive,
+                                content_data: objString,
+                            }
+                        });
+
+                        const _notesDraft = await NotesRepository.getUnsyncedNotesBySessionId(learning_session_id);
+                        if (_notesDraft) {
+                            notesDraft = _notesDraft.map((note: Note) => {
+                                const draftedPages = pagesDraft.filter(d => d.workspace_note_id === note.id);
+                                return {
+                                    id: note.id,
+                                    user_id: note.userId,
+                                    workspace_id: note.workspaceId,
+                                    learning_session_id: note.learningSessionId,
+                                    content: note.content,
+                                    note_datetime: note.noteDatetime ? new Date(note.noteDatetime).toISOString() : format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS'),
+                                    content_type: note.contentType as NoteFormatTypes,
+                                    synced_id: note.syncedId,
+                                    content_preview: note.content,
+                                    status: note.status,
+                                    processing_status: note.processingStatus,
+                                    created_at: note.createdAt ? new Date(note.createdAt).toISOString() : new Date().toISOString(),
+                                    title: note.title,
+                                    pages: draftedPages,
+                                }
+                            });
+                        }
+                    }
+
                     const seen = new Set<string>();
-                    data = (data ?? [])
+                    data = ([...notesDraft, ...(data ?? [])])
                         .map((note: any) => {
                             if (!note.documents) return note;
+                            const draftedPages = pagesDraft.filter(d => d.workspace_note_id === note.id);
+
                             return {
                                 ...note,
                                 page_count: note.pages.length || 0,
                                 pages_status: note.pages.some((page: any) => page.status === "draft") ? "draft" : "published",
                                 clustered_date: note.chunks?.[0]?.clustered_date ?? null,
+                                pages: [...draftedPages, ...note.pages],
                                 documents: note.documents
                                     .filter((doc: any) => {
                                         if (seen.has(doc.paper_id)) return false;
@@ -466,9 +555,9 @@ export const notesAPI = createApi({
 
             // --- TAMBAHAN UNTUK PAGINASI (APPEND) ---
 
-            // 1. Simpan cache berdasarkan workspace_id saja (abaikan 'page' agar data tergabung)
+            // 1. Simpan cache berdasarkan learning_session_id saja (abaikan 'page' agar data tergabung)
             serializeQueryArgs: ({ endpointName, queryArgs }) => {
-                return `${endpointName}-${queryArgs.workspace_id}`;
+                return `${endpointName}-${queryArgs.workspace_id}-${queryArgs.learning_session_id}`;
             },
 
             // 2. Gabungkan data baru ke data lama
@@ -527,14 +616,18 @@ export const notesAPI = createApi({
         // ...
         // Add note page
         // ...
-        insertNotePage: builder.mutation<NotePageTypes, { body: Partial<NotePageTypes> }>({
-            queryFn: async ({ body }) => {
+        insertNotePage: builder.mutation<NotePageTypes, { body: Partial<NotePageTypes>, syncToServer?: boolean }>({
+            queryFn: async ({ body, syncToServer = true }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Insert Note Page] User not found" } };
                 if (!body.workspace_id) return { error: { message: "[Insert Note Page] Workspace ID is required" } };
                 if (!body.workspace_note_id) return { error: { message: "[Insert Note Page] Workspace Note ID is required" } };
                 if (body.page_num === undefined || body.page_num === null) return { error: { message: "[Insert Note Page] Page number is required" } };
                 // if (!body.content_data) return { error: { message: "Content data is required" } };
+
+                if (!syncToServer) {
+                    return { data: body as NotePageTypes };
+                }
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")
@@ -545,7 +638,7 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data: data! };
             },
-            async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
+            async onQueryStarted({ body, syncToServer }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
                 const patchResult = dispatch(
                     notesAPI.util.updateQueryData(
@@ -553,15 +646,24 @@ export const notesAPI = createApi({
                         // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                         // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                         // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                        { workspace_id: body.workspace_id as string, page: 1, pageSize: 20 },
+                        {
+                            workspace_id: body.workspace_id as string,
+                            learning_session_id: body.learning_session_id as string,
+                            page: 1,
+                            pageSize: 20
+                        },
                         (draft) => {
                             // Cari note yang sedang diupdate di dalam array cache
-                            const noteIndex = draft.notes.findIndex((n) => n.id === body.workspace_note_id);
+                            const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === body.learning_session_id);
+                            console.log('note index', noteIndex);
                             if (noteIndex !== -1) {
                                 // Timpa data lama dengan data baru (patch)
                                 draft.notes[noteIndex].page_count += 1;
                                 draft.notes[noteIndex].documents = [];
                                 draft.notes[noteIndex].pages_status = body?.status || 'draft';
+
+                                // masukkan draft pages
+                                draft.notes[noteIndex].pages = [body as NotePageTypes, ...(draft.notes[noteIndex].pages || [])];
                             }
                         }
                     )
@@ -583,8 +685,8 @@ export const notesAPI = createApi({
         // ...
         // Upsert single note page (insert kalau belum ada, update kalau synced_id sudah ada)
         // ...
-        upsertNotePage: builder.mutation<NotePageTypes, { body: Partial<NotePageTypes> }>({
-            queryFn: async ({ body }) => {
+        upsertNotePage: builder.mutation<NotePageTypes, { body: Partial<NotePageTypes>, syncToServer?: boolean }>({
+            queryFn: async ({ body, syncToServer = true }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Upsert Note Page] User not found" } };
                 if (!body.id) return { error: { message: "[Upsert Note Page] Page ID is required for upsert" } };
@@ -592,6 +694,10 @@ export const notesAPI = createApi({
                 if (!body.workspace_note_id) return { error: { message: "[Upsert Note Page] Workspace Note ID is required" } };
                 if (body.page_num === undefined || body.page_num === null) return { error: { message: "[Upsert Note Page] Page number is required" } };
                 // if (!body.content_data) return { error: { message: "Content data is required" } };
+
+                if (!syncToServer) {
+                    return { data: body as NotePageTypes };
+                }
 
                 const { data, error } = await supabase
                     .from("workspace_notes_pages")
@@ -610,7 +716,12 @@ export const notesAPI = createApi({
                         // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                         // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                         // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                        { workspace_id: body.workspace_id as string, page: 1, pageSize: 20 },
+                        {
+                            workspace_id: body.workspace_id as string,
+                            learning_session_id: body.learning_session_id as string,
+                            page: 1,
+                            pageSize: 20
+                        },
                         (draft) => {
                             // Cari note yang sedang diupdate di dalam array cache
                             const noteIndex = draft.notes.findIndex((n) => n.id === body.workspace_note_id);
@@ -642,7 +753,12 @@ export const notesAPI = createApi({
                             // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                             // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                             // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: body.workspace_id as string, page: 1, pageSize: 20 },
+                            {
+                                workspace_id: body.workspace_id as string,
+                                learning_session_id: body.learning_session_id as string,
+                                page: 1,
+                                pageSize: 20
+                            },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.id === body.workspace_note_id);
@@ -685,8 +801,12 @@ export const notesAPI = createApi({
         // ...
         // Bulk upsert note pages — untuk sync banyak page lokal ke server sekaligus
         // ...
-        upsertNotePages: builder.mutation<NotePageTypes[], { pages: Partial<NotePageTypes>[] }>({
-            queryFn: async ({ pages }) => {
+        upsertNotePages: builder.mutation<NotePageTypes[], { pages: Partial<NotePageTypes>[], syncToServer?: boolean }>({
+            queryFn: async ({ pages, syncToServer = true }) => {
+                if (!syncToServer) {
+                    return { data: pages }
+                }
+
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Upsert Note Pages] User not found" } };
                 if (!pages?.length) return { error: { message: "[Upsert Note Pages] No pages to sync" } };
@@ -708,14 +828,16 @@ export const notesAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data };
             },
-            async onQueryStarted({ pages }, { dispatch, queryFulfilled }) {
+            async onQueryStarted({ pages }, { dispatch, queryFulfilled, getState }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
                 let patchResult: any;
 
                 try {
                     const { data } = await queryFulfilled;
-                    const workspace_id = pages[0].workspace_id;
-                    const workspace_note_id = pages[0].workspace_note_id;
+
+                    const firstPage = pages[0];
+                    const workspaceId = firstPage.workspace_id;
+                    const learningSessionId = firstPage.learning_session_id;
 
                     patchResult = dispatch(
                         notesAPI.util.updateQueryData(
@@ -723,10 +845,15 @@ export const notesAPI = createApi({
                             // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                             // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                             // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: workspace_id as string, page: 1, pageSize: 20 },
+                            {
+                                workspace_id: workspaceId as string,
+                                learning_session_id: learningSessionId as string,
+                                page: 1,
+                                pageSize: 20
+                            },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
-                                const noteIndex = draft.notes.findIndex((n) => n.id === workspace_note_id);
+                                const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === learningSessionId);
                                 draft.notes[noteIndex].pages_status = data.some((p) => p.status === 'draft') ? 'draft' : 'published';
                             }
                         )
@@ -734,7 +861,7 @@ export const notesAPI = createApi({
 
                 } catch {
                     // Jika gagal update ke server, kembalikan tampilan UI seperti semula (Undo)
-                    if (patchResult) patchResult.undo();
+                    patchResult.undo();
                 }
             },
         }),
@@ -742,8 +869,12 @@ export const notesAPI = createApi({
         // ...
         // Update single page
         // ...
-        microUpdateNotePage: builder.mutation<NotePageTypes, { id: string, data: Partial<NotePageTypes> }>({
-            queryFn: async ({ id, data }) => {
+        microUpdateNotePage: builder.mutation<NotePageTypes, { id: string, syncToServer?: boolean, data: Partial<NotePageTypes> }>({
+            queryFn: async ({ id, syncToServer, data }) => {
+                if (!syncToServer) {
+                    return { data }
+                }
+
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Update Note Page] User not found" } };
 
@@ -759,7 +890,41 @@ export const notesAPI = createApi({
             },
             async onQueryStarted({ id, data }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
-                let patchResult: any;
+                let patchResult = dispatch(
+                    notesAPI.util.updateQueryData(
+                        'getNotesByWorkspaceId',
+                        // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
+                        // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
+                        // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
+                        {
+                            workspace_id: data.workspace_id as string,
+                            learning_session_id: data.learning_session_id as string,
+                            page: 1,
+                            pageSize: 20
+                        },
+                        (draft) => {
+                            // Cari note yang sedang diupdate di dalam array cache
+                            const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === data.learning_session_id);
+                            if (noteIndex !== -1) {
+                                draft.notes[noteIndex].pages_status = data.status;
+                                if (draft.notes[noteIndex].pages) {
+                                    const pageIndex = draft.notes[noteIndex].pages.findIndex((p) => p.id === data.id);
+                                    if (pageIndex !== -1) {
+                                        draft.notes[noteIndex].pages[pageIndex] = {
+                                            ...draft.notes[noteIndex].pages[pageIndex],
+                                            ...data,
+                                            content_text: data.content_text,
+                                        };
+                                    } else {
+                                        draft.notes[noteIndex].pages.unshift(data as NotePageTypes);
+                                    }
+
+                                    console.log('pageIndex', pageIndex)
+                                }
+                            }
+                        }
+                    )
+                );
 
                 try {
                     const { data } = await queryFulfilled;
@@ -770,7 +935,12 @@ export const notesAPI = createApi({
                             // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                             // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                             // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                            { workspace_id: data.workspace_id as string, page: 1, pageSize: 20 },
+                            {
+                                workspace_id: data.workspace_id as string,
+                                learning_session_id: data.learning_session_id as string,
+                                page: 1,
+                                pageSize: 20
+                            },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.id === data.workspace_note_id);
@@ -789,19 +959,23 @@ export const notesAPI = createApi({
         // ...
         // Delete note page
         // ...
-        deleteNotePage: builder.mutation<void, { synced_id: string, workspace_id: string, workspace_note_id: string }>({
-            queryFn: async ({ synced_id, workspace_id, workspace_note_id }) => {
+        deleteNotePage: builder.mutation<void, { page_id: string, workspace_id: string, workspace_note_id: string, learning_session_id: string, syncToServer?: boolean }>({
+            queryFn: async ({ page_id, workspace_id, workspace_note_id, learning_session_id, syncToServer = true }) => {
+                if (!syncToServer) {
+                    return { data: undefined };
+                }
+
                 const { error } = await supabase
                     .from("workspace_notes_pages")
                     .delete()
                     .eq("workspace_id", workspace_id)
                     .eq("workspace_note_id", workspace_note_id)
-                    .eq("synced_id", synced_id);
+                    .eq("id", page_id);
 
                 if (error) return { error: { message: error.message } };
                 return { data: undefined };
             },
-            async onQueryStarted({ synced_id, workspace_id, workspace_note_id }, { dispatch, queryFulfilled }) {
+            async onQueryStarted({ page_id, workspace_id, workspace_note_id, learning_session_id }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
                 const patchResult = dispatch(
                     notesAPI.util.updateQueryData(
@@ -809,16 +983,24 @@ export const notesAPI = createApi({
                         // Argumen di sini harus sesuai agar RTK Query menemukan cache-nya.
                         // Karena sebelumnya kita pakai serializeQueryArgs berdasarkan workspace_id, 
                         // isi argumen page bebas (misal 1), yang penting workspace_id cocok.
-                        { workspace_id: workspace_id as string, page: 1, pageSize: 20 },
+                        {
+                            workspace_id: workspace_id as string,
+                            learning_session_id: learning_session_id as string,
+                            page: 1,
+                            pageSize: 20
+                        },
                         (draft) => {
-                            const noteIndex = draft.notes.findIndex((n) => n.id === workspace_note_id);
+                            const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === learning_session_id);
                             if (noteIndex === -1) return; // guard duluan, jangan akses field sebelum ini
-
                             const note = draft.notes[noteIndex];
                             note.page_count -= 1;
 
-                            if (note.content_type === 'file' && Array.isArray(note.pages)) {
-                                note.pages = note.pages.filter((page) => String(page.synced_id) !== String(synced_id));
+                            if (Array.isArray(note.pages)) {
+                                const reindexPages = note.pages.filter((page) => String(page.id) !== String(page_id));
+                                note.pages = reindexPages.map((p, idx) => ({
+                                    ...p,
+                                    page_num: idx + 1,
+                                }));
                             }
                         }
                     )

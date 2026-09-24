@@ -22,8 +22,8 @@ export class Note {
     @Column({ nullable: true })
     content!: string;
 
-    @Column()
-    noteDatetime!: Date;
+    @Column('datetime', { nullable: true })
+    noteDatetime!: string | null;
 
     @Column()
     contentType!: string;
@@ -32,7 +32,10 @@ export class Note {
     pages!: Page[];
 
     @Column('datetime', { nullable: true })
-    syncedAt!: Date | null;
+    syncedAt!: string | null;
+
+    @Column('datetime', { nullable: true })
+    createdAt!: string | null;
 
     @Column('uuid', { nullable: true })
     syncedId!: string | null;

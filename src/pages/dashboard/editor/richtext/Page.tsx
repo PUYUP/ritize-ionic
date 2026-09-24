@@ -127,9 +127,8 @@ const RichTextEditorPage: React.FC = () => {
 
     // RTK Query
     const [getNoteById] = useLazyGetNoteByIdQuery();
-    const [upsertNote] = useUpsertNoteMutation();
     const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
-    const { data: sessionData, error, isLoading, isFetching } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
+    const { data: sessionData } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
 
     const updateIsDirty = useCallback((value: boolean) => {
         setIsDirty(value);
@@ -167,6 +166,11 @@ const RichTextEditorPage: React.FC = () => {
             const isDraft = currentStatus === 'draft';
 
             await NotesRepository.microUpdatePage(page.id as string, {
+                id: page.id,
+                userId: page.userId,
+                workspaceId: page.workspaceId,
+                workspaceNoteId: page.workspaceNoteId,
+                learningSessionId: page.learningSessionId,
                 contentData: bufferData,
                 contentText: contentText,
 
@@ -513,13 +517,15 @@ const RichTextEditorPage: React.FC = () => {
             }
 
             await createPage(selectedNoteRef.current, {
+                id: generateUUID(),
                 pageNum: pages.length + 1,
                 workspaceId: selectedNoteRef.current.workspaceId,
                 workspaceNoteId: selectedNoteRef.current.id,
                 isActive: true,
                 status: 'draft',
                 processingStatus: 'pending',
-                // syncedAt: new Date(),
+                createdAt: new Date().toISOString(),
+                // syncedAt: new Date().toISOString(),
                 // syncedId: generateUUID(),
                 learningSessionId: selectedSessionRef.current?.id ?? '',
             }, false);
@@ -539,14 +545,17 @@ const RichTextEditorPage: React.FC = () => {
 
     // --- CRUD NOTES ---
     const initNote = async (workspaceId: string, sessionId: string | null = null) => {
+        const user = await getUser();
         const entity = await NotesRepository.insertNote({
             workspaceId: workspaceId,
+            userId: user?.id ?? '',
             title: "Untitled Note",
             content: "",
-            noteDatetime: new Date(),
+            noteDatetime: sessionData?.ended_at ? new Date(sessionData?.ended_at).toISOString() : new Date().toISOString(),
+            createdAt: sessionData?.created_at ? new Date(sessionData?.created_at).toISOString() : new Date().toISOString(),
             contentType: "text",
             // syncedId: generateUUID(),
-            // syncedAt: new Date(),
+            // syncedAt: new Date().toISOString(),
             status: 'draft',
             processingStatus: 'pending',
             learningSessionId: sessionId ? sessionId : '',
@@ -555,7 +564,12 @@ const RichTextEditorPage: React.FC = () => {
     }
 
     const createPage = async (note: Partial<Note>, data: Partial<Page>, syncToServer: boolean = true): Promise<Page> => {
-        const entity = await NotesRepository.addPage({ id: note.id }, data, syncToServer);
+        const user = await getUser();
+        const entity = await NotesRepository.addPage(
+            { id: note.id },
+            { ...data, userId: user.id ?? '' },
+            syncToServer
+        );
         setServerBaseline(entity.id, new Delta(), 1);
         return entity;
     }
@@ -564,7 +578,6 @@ const RichTextEditorPage: React.FC = () => {
     // Load / create the note and its pages.
     const contentLoader = async (workspaceId: string, noteId: string | null = null, pageId: string | null = null) => {
         let note: any | null = null;
-        let hasUnsynced: boolean = false;
 
         if (noteId) {
             // 1. load dari local database dulu
@@ -573,7 +586,7 @@ const RichTextEditorPage: React.FC = () => {
                 console.log('load note from local database', note);
 
                 // tapi butuh data asli dari server untuk membandingkan perubahan
-                const { data: serverNote } = await getNoteById({ id: noteId });
+                const { data: serverNote, error } = await getNoteById({ id: noteId });
                 console.log('note dari local: load note from server', serverNote);
 
                 // set baseline
@@ -611,10 +624,11 @@ const RichTextEditorPage: React.FC = () => {
                         content: serverNote.content,
                         status: serverNote.status,
                         processingStatus: serverNote.processing_status,
-                        noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
+                        noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime).toISOString() : new Date().toISOString(),
                         contentType: serverNote.content_type as NoteFormatTypes,
                         syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
-                        syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at) : new Date(),
+                        syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at).toISOString() : new Date().toISOString(),
+                        createdAt: serverNote.created_at ? new Date(serverNote.created_at).toISOString() : new Date().toISOString(),
                         learningSessionId: sessionId ? sessionId : '',
                     }
 
@@ -651,7 +665,8 @@ const RichTextEditorPage: React.FC = () => {
                                     processingStatus: p.processing_status,
                                     isActive: p.is_active,
                                     syncedId: p.synced_id ? p.synced_id : generateUUID(),
-                                    syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
+                                    syncedAt: p.synced_at ? new Date(p.synced_at).toISOString() : new Date().toISOString(),
+                                    createdAt: p.created_at ? new Date(p.created_at).toISOString() : new Date().toISOString(),
                                     note: { id: serverNote.id },
                                     attributes: p.attributes,
                                     learningSessionId: sessionId ? sessionId : '',
@@ -666,14 +681,16 @@ const RichTextEditorPage: React.FC = () => {
                         // halaman belum ada, buat halaman baru
                         // di local db dan server juga
                         const page = await createPage({ id: note.id }, {
+                            id: generateUUID(),
                             pageNum: 1,
                             workspaceId: workspaceId,
                             workspaceNoteId: note.id,
                             isActive: true,
                             status: 'draft',
                             processingStatus: 'pending',
-                            // syncedAt: new Date(),
+                            // syncedAt: new Date().toISOString(),
                             // syncedId: generateUUID(),
+                            createdAt: new Date().toISOString(),
                             learningSessionId: sessionId ? sessionId : '',
                         }, false);
 
@@ -686,7 +703,6 @@ const RichTextEditorPage: React.FC = () => {
             // ini note dari local database
             const unsyncedNote = await NotesRepository.getUnsyncedNote('text');
             if (unsyncedNote) {
-                hasUnsynced = true;
                 note = unsyncedNote;
             }
 
@@ -701,14 +717,16 @@ const RichTextEditorPage: React.FC = () => {
             console.log('create new note', note);
 
             const page = await createPage({ id: note.id }, {
+                id: generateUUID(),
                 pageNum: 1,
                 workspaceId: workspaceId,
                 workspaceNoteId: note.id,
                 isActive: true,
                 status: 'draft',
                 processingStatus: 'pending',
-                // syncedAt: new Date(),
+                // syncedAt: new Date().toISOString(),
                 // syncedId: generateUUID(),
+                createdAt: new Date().toISOString(),
                 learningSessionId: sessionId ? sessionId : '',
             }, false);
 
@@ -760,12 +778,6 @@ const RichTextEditorPage: React.FC = () => {
                 console.log('active page', activePage);
             }
         }
-
-        // di url params tidak ada noteId
-        // set dengan yang baru
-        // if (!noteId && !hasUnsynced) {
-        //     handleUpdateUrlWithNoteId(note.id);
-        // }
     }
 
     // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
@@ -807,10 +819,11 @@ const RichTextEditorPage: React.FC = () => {
             status: 'published',
             processingStatus: 'pending',
             contentType: 'text',
-            noteDatetime: sessionData?.ended_at ? new Date(sessionData?.ended_at) : new Date(),
+            noteDatetime: sessionData?.ended_at ? new Date(sessionData?.ended_at).toISOString() : new Date().toISOString(),
+            createdAt: sessionData?.created_at ? new Date(sessionData?.created_at).toISOString() : new Date().toISOString(),
             content: newContent,
             syncedId: selectedNoteRef.current.syncedId || generateUUID(),
-            syncedAt: new Date(),
+            syncedAt: new Date().toISOString(),
             learningSessionId: selectedNoteRef.current.learningSessionId,
             workspaceId: selectedNoteRef.current.workspaceId,
         }, ['id'], true);
@@ -821,7 +834,8 @@ const RichTextEditorPage: React.FC = () => {
                 workspaceId: res.workspaceId,
                 status: 'published' as any,
                 syncedId: p.syncedId || generateUUID(),
-                syncedAt: new Date(),
+                syncedAt: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
             }));
 
             await NotesRepository.upsertPagesBulk(updatedPages);
@@ -855,9 +869,15 @@ const RichTextEditorPage: React.FC = () => {
                 setInitialState(b?.delta ?? new Delta());
                 setInitialLength(b?.length ?? 1);
             }
-            setHasSignificantChange(false);
 
+            setHasSignificantChange(false);
             presentToast('Note saved successfully!', 1000);
+        }
+
+        // di url params tidak ada noteId
+        // set dengan yang baru
+        if (!noteId && res) {
+            handleUpdateUrlWithNoteId(res.id);
         }
     }
 
@@ -1090,9 +1110,9 @@ const RichTextEditorPage: React.FC = () => {
                             try {
                                 await NotesRepository.deletePage({
                                     pageId: pages[activeIndex].id,
-                                    syncedId: pages[activeIndex].syncedId || null,
                                     workspaceId: pages[activeIndex].workspaceId,
                                     workspaceNoteId: pages[activeIndex].workspaceNoteId,
+                                    learningSessionId: pages[activeIndex].learningSessionId,
                                     syncToServer: isSynced ? true : false,
                                 });
 

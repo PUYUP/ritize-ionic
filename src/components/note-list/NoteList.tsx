@@ -457,7 +457,12 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                         role: 'destructive',
                         handler: async () => {
                             if (!selectedNote) return;
-                            await NotesRepository.deleteNote(selectedNote.id, selectedNote.workspace_id);
+                            await NotesRepository.deleteNote(
+                                selectedNote.id,
+                                selectedNote.workspace_id,
+                                selectedNote.learning_session_id || '',
+                                selectedNote?.synced_id ? true : false,
+                            );
                             await presentToast({ message: 'Note deleted successfully', duration: 750, color: 'success' })
                             setShowDeleteAlert(false);
                             setSelectedNote(null);

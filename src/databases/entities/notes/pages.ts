@@ -29,7 +29,10 @@ export class Page {
     isActive!: boolean;
 
     @Column('datetime', { nullable: true })
-    syncedAt!: Date | null;
+    syncedAt!: string | null;
+
+    @Column('datetime', { nullable: true })
+    createdAt!: string | null;
 
     @Column('uuid', { nullable: true })
     syncedId!: string | null;

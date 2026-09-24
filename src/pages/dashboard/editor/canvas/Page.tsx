@@ -194,6 +194,11 @@ const CanvasEditorPage: React.FC = () => {
 			const isDraft = currentStatus === 'draft';
 
 			await NotesRepository.microUpdatePage(page.id as string, {
+				id: page.id,
+				userId: page.userId,
+				workspaceId: page.workspaceId,
+				workspaceNoteId: page.workspaceNoteId,
+				learningSessionId: page.learningSessionId,
 				contentData: bufferData,
 				contentExtracted: { fileData: fileData },
 
@@ -208,7 +213,7 @@ const CanvasEditorPage: React.FC = () => {
 				processingStatus: isDraft
 					? 'pending'
 					: (hasSignificantChange ? 'pending' : 'processed'),
-			});
+			}, false);
 
 			console.log('selected page id: ', page.id, ' is updated');
 
@@ -629,7 +634,7 @@ const CanvasEditorPage: React.FC = () => {
 				isActive: true,
 				status: 'draft',
 				processingStatus: 'pending',
-				syncedAt: new Date(),
+				syncedAt: new Date().toISOString(),
 				syncedId: generateUUID(),
 			});
 
@@ -653,12 +658,12 @@ const CanvasEditorPage: React.FC = () => {
 			learningSessionId: sessionId ? sessionId : '',
 			title: "Untitled Canvas",
 			content: "",
-			noteDatetime: new Date(),
+			noteDatetime: new Date().toISOString(),
 			// NOTE: verify "canvas" is a valid member of your NoteFormatTypes
 			// union — swap for whatever value your backend/schema expects.
 			contentType: "canvas",
 			syncedId: generateUUID(),
-			syncedAt: new Date(),
+			syncedAt: new Date().toISOString(),
 			status: 'draft',
 			processingStatus: 'pending',
 		});
@@ -696,10 +701,10 @@ const CanvasEditorPage: React.FC = () => {
 						content: serverNote.content,
 						status: serverNote.status,
 						processingStatus: serverNote.processing_status,
-						noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
+						noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime).toISOString() : new Date().toISOString(),
 						contentType: serverNote.content_type as NoteFormatTypes,
 						syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
-						syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at) : new Date(),
+						syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at).toISOString() : new Date().toISOString(),
 					}
 
 					note = await NotesRepository.insertNote(nData);
@@ -735,7 +740,7 @@ const CanvasEditorPage: React.FC = () => {
 									processingStatus: p.processing_status,
 									isActive: p.is_active,
 									syncedId: p.synced_id ? p.synced_id : generateUUID(),
-									syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
+									syncedAt: p.synced_at ? new Date(p.synced_at).toISOString() : new Date().toISOString(),
 									note: { id: serverNote.id },
 									attributes: p.attributes,
 								}
@@ -756,7 +761,7 @@ const CanvasEditorPage: React.FC = () => {
 							isActive: true,
 							status: 'draft',
 							processingStatus: 'pending',
-							syncedAt: new Date(),
+							syncedAt: new Date().toISOString(),
 							syncedId: generateUUID(),
 						});
 
@@ -781,7 +786,7 @@ const CanvasEditorPage: React.FC = () => {
 				isActive: true,
 				status: 'draft',
 				processingStatus: 'pending',
-				syncedAt: new Date(),
+				syncedAt: new Date().toISOString(),
 				syncedId: generateUUID(),
 			});
 			console.log('create page note didn\'t exist', page);
@@ -1207,9 +1212,9 @@ const CanvasEditorPage: React.FC = () => {
 							try {
 								await NotesRepository.deletePage({
 									pageId: pages[activeIndex].id,
-									syncedId: pages[activeIndex].syncedId,
 									workspaceId: pages[activeIndex].workspaceId,
 									workspaceNoteId: pages[activeIndex].workspaceNoteId,
+									learningSessionId: pages[activeIndex].learningSessionId,
 									syncToServer: true,
 								});
 

@@ -57,6 +57,7 @@ const FilesEditorPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
     const noteId = searchParams.get('noteId');
+    const sessionId = searchParams.get('sessionId');
     const isProcessed = Boolean(searchParams.get('clusteredDate'));
 
     const [viewImage, setViewImage] = useState<any>(null);
@@ -151,10 +152,10 @@ const FilesEditorPage: React.FC = () => {
             workspaceId: workspaceId,
             title: "Untitled Note",
             content: "",
-            noteDatetime: new Date(),
+            noteDatetime: new Date().toISOString(),
             contentType: "file",
             syncedId: generateUUID(),
-            syncedAt: new Date(),
+            syncedAt: new Date().toISOString(),
             status: 'draft',
             processingStatus: 'pending',
         });
@@ -191,10 +192,10 @@ const FilesEditorPage: React.FC = () => {
                         content: serverNote.content,
                         status: serverNote.status,
                         processingStatus: serverNote.processing_status,
-                        noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime) : new Date(),
+                        noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime).toISOString() : new Date().toISOString(),
                         contentType: serverNote.content_type as NoteFormatTypes,
                         syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
-                        syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at) : new Date(),
+                        syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at).toISOString() : new Date().toISOString(),
                     }
 
                     note = await NotesRepository.insertNote(nData);
@@ -229,7 +230,7 @@ const FilesEditorPage: React.FC = () => {
                                     processingStatus: p.processing_status,
                                     isActive: p.is_active,
                                     syncedId: p.synced_id ? p.synced_id : generateUUID(),
-                                    syncedAt: p.synced_at ? new Date(p.synced_at) : new Date(),
+                                    syncedAt: p.synced_at ? new Date(p.synced_at).toISOString() : new Date().toISOString(),
                                     note: { id: serverNote.id },
                                     attributes: p.attributes,
                                 }
@@ -362,7 +363,7 @@ const FilesEditorPage: React.FC = () => {
                 const existingPageCount = pages.length;
                 const pageNum = existingPageCount + 1;
                 const syncedId = generateUUID();
-                const syncedAt = new Date();
+                const syncedAt = new Date().toISOString();
 
                 const newPage = await createPage(note, {
                     title: file.name ?? 'Untitled Page',
@@ -571,7 +572,7 @@ const FilesEditorPage: React.FC = () => {
                 if (note) {
                     const pageNum = existingPageCount + i + 1;
                     const syncedId = generateUUID();
-                    const syncedAt = new Date();
+                    const syncedAt = new Date().toISOString();
 
                     const newPage = await createPage(note, {
                         title: file.name ?? 'Untitled Page',
@@ -904,9 +905,9 @@ const FilesEditorPage: React.FC = () => {
                             // delete page from db
                             await NotesRepository.deletePage({
                                 pageId: pages[activeIndex].id,
-                                syncedId: pages[activeIndex].syncedId,
                                 workspaceId: pages[activeIndex].workspaceId,
                                 workspaceNoteId: pages[activeIndex].workspaceNoteId,
+                                learningSessionId: pages[activeIndex].learningSessionId,
                                 syncToServer: true,
                             });
 

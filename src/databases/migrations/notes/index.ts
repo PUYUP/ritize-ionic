@@ -15,6 +15,8 @@ import { MetadataToAttributes1789113847556 } from "./1789113847556-MetadataToAtt
 import { AddProcessingStatusField1789214332042 } from "./1789214332042-AddProcessingStatusField";
 import { AddProcessingStatusField1789214572157 } from "./1789214572157-AddProcessingStatusField";
 import { AddLearningSessionId1790083341498 } from "./1790083341498-AddLearningSessionId";
+import { AddedCreatedAt1790178183725 } from "./1790178183725-AddedCreatedAt";
+import { ChangeDateToString1790226804897 } from "./1790226804897-ChangeDateToString";
 
 export {
     InitialNotes1787674018377,
@@ -34,4 +36,6 @@ export {
     AddProcessingStatusField1789214332042,
     AddProcessingStatusField1789214572157,
     AddLearningSessionId1790083341498,
+    AddedCreatedAt1790178183725,
+    ChangeDateToString1790226804897,
 };

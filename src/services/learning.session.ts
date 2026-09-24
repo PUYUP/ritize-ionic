@@ -9,6 +9,7 @@ export type LearningSessionTypes = {
     readonly pages_canvas: any[];
     readonly pages_file: any[];
 
+    created_at: string;
     started_at: string;
     ended_at: string;
     workspace_id: string;

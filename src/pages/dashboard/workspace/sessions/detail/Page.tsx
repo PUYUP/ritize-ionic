@@ -142,7 +142,7 @@ const SessionDetailPage: React.FC = () => {
 
                 <div className='ion-padding !pb-0'>
                     <div className='block mb-2'>
-                        <IonText className='text-base albert-font text-neutral-800 !font-semibold'>Add notes to this session</IonText>
+                        <IonText className='text-base albert-font text-neutral-800 !font-semibold'>Add session notes</IonText>
                     </div>
                     <StartNote
                         workspace={{
@@ -158,7 +158,7 @@ const SessionDetailPage: React.FC = () => {
                     />
                 </div>
 
-                <NoteListSessioned workspaceId={undefined} learningSessionId={sessionId} />
+                <NoteListSessioned workspaceId={workspaceId} learningSessionId={sessionId} />
             </IonContent>
         </IonPage>
     )

@@ -1,12 +1,12 @@
-import { IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonCardHeader, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
-import { albums, albumsOutline, cameraOutline, checkmarkCircleOutline, closeOutline, cloudUploadOutline, copyOutline, trashOutline } from "ionicons/icons";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonFooter, IonHeader, IonIcon, IonModal, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidLeave } from "@ionic/react";
+import { albumsOutline, cameraOutline, checkmarkCircleOutline, closeOutline, cloudUploadOutline } from "ionicons/icons";
+import { useEffect, useRef, useState } from "react";
 import './Page.css';
 import { Note, Page } from "../../../../databases/entities/notes";
 import NotesRepository from "../../../../databases/datasources/NotesRepository";
 import ImageCapture from "../../../../components/image-capture/ImageCapture";
 import { CameraResultType, Photo } from "@capacitor/camera";
-import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery, useUpsertNoteMutation } from "../../../../services/notes";
+import { useLazyGetNoteByIdQuery, useUpsertNoteMutation } from "../../../../services/notes";
 import { useSearchParams } from "react-router-dom";
 import { useGetWorkspaceByIdQuery } from "../../../../services/workspace";
 import { generateUUID } from "../../../../utils/generator";
@@ -16,6 +16,7 @@ import { UploadProgress } from "../../../../types/upload";
 import { FilePicker, PickedFile } from '@capawesome/capacitor-file-picker';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from "../../../../lib/supabase";
+import { useGetLearningSessionByIdQuery } from "../../../../services/learning.session";
 
 interface FilePage extends Page {
     uploadProgress?: number | null;
@@ -78,8 +79,9 @@ const FilesEditorPage: React.FC = () => {
     const prevNoteIdRef = useRef<string | null>(searchParams.get('noteId'));
 
     // RTK Query
-    const [getNoteById, { data: noteData, isLoading: gettingNote, isError: gettingNoteError }] = useLazyGetNoteByIdQuery();
+    const [getNoteById] = useLazyGetNoteByIdQuery();
     const [upsertNote] = useUpsertNoteMutation();
+    const { data: sessionData } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
     const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
 
     const handleUpdateUrlWithNoteId = (newNoteId: string) => {
@@ -89,21 +91,6 @@ const FilesEditorPage: React.FC = () => {
         setSearchParams(newParams, { replace: true });
     };
 
-    // Ionic's router outlet keeps pages mounted in its history stack, so plain
-    // unmount isn't a reliable "user is leaving" signal — flush explicitly.
-    useIonViewWillLeave(() => {
-        // pass
-    });
-
-    useIonViewDidEnter(() => {
-        window.dispatchEvent(new Event('resize'));
-
-        (async () => {
-            if (!workspaceId) return;
-            await contentLoader(workspaceId, noteId);
-        })();
-    }, [noteId, workspaceId]);
-
     useIonViewDidLeave(() => {
         setPages([]);
         setSelectedPage(null);
@@ -111,160 +98,34 @@ const FilesEditorPage: React.FC = () => {
         prevNoteIdRef.current = null;
     });
 
-    // select page
-    const selectPageHandler = async (page: FilePage) => {
-        if (selectedPage?.id === page.id) return;
-
-        try {
-            // Flush any unsaved edits on the OUTGOING page before touching
-            // selectedPage / swapping the editor's content.
-            // if (!isProcessed) await flushPendingSave();
-
-            const updatedPages = pages.map((p) => {
-                // hilangkan karena bukan bagian dari table database
-                delete p.uploadProgress;
-                delete p.uploadError;
-                delete p.isSaving;
-
-                return { ...p, isActive: p.id === page.id }
-            });
-            if (!isProcessed) await NotesRepository.updatePagesBulk(updatedPages);
-            setPages(updatedPages);
-
-            if (selectedNote) {
-                const currentPages = await NotesRepository.getPagesByNoteId(selectedNote.id);
-                setPages(currentPages);
-
-                const freshSelectedPage = currentPages.find((p) => p.id === page.id);
-                if (freshSelectedPage) {
-                    setSelectedPage(freshSelectedPage);
-                }
-            }
-        } catch (err) {
-            console.error('Failed to switch page', err);
-            presentToast({ message: 'Could not switch pages.', duration: 2500, color: 'danger' });
-        }
-    };
-
     // --- CRUD NOTES ---
-    const initNote = async (workspaceId: string) => {
+    const initNote = async (workspaceId: string, sessionId: string | null = null) => {
+        const user = await getUser();
         const entity = await NotesRepository.insertNote({
             workspaceId: workspaceId,
+            userId: user?.id ?? '',
             title: "Untitled Note",
             content: "",
-            noteDatetime: new Date().toISOString(),
+            noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
+            createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
             contentType: "file",
-            syncedId: generateUUID(),
-            syncedAt: new Date().toISOString(),
             status: 'draft',
             processingStatus: 'pending',
-        });
+            learningSessionId: sessionId ? sessionId : '',
+        }, false);
         return entity;
     }
 
-    const createPage = async (note: Partial<Note>, data: Partial<Page>): Promise<Page> => {
-        const entity = await NotesRepository.addPage({ id: note.id }, data);
+    const createPage = async (note: Partial<Note>, data: Partial<Page>, syncToServer: boolean = true): Promise<Page> => {
+        const user = await getUser();
+        const entity = await NotesRepository.addPage(
+            { id: note.id },
+            { ...data, userId: user.id ?? '' },
+            syncToServer
+        );
         return entity;
     }
     // --- END CRUD NOTES ---
-
-    // Load / create the note and its pages.
-    const contentLoader = async (workspaceId: string, noteId: string | null = null) => {
-        let note: any | null = null;
-
-        if (noteId) {
-            // 1. load dari local database dulu
-            note = await NotesRepository.getNoteById(noteId);
-            if (note) {
-                console.log('load note from local database', note);
-            } else {
-                // 2. note tidak ada di local, load dari server
-                const { data: serverNote } = await getNoteById({ id: noteId });
-                console.log('load note from server', serverNote);
-
-                // 3. karena dari server, inject ke local db
-                if (serverNote) {
-                    const newSyncedId = generateUUID();
-                    const nData = {
-                        id: serverNote.id,
-                        workspaceId: workspaceId,
-                        title: serverNote.title || "Untitled Note",
-                        content: serverNote.content,
-                        status: serverNote.status,
-                        processingStatus: serverNote.processing_status,
-                        noteDatetime: serverNote.note_datetime ? new Date(serverNote.note_datetime).toISOString() : new Date().toISOString(),
-                        contentType: serverNote.content_type as NoteFormatTypes,
-                        syncedId: serverNote.synced_id ? serverNote.synced_id : newSyncedId,
-                        syncedAt: serverNote.synced_at ? new Date(serverNote.synced_at).toISOString() : new Date().toISOString(),
-                    }
-
-                    note = await NotesRepository.insertNote(nData);
-                    console.log('injected note', note);
-
-                    // di server belum punya synced_id -> update server
-                    if (!serverNote.synced_id) {
-                        console.log('adding synced id to existing note');
-                        await upsertNote({
-                            body: {
-                                id: serverNote.id,
-                                synced_id: newSyncedId,
-                                synced_at: new Date().toISOString(),
-                            }
-                        }).unwrap();
-                    }
-
-                    // 4. lanjut insert pages nya jika ada
-                    const injectedPages = serverNote.pages
-                        ? serverNote.pages
-                            .slice()
-                            .sort((a: NotePageTypes, b: NotePageTypes) => a.page_num - b.page_num)
-                            .map((p: NotePageTypes) => {
-                                return {
-                                    id: p.id,
-                                    workspaceId: p.workspace_id,
-                                    workspaceNoteId: p.workspace_note_id,
-                                    contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
-                                    userId: p.user_id,
-                                    pageNum: p.page_num,
-                                    status: p.status,
-                                    processingStatus: p.processing_status,
-                                    isActive: p.is_active,
-                                    syncedId: p.synced_id ? p.synced_id : generateUUID(),
-                                    syncedAt: p.synced_at ? new Date(p.synced_at).toISOString() : new Date().toISOString(),
-                                    note: { id: serverNote.id },
-                                    attributes: p.attributes,
-                                }
-                            })
-                        : [];
-
-                    if (injectedPages.length > 0) {
-                        const savedPages = await NotesRepository.addPagesBulk(injectedPages);
-                        console.log("injected pages", savedPages);
-                    }
-                }
-            }
-        }
-
-        // 4. setelah dari local db dan server masih juga tidak ada
-        // setelah semuanya diatas beres
-        if (note) {
-            // set active note
-            setSelectedNote(note);
-            console.log('active note', note);
-
-            // get all pages
-            const savedPages = await NotesRepository.getPagesByNoteId(note.id);
-            console.log('getting pages', savedPages);
-            setPages([...savedPages]);
-
-            // get active page
-            const activePage = savedPages.find((p: Page) => p.isActive === true);
-            if (activePage) {
-                setSelectedPage(activePage);
-                console.log('active page', activePage);
-            }
-        }
-    }
 
     // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
     useEffect(() => {
@@ -318,6 +179,7 @@ const FilesEditorPage: React.FC = () => {
             userId: user.id,
             workspaceId: workspaceId,
             workspaceNoteId: note?.id,
+            learningSessionId: sessionId ? sessionId : '',
         } as FilePage;
 
         setPages((prev) => [...prev, tempEntry]);
@@ -370,6 +232,7 @@ const FilesEditorPage: React.FC = () => {
                     pageNum: pageNum,
                     workspaceId: note.workspaceId,
                     workspaceNoteId: note.id,
+                    learningSessionId: sessionId ? sessionId : '',
                     isActive: true,
                     syncedAt: syncedAt,
                     syncedId: syncedId,
@@ -447,7 +310,7 @@ const FilesEditorPage: React.FC = () => {
             // pickedFileToFile sendiri yang gagal, `file` belum sempat ada
             console.error(`Failed to upload file "${pickedFile.name}"`, err);
             presentToast({
-                message: `Gagal mengunggah "${pickedFile.name}", lanjut ke file berikutnya.`,
+                message: `Failed to upload file "${pickedFile.name}", continuing to next file.`,
                 duration: 2500,
                 color: 'danger',
             });
@@ -526,6 +389,7 @@ const FilesEditorPage: React.FC = () => {
             userId: user.id,
             workspaceId: workspaceId,
             workspaceNoteId: note?.id,
+            learningSessionId: sessionId ? sessionId : '',
         } as FilePage));
 
         setPages((prev) => [...prev, ...tempEntries]);
@@ -579,6 +443,7 @@ const FilesEditorPage: React.FC = () => {
                         pageNum: pageNum,
                         workspaceId: note.workspaceId,
                         workspaceNoteId: note.id,
+                        learningSessionId: sessionId ? sessionId : '',
                         isActive: true,
                         syncedAt: syncedAt,
                         syncedId: syncedId,
@@ -842,7 +707,7 @@ const FilesEditorPage: React.FC = () => {
             </IonContent>
 
             {!isProcessed && (
-                <IonFooter className="w-full py-3 ion-no-border">
+                <IonFooter className="w-full py-3 ion-no-border bg-[#f4f5f8]" color="light">
                     <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                         <div className='px-3 text-center'>
                             <IonText className="text-sm text-center w-full" color={'medium'}>
@@ -853,7 +718,7 @@ const FilesEditorPage: React.FC = () => {
                                     <div className="flex items-center gap-4">
                                         <IonButton
                                             shape="round"
-                                            color={'light'}
+                                            color={'white'}
                                             onClick={selectFile}
                                         >
                                             <IonIcon icon={cloudUploadOutline} slot="start"></IonIcon>
@@ -869,7 +734,7 @@ const FilesEditorPage: React.FC = () => {
                                         >
                                             <IonButton
                                                 shape="round"
-                                                color={'light'}
+                                                color={'white'}
                                             >
                                                 <IonIcon icon={cameraOutline} slot="icon-only"></IonIcon>
                                             </IonButton>

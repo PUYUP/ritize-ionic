@@ -215,9 +215,6 @@ export const notesAPI = createApi({
             async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
                 // Manipulasi cache untuk query 'getNotesByWorkspaceId'
                 let patchResult: any;
-
-                console.log('upser note', body);
-
                 try {
                     // Tunggu sampai proses update ke database selesai
                     const { data } = await queryFulfilled;
@@ -450,13 +447,16 @@ export const notesAPI = createApi({
                         )
                     `, { count: "exact" });
 
+                // first level filter by members
+                query = query.eq("workspace.workspace_members.user_id", user.id);
+
+                // second level by workspace
+                if (learning_session_id) {
+                    query = query.eq("learning_session_id", learning_session_id);
+                }
+
                 if (workspace_id) {
                     query = query.eq("workspace_id", workspace_id);
-                } else if (learning_session_id) {
-                    query = query.eq("learning_session_id", learning_session_id);
-                } else {
-                    // Dapatkan semua notes di mana current user adalah member dari workspace notes tersebut
-                    query = query.eq("workspace.workspace_members.user_id", user.id);
                 }
 
                 let { data, error, count } = await query
@@ -936,8 +936,6 @@ export const notesAPI = createApi({
                                     } else {
                                         draft.notes[noteIndex].pages.unshift(data as NotePageTypes);
                                     }
-
-                                    console.log('pageIndex', pageIndex)
                                 }
                             }
                         }

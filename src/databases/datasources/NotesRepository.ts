@@ -88,9 +88,13 @@ class NotesRepository {
         });
     }
 
-    async getUnsyncedNote(contentType: string = 'text'): Promise<Note | null> {
+    async getUnsyncedNote(contentType: string = 'text', sessionId: string): Promise<Note | null> {
         return this.noteRepo.findOne({
-            where: { syncedId: IsNull(), contentType: contentType } as any,
+            where: {
+                syncedId: IsNull(),
+                contentType: contentType,
+                learningSessionId: sessionId,
+            } as any,
             relations: ['pages'],
         });
     }

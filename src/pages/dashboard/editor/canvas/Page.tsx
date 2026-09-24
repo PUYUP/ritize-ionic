@@ -795,7 +795,7 @@ const CanvasEditorPage: React.FC = () => {
 						console.log("injected pages", savedPages);
 					} else {
 						// halaman belum ada, buat halaman baru
-						// di local db dan server juga
+						// di local db
 						const page = await createPage({ id: note.id }, {
 							id: generateUUID(),
 							pageNum: 1,
@@ -815,7 +815,7 @@ const CanvasEditorPage: React.FC = () => {
 		} else {
 			// 0. cek apakah ada unsynced note
 			// ini note dari local database
-			const unsyncedNote = await NotesRepository.getUnsyncedNote('canvas');
+			const unsyncedNote = await NotesRepository.getUnsyncedNote('canvas', sessionId ?? '');
 			if (unsyncedNote) {
 				note = unsyncedNote;
 			}
@@ -855,6 +855,7 @@ const CanvasEditorPage: React.FC = () => {
 			let savedPages = await NotesRepository.getPagesByNoteId(note.id);
 			console.log('getting pages', savedPages);
 
+			// aktifkan page jika pageId ada di url args
 			if (pageId) {
 				savedPages = savedPages.map((p: Page) => ({
 					...p,

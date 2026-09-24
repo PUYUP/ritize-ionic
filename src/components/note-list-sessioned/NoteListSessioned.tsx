@@ -227,6 +227,12 @@ const NoteItemMinimal: React.FC<{
                                                 </div>
                                             </div>
 
+                                            <div className='absolute top-1 right-1 left-1 opacity-80'>
+                                                <div className={`${p.status == 'published' ? 'bg-green-200' : 'bg-neutral-200'} rounded-xl !text-[10px] px-1 py-0 uppercase text-center`}>
+                                                    {p.status == 'published' ? 'saved' : 'draft'}
+                                                </div>
+                                            </div>
+
                                             <div className='absolute flex justify-between bottom-2 left-2 right-2'>
                                                 <div className='flex items-center gap-1'>
                                                     <IonIcon className='text-xs text-neutral-400' icon={documentText} />

@@ -209,7 +209,7 @@ const NoteItemMinimal: React.FC<{
 
                     {item.content_type == 'canvas' && (
                         <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
-                            {item.pages?.map((p: NotePageTypes) => {
+                            {[...(item?.pages ?? [])]?.sort((a, b) => (b.page_num || 0) - (a.page_num || 0)).map(p => {
                                 let mediaLink = p?.content_extracted?.fileData;
                                 if (p?.attachments?.length > 0) {
                                     mediaLink = p?.attachments?.[0]?.file?.media_link;

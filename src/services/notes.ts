@@ -658,7 +658,7 @@ export const notesAPI = createApi({
                         },
                         (draft) => {
                             // Cari note yang sedang diupdate di dalam array cache
-                            const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === body.learning_session_id);
+                            const noteIndex = draft.notes.findIndex((n) => n.id === body.workspace_note_id);
                             console.log('note index', noteIndex);
                             if (noteIndex !== -1) {
                                 // Timpa data lama dengan data baru (patch)
@@ -841,6 +841,7 @@ export const notesAPI = createApi({
 
                     const firstPage = pages[0];
                     const workspaceId = firstPage.workspace_id;
+                    const workspaceNoteId = firstPage.workspace_note_id;
                     const learningSessionId = firstPage.learning_session_id;
 
                     patchResult = dispatch(
@@ -857,7 +858,7 @@ export const notesAPI = createApi({
                             },
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
-                                const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === learningSessionId);
+                                const noteIndex = draft.notes.findIndex((n) => n.id === workspaceNoteId);
                                 if (noteIndex === -1) return;
 
                                 draft.notes[noteIndex].pages_status = data.some((p) => p.status === 'draft') ? 'draft' : 'published';
@@ -921,7 +922,7 @@ export const notesAPI = createApi({
                         },
                         (draft) => {
                             // Cari note yang sedang diupdate di dalam array cache
-                            const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === data.learning_session_id);
+                            const noteIndex = draft.notes.findIndex((n) => n.id === data.workspace_note_id);
                             if (noteIndex !== -1) {
                                 draft.notes[noteIndex].pages_status = data.status;
                                 if (draft.notes[noteIndex].pages) {
@@ -1007,7 +1008,7 @@ export const notesAPI = createApi({
                             pageSize: 20
                         },
                         (draft) => {
-                            const noteIndex = draft.notes.findIndex((n) => n.learning_session_id === learning_session_id);
+                            const noteIndex = draft.notes.findIndex((n) => n.id === workspace_note_id);
                             if (noteIndex === -1) return; // guard duluan, jangan akses field sebelum ini
                             const note = draft.notes[noteIndex];
                             note.page_count -= 1;

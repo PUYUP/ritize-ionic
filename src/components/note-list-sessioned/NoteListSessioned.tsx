@@ -53,7 +53,7 @@ const groupNotesByDate = (notes: NoteTypes[]): NoteGroup[] => {
     return [...map.entries()].map(([dateKey, groupNotes]) => ({ dateKey, notes: groupNotes }));
 };
 
-const NoteItemMinimal: React.FC<{
+const NoteItem: React.FC<{
     item: NoteTypes,
     isLast: boolean,
     user: { id: string },
@@ -251,45 +251,43 @@ const NoteItemMinimal: React.FC<{
                     )}
 
                     {(item.content_type == 'file' && item.page_count > 0) && (
-                        <Link to={linkTo}>
-                            <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
-                                {[...(item?.pages ?? [])]?.sort((a, b) => (b.page_num || 0) - (a.page_num || 0)).map(p => {
-                                    const mediaLink = p?.attachments?.[0]?.file?.media_link;
+                        <div className='block grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-3 gap-3'>
+                            {[...(item?.pages ?? [])]?.sort((a, b) => (b.page_num || 0) - (a.page_num || 0)).map(p => {
+                                const mediaLink = p?.attachments?.[0]?.file?.media_link;
 
-                                    return (
-                                        <IonCard key={p.id} className='rounded-xl' routerLink={`${linkTo}&pageId=${p.id}`}>
-                                            <IonCardContent className='relative'>
-                                                <div className="relative aspect-square overflow-hidden">
-                                                    <div className='absolute left-0 right-0 bottom-0 top-0 rounded-xl flex items-center justify-center'>
-                                                        {mediaLink && <img src={mediaLink} className='w-full h-full object-cover' />}
-                                                        {!mediaLink && (
-                                                            <IonText className='text-xs text-center' color="medium">Currently is draft</IonText>
-                                                        )}
-                                                    </div>
+                                return (
+                                    <IonCard key={p.id} className='rounded-xl' routerLink={`${linkTo}&pageId=${p.id}`}>
+                                        <IonCardContent className='relative'>
+                                            <div className="relative aspect-square overflow-hidden">
+                                                <div className='absolute left-0 right-0 bottom-0 top-0 rounded-xl flex items-center justify-center'>
+                                                    {mediaLink && <img src={mediaLink} className='w-full h-full object-cover' />}
+                                                    {!mediaLink && (
+                                                        <IonText className='text-xs text-center' color="medium">Currently is draft</IonText>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className='absolute top-1 right-1 left-1 opacity-80'>
+                                                <div className={`${p.status == 'published' ? 'bg-green-200' : 'bg-neutral-200'} rounded-xl !text-[10px] px-1 py-0 uppercase text-center`}>
+                                                    {p.status == 'published' ? 'saved' : 'draft'}
+                                                </div>
+                                            </div>
+
+                                            <div className='absolute flex justify-between bottom-2 left-2 right-2'>
+                                                <div className='flex items-center gap-1'>
+                                                    <IonIcon className='text-xs text-neutral-400' icon={documentText} />
+                                                    <IonText className='text-xs'>{p.page_num}</IonText>
                                                 </div>
 
-                                                <div className='absolute top-1 right-1 left-1 opacity-80'>
-                                                    <div className={`${p.status == 'published' ? 'bg-green-200' : 'bg-neutral-200'} rounded-xl !text-[10px] px-1 py-0 uppercase text-center`}>
-                                                        {p.status == 'published' ? 'saved' : 'draft'}
-                                                    </div>
-                                                </div>
-
-                                                <div className='absolute flex justify-between bottom-2 left-2 right-2'>
-                                                    <div className='flex items-center gap-1'>
-                                                        <IonIcon className='text-xs text-neutral-400' icon={documentText} />
-                                                        <IonText className='text-xs'>{p.page_num}</IonText>
-                                                    </div>
-
-                                                    <IonButton shape='round' size='small' color={'light'} className='min-w-[16px] min-h-[16px]'>
-                                                        <IonIcon icon={chevronForwardOutline} className='text-xs' slot='icon-only'></IonIcon>
-                                                    </IonButton>
-                                                </div>
-                                            </IonCardContent>
-                                        </IonCard>
-                                    )
-                                })}
-                            </div>
-                        </Link>
+                                                <IonButton shape='round' size='small' color={'light'} className='min-w-[16px] min-h-[16px]'>
+                                                    <IonIcon icon={chevronForwardOutline} className='text-xs' slot='icon-only'></IonIcon>
+                                                </IonButton>
+                                            </div>
+                                        </IonCardContent>
+                                    </IonCard>
+                                )
+                            })}
+                        </div>
                     )}
 
                     {(item.status === 'published' && item.pages_status == 'published') && (
@@ -326,7 +324,6 @@ const NoteItemMinimal: React.FC<{
                             </div>
                         </div>
                     )}
-
                 </div>
             </div>
         )
@@ -433,7 +430,7 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
                             {notes.map((item, index, array) => {
                                 const isLast = index === array.length - 1;
                                 return (
-                                    <NoteItemMinimal
+                                    <NoteItem
                                         key={item.id}
                                         item={item}
                                         user={user}

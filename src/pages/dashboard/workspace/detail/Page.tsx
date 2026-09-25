@@ -11,6 +11,7 @@ import { by639_1 } from 'iso-language-codes';
 import MaterialList from '../../../../components/material-list/MaterialList';
 import DigestList from '../../../../components/digest-list/DigestList';
 import { intervalToDuration } from 'date-fns';
+import LearnList from '../../../../components/learn-list/LearnList';
 
 interface RouteParams {
     id?: string
@@ -241,7 +242,7 @@ const WorkspaceDetailPage: React.FC = () => {
                     <div className='-mt-6 relative z-20 flex gap-3 justify-center'>
                         <IonButton mode="md" shape="round" color="warning" style={{ 'minHeight': '44px' }}>
                             <IonIcon icon={bookOutline} slot="start" className='mr-2' />
-                            <IonText className="normal-case tracking-normal">Start Session</IonText>
+                            <IonText className="normal-case tracking-normal">Live Session</IonText>
                         </IonButton>
 
                         <IonButton
@@ -255,7 +256,13 @@ const WorkspaceDetailPage: React.FC = () => {
                         </IonButton>
                     </div>
 
-                    <div className='ion-padding !pt-0'>
+                    <div className='pt-6'>
+                        <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
+                            <LearnList workspaceId={id} />
+                        </div>
+                    </div>
+
+                    {/* <div className='ion-padding !pt-0'>
                         <div className='block mb-3 text-base text-neutral-600'>
                             <IonText className='albert-font'>Start new notes</IonText>
                         </div>
@@ -274,9 +281,9 @@ const WorkspaceDetailPage: React.FC = () => {
                             material={{ todayCount: workspaceStats?.total_materials_today ?? 0, total: workspaceStats?.total_materials ?? 0 }}
                             digest={{ todayCount: workspaceStats?.total_digests_today ?? 0, total: workspaceStats?.total_digests ?? 0 }}
                         />
-                    </div>
+                    </div> */}
 
-                    {id && (
+                    {/* {id && (
                         <div className='block pt-3'>
                             <div className='text-lg ion-padding-start ion-padding-end flex items-center justify-center'>
                                 <IonText className='albert-font text-base text-neutral-600'><u>{activeTabLabel}</u> in Class</IonText>
@@ -291,7 +298,7 @@ const WorkspaceDetailPage: React.FC = () => {
                             {activeTab == 'material' && <div className="ion-padding"><MaterialList workspaceId={id} insideWorkspaceDetail={true} /></div>}
                             {activeTab == 'digest' && <div className="ion-padding"><DigestList workspaceId={id} /></div>}
                         </div>
-                    )}
+                    )} */}
                 </div>
             </IonContent>
 

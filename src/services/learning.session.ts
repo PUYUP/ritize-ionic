@@ -325,7 +325,28 @@ export const learningSessionAPI = createApi({
                         , user:user_id!inner(id, name)
                         , workspace:workspace_id!inner(title, scope, workspace_members!inner(user_id))
                         , status
+                        , pages_text:workspace_notes_pages(
+                            id
+                            , note:workspace_note_id!inner(
+                                content_type
+                            )
+                        )
+                        , pages_canvas:workspace_notes_pages(
+                            id
+                            , note:workspace_note_id!inner(
+                                content_type
+                            )
+                        )
+                        , pages_file:workspace_notes_pages(
+                            id
+                            , note:workspace_note_id!inner(
+                                content_type
+                            )
+                        )
                     `, { count: "exact" })
+                    .eq("pages_text.note.content_type", "text")
+                    .eq("pages_canvas.note.content_type", "canvas")
+                    .eq("pages_file.note.content_type", "file")
                     .eq('user_id', user.id);
 
                 if (workspace_id) {

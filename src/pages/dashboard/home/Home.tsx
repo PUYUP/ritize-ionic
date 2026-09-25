@@ -193,12 +193,13 @@ const HomePage: React.FC = () => {
                     <IonButton
                         color={'dark'}
                         shape="round"
-                        mode='ios'
+                        mode='md'
                         className='flex items-center gap-2'
                         routerLink={'/dashboard/chatbot'}
+                        style={{ 'minHeight': '44px' }}
                     >
                         <IonIcon slot="start" className='mr-2' icon={chatboxEllipsesSharp} />
-                        <IonText>Chat w/ Note</IonText>
+                        <IonText className='tracking-normal normal-case'>Chat w/ Note</IonText>
                     </IonButton>
                 </div>
             </IonFooter>

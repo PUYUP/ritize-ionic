@@ -27,6 +27,7 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/workspace/:id", element: <WorkspaceDetailPage /> },
     { path: "/dashboard/workspace/:id/sessions", element: <SessionsPage /> },
     { path: "/dashboard/workspace/:id/sessions/:sessionId", element: <SessionDetailPage /> },
+    { path: "/dashboard/workspace/:id/sessions/:sessionId/editor", element: <SessionEditorPage /> },
     { path: "/dashboard/workspace/:id/members", element: <WorkspaceMembersPage /> },
     { path: "/dashboard/notes", element: <NotesPage /> },
     { path: "/dashboard/materials", element: <MaterialsPage /> },

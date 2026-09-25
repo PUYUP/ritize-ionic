@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Page.css';
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar } from '@ionic/react';
+import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonToast } from '@ionic/react';
 import { useParams } from 'react-router';
-import { useGetLearningSessionByIdQuery } from '../../../../../services/learning.session';
-import { bookmarkSharp, pricetagsSharp, settingsOutline, timeOutline } from 'ionicons/icons';
+import { useDeleteSessionByIdMutation, useGetLearningSessionByIdQuery } from '../../../../../services/learning.session';
+import { bookmarkSharp, closeOutline, pencilOutline, pricetagsSharp, settingsOutline, timeOutline, trashOutline } from 'ionicons/icons';
 import { format } from 'date-fns';
 import { intervalToDuration } from 'date-fns';
 import StartNote from '../../../../../components/startnote/StartNote';
@@ -15,15 +15,14 @@ interface RouteParams {
     [key: string]: string | undefined
 }
 
-const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.round((seconds % 3600) / 60);
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-};
-
 const SessionDetailPage: React.FC = () => {
+    const ionRouter = useIonRouter();
     const { id: workspaceId, sessionId } = useParams<RouteParams>();
-    const { data: sessionData, error, isLoading, isFetching } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
+    const [deleteSessionById] = useDeleteSessionByIdMutation();
+    const { data: sessionData, isLoading } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
+    const [showOptions, setShowOptions] = useState(false);
+    const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+    const [presentToast] = useIonToast();
 
     if (isLoading) {
         return (
@@ -65,6 +64,7 @@ const SessionDetailPage: React.FC = () => {
                             mode="md"
                             color={'white'}
                             className='normal-button'
+                            onClick={() => setShowOptions(true)}
                         >
                             <IonIcon icon={settingsOutline} slot="icon-only" />
                         </IonButton>
@@ -168,6 +168,74 @@ const SessionDetailPage: React.FC = () => {
                     <NoteListSessioned workspaceId={workspaceId} learningSessionId={sessionId} />
                 </div>
             </IonContent>
+
+            <IonActionSheet
+                isOpen={showOptions}
+                onDidDismiss={() => {
+                    setShowOptions(false);
+                }}
+                header="Session Actions"
+                buttons={[
+                    {
+                        text: 'Edit',
+                        icon: pencilOutline,
+                        data: {
+                            action: 'edit',
+                        },
+                        handler: async () => {
+                            ionRouter.push(`/dashboard/workspace/${workspaceId}/sessions/${sessionId}/editor`);
+                        }
+                    },
+                    {
+                        text: 'Delete',
+                        icon: trashOutline,
+                        role: 'destructive',
+                        data: {
+                            action: 'delete',
+                        },
+                        handler: () => {
+                            setShowDeleteAlert(true);
+                        },
+                    },
+                    {
+                        text: 'Cancel',
+                        icon: closeOutline,
+                        role: 'cancel',
+                        data: {
+                            action: 'cancel',
+                        },
+                    },
+                ]}
+            ></IonActionSheet>
+
+            {/* delete session */}
+            <IonAlert
+                isOpen={showDeleteAlert}
+                onDidDismiss={() => setShowDeleteAlert(false)}
+                header='Are you sure to remove this session?'
+                message={'All related data on this session will be permanently deleted.'}
+                buttons={[
+                    { text: 'Cancel', role: 'cancel' },
+                    {
+                        text: 'Yes',
+                        role: 'destructive',
+                        handler: async () => {
+                            if (!sessionData?.id || !sessionData?.workspace_id) {
+                                await presentToast({
+                                    message: "Invalid session data",
+                                    duration: 2000,
+                                    color: 'danger',
+                                    position: "top"
+                                });
+                                return;
+                            }
+
+                            await deleteSessionById({ id: sessionData.id, workspace_id: sessionData.workspace_id });
+                            ionRouter.push(`/dashboard/workspace/${workspaceId}`, 'forward', 'replace');
+                        },
+                    },
+                ]}
+            ></IonAlert>
         </IonPage>
     )
 }

@@ -36,7 +36,7 @@ export const learningSessionAPI = createApi({
     tagTypes: ['LearningSession'],
     endpoints: (builder) => ({
         // ...
-        // add session
+        // create session
         // ...
         createSession: builder.mutation<LearningSessionTypes, { body: Partial<LearningSessionTypes> }>({
             queryFn: async ({ body }) => {
@@ -104,6 +104,150 @@ export const learningSessionAPI = createApi({
                 } catch (err) {
                     // Insert gagal di server, cache belum pernah diubah jadi tidak perlu di-undo.
                     console.error('[Create Session] Gagal menyinkronkan session ke cache', err);
+                }
+            },
+        }),
+
+        // update session
+        updateSession: builder.mutation<LearningSessionTypes, { id: string; workspace_id: string; body: Partial<LearningSessionTypes> }>({
+            queryFn: async ({ id, workspace_id, body }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "[Update Session] User not found" } };
+                if (!id) return { error: { message: "[Update Session] Session ID is required" } };
+                if (!workspace_id) return { error: { message: "[Update Session] Workspace ID is required" } };
+
+                const { data, error } = await supabase
+                    .from("workspace_learning_sessions")
+                    .update(body)
+                    .eq("id", id)
+                    .eq("user_id", user.id)
+                    .select(`
+                        *
+                        , user:user_id!inner(id, name)
+                        , workspace:workspace_id(
+                            id
+                            , title
+                        )
+                    `)
+                    .single();
+
+                if (error) return { error: { message: error.message } };
+                return { data: data };
+            },
+            async onQueryStarted({ id, workspace_id, body }, { dispatch, queryFulfilled }) {
+                const listCacheArgs = { workspace_id, page: 1, pageSize: 20 };
+
+                // Optimistic update untuk list session di halaman workspace
+                const listPatchResult = dispatch(
+                    learningSessionAPI.util.updateQueryData(
+                        'getLearningSessionsByWorkspaceId',
+                        listCacheArgs,
+                        (draft) => {
+                            const item = draft.results.find((s) => s.id === id);
+                            if (item) Object.assign(item, body);
+                        }
+                    )
+                );
+
+                // Optimistic update untuk halaman detail session
+                // Kalau cache 'getLearningSessionById' untuk id ini belum ada
+                // (belum pernah di-fetch), recipe ini tidak melakukan apa-apa,
+                // dan .undo() di catch tetap aman dipanggil.
+                const detailPatchResult = dispatch(
+                    learningSessionAPI.util.updateQueryData(
+                        'getLearningSessionById',
+                        id, // sesuaikan kalau argumen query-nya bukan `id` langsung, misal { id }
+                        (draft) => {
+                            Object.assign(draft, body);
+                        }
+                    )
+                );
+
+                try {
+                    const { data } = await queryFulfilled;
+
+                    dispatch(
+                        learningSessionAPI.util.updateQueryData(
+                            'getLearningSessionsByWorkspaceId',
+                            listCacheArgs,
+                            (draft) => {
+                                const item = draft.results.find((s) => s.id === id);
+                                if (item) Object.assign(item, data);
+                            }
+                        )
+                    );
+
+                    dispatch(
+                        learningSessionAPI.util.updateQueryData(
+                            'getLearningSessionById',
+                            id,
+                            (draft) => {
+                                Object.assign(draft, data);
+                            }
+                        )
+                    );
+                } catch (err) {
+                    listPatchResult.undo();
+                    detailPatchResult.undo();
+                    console.error('[Update Session] Gagal menyinkronkan session ke cache', err);
+                }
+            },
+        }),
+
+        // ...
+        // delete session
+        // ...
+        // delete session
+        deleteSessionById: builder.mutation<{ id: string }, { id: string; workspace_id: string }>({
+            queryFn: async ({ id }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "[Delete Session] User not found" } };
+                if (!id) return { error: { message: "[Delete Session] Session ID is required" } };
+
+                const { error } = await supabase
+                    .from("workspace_learning_sessions")
+                    .delete()
+                    .eq("id", id)
+                    .eq("user_id", user.id);
+
+                if (error) return { error: { message: error.message } };
+                return { data: { id } };
+            },
+            async onQueryStarted({ id, workspace_id }, { dispatch, queryFulfilled }) {
+                const listCacheArgs = { workspace_id, page: 1, pageSize: 20 };
+
+                // Optimistic delete: hapus dulu dari cache list, simpan item & index-nya
+                // supaya bisa dikembalikan persis di posisi semula kalau request gagal.
+                let removedItem: LearningSessionTypes | undefined;
+                let removedIndex = -1;
+
+                const listPatchResult = dispatch(
+                    learningSessionAPI.util.updateQueryData(
+                        'getLearningSessionsByWorkspaceId',
+                        listCacheArgs,
+                        (draft) => {
+                            const index = draft.results.findIndex((s) => s.id === id);
+                            if (index !== -1) {
+                                removedIndex = index;
+                                removedItem = draft.results[index];
+                                draft.results.splice(index, 1);
+                            }
+                        }
+                    )
+                );
+
+                try {
+                    await queryFulfilled;
+                    // Sukses, tidak perlu apa-apa lagi — cache list sudah benar dari optimistic update.
+                    // Catatan: cache 'getLearningSessionById' untuk id ini sengaja tidak diapa-apakan
+                    // di sini karena tidak ada cara bersih untuk "menghapus" satu entry query tanpa
+                    // tag-based invalidation. Kalau user sedang ada di halaman detail session yang
+                    // dihapus, redirect/navigasi setelah delete berhasil sebaiknya ditangani di
+                    // komponen (setelah `.unwrap()` resolve), bukan lewat cache.
+                } catch (err) {
+                    // Delete gagal, kembalikan item ke posisi semula
+                    listPatchResult.undo();
+                    console.error('[Delete Session] Gagal menghapus session dari cache', err);
                 }
             },
         }),
@@ -239,4 +383,6 @@ export const {
     useLazyGetLearningSessionsByWorkspaceIdQuery,
     useGetLearningSessionByIdQuery,
     useLazyGetLearningSessionByIdQuery,
+    useUpdateSessionMutation,
+    useDeleteSessionByIdMutation,
 } = learningSessionAPI;

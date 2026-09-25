@@ -429,7 +429,7 @@ const NoteListSessioned: React.FC<Props> = ({ workspaceId, learningSessionId }) 
                             </IonText>
                         </div>
 
-                        <div className='w-full'>
+                        <div className='w-full flex flex-col gap-5'>
                             {notes.map((item, index, array) => {
                                 const isLast = index === array.length - 1;
                                 return (

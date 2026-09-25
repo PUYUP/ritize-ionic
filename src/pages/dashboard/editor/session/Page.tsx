@@ -1,25 +1,36 @@
-import { IonBackButton, IonBadge, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonDatetime, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonPage, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
+import { IonBackButton, IonBadge, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonDatetime, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonPage, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter, useIonViewWillEnter } from '@ionic/react';
 import './Page.css';
 import { checkmarkOutline, closeOutline, timeOutline, timeSharp } from 'ionicons/icons';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, useController } from 'react-hook-form';
 import { useGetAllWorkspacesQuery, WorkspaceTypes } from '../../../../services/workspace';
 import { format } from 'date-fns';
-import { LearningSessionTypes, useCreateSessionMutation } from '../../../../services/learning.session';
+import { LearningSessionTypes, useCreateSessionMutation, useGetLearningSessionByIdQuery, useLazyGetLearningSessionByIdQuery, useUpdateSessionMutation } from '../../../../services/learning.session';
 import { getUser } from '../../../../utils/authState';
+import { useParams } from 'react-router';
 
 type SessionFormValues = {
     workspace: WorkspaceTypes | null;
     startedAt: string | undefined;
     endedAt: string | undefined;
     topic: string;
-};
+}
+
+interface RouteParams {
+    id?: string
+    sessionId?: string
+    [key: string]: string | undefined
+}
 
 function SessionEditorPage() {
     const ionRouter = useIonRouter();
 
+    // Parameter dari URL
+    const { id: workspaceId, sessionId } = useParams<RouteParams>();
+
     // Mutation
     const [createSession, { isLoading }] = useCreateSessionMutation();
+    const [updateSession, { isLoading: isUpdating }] = useUpdateSessionMutation();
 
     // Workspaces select modal
     const workspaceModalRef = useRef<HTMLIonModalElement>(null);
@@ -34,6 +45,10 @@ function SessionEditorPage() {
     const selectDatetimeModal = useRef<HTMLIonModalElement>(null);
     const [showSelectDatetimeModal, setShowSelectDatetimeModal] = useState<{ isOpen: boolean; type: 'startedAt' | 'endedAt' }>({ isOpen: false, type: 'startedAt' });
 
+    // RTK Query
+    const [sessionData, setSessionData] = useState<LearningSessionTypes | null>(null);
+    const [getSession] = useLazyGetLearningSessionByIdQuery();
+
     // React Hook Form
     const {
         control,
@@ -41,6 +56,7 @@ function SessionEditorPage() {
         watch,
         reset,
         trigger,
+        setValues,
         formState: { isValid, isSubmitting },
     } = useForm<SessionFormValues>({
         mode: 'onChange',
@@ -127,9 +143,27 @@ function SessionEditorPage() {
             duration_seconds: durationSeconds,
         }
 
-        const { data: res, error } = await createSession({ body: payload });
-        if (error) {
-            return;
+        let result: LearningSessionTypes | null = null;
+
+        if (sessionId && sessionData) {
+            const { data: res, error } = await updateSession({
+                id: sessionData.id,
+                workspace_id: sessionData.workspace_id,
+                body: payload
+            });
+
+            if (error) {
+                return;
+            }
+
+            result = res;
+        } else {
+            const { data: res, error } = await createSession({ body: payload });
+            if (error) {
+                return;
+            }
+
+            result = res;
         }
 
         reset();
@@ -138,7 +172,9 @@ function SessionEditorPage() {
         setShowWorkspacesModal(false);
 
         // redirect to session detail
-        ionRouter.push(`/dashboard/workspace/${res.workspace_id}/sessions/${res.id}`);
+        if (result) {
+            ionRouter.push(`/dashboard/workspace/${result.workspace_id}/sessions/${result.id}`);
+        }
     };
 
     // Page lifecycle
@@ -157,6 +193,35 @@ function SessionEditorPage() {
         trigger();
     }, []);
 
+    useIonViewWillEnter(() => {
+        (async () => {
+            if (sessionId) {
+                const { data, error } = await getSession(sessionId);
+                if (error) {
+                    return;
+                }
+
+                if (data) {
+                    setSessionData(data);
+                }
+            }
+        })();
+    }, [sessionId])
+
+    // Effect handler
+    useEffect(() => {
+        if (sessionData) {
+            setValues({
+                workspace: sessionData.workspace,
+                startedAt: sessionData.started_at,
+                endedAt: sessionData.ended_at,
+                topic: sessionData.title,
+            }, {
+                shouldValidate: true,
+            });
+        }
+    }, [sessionData, reset]);
+
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -166,7 +231,7 @@ function SessionEditorPage() {
                     </IonButtons>
 
                     <IonTitle className='text-base ion-padding-start ion-padding-end ion-text-center'>
-                        Study Session
+                        {sessionData ? `Edit Study Session` : 'New Study Session'}
                     </IonTitle>
 
                     <div slot="end" className="ion-padding-end">

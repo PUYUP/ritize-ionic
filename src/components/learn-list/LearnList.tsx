@@ -108,9 +108,17 @@ const SessionItem: React.FC<{
                             <IonText className='font-normal text-neutral-600 text-sm oswald-font'>{format(item.ended_at, 'HH:mm')}</IonText>
                         </div>
 
-                        <IonText className='font-normal text-green-600 text-sm oswald-font ml-auto'>
-                            {totalHours}.{minutes}h
-                        </IonText>
+                        <div className="ml-auto flex items-center gap-2">
+                            {item.status !== 'completed' && (
+                                <div className="px-1 py-0.5 leading-3 text-[10px] uppercase bg-orange-100 border border-orange-200 rounded-full font-normal text-orange-700 shadow">
+                                    <IonText>ongoing</IonText>
+                                </div>
+                            )}
+
+                            <IonText className='font-normal text-green-600 text-sm oswald-font'>
+                                {totalHours}.{minutes}h
+                            </IonText>
+                        </div>
                     </div>
                 </div>
 

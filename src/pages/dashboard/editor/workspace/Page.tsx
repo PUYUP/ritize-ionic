@@ -124,7 +124,6 @@ const WorkspaceEditorPage: React.FC = () => {
                                     labelPlacement="floating"
                                     fill="outline"
                                     rows={1}
-                                    className='!bg-white'
                                 >
                                     <IonIcon slot="start" icon={schoolOutline} aria-hidden="true"></IonIcon>
                                 </IonTextarea>
@@ -194,6 +193,7 @@ const WorkspaceEditorPage: React.FC = () => {
                             type="submit"
                             shape='round'
                             mode='ios'
+                            color='dark'
                             disabled={!isValid || updating || creating}
                         >
                             {updating || creating ? (

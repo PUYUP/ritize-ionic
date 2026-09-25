@@ -1,74 +1,66 @@
 import { IonText } from '@ionic/react';
 import './LearnGraph.css';
-import { format } from 'date-fns';
+import { format, intervalToDuration } from 'date-fns';
+import { SessionDurationByDay } from '../../services/learning.session';
 
 type Props = {
-    workspaceId?: string;
-    fromDate?: string;
-    toDate?: string;
+    days: SessionDurationByDay[];
 }
 
 type LearnGraphTypes = {
     durationSeconds: number;
     startedAt: string;
-    endedAt: string;
-    workspaceCount: number;
     notesCount: number;
 }
 
-const LearnGraph: React.FC<Props> = ({ workspaceId, fromDate, toDate }) => {
+const LearnGraph: React.FC<Props> = ({ days }) => {
     const wrapperHeight = 300;
-    const learnSamples: LearnGraphTypes[] = [
+    let learnSamples: LearnGraphTypes[] = [
         {
             durationSeconds: 4050,
             startedAt: '2026-01-01T09:00:00',
-            endedAt: '2026-01-01T10:07:30',
-            workspaceCount: 1,
             notesCount: 1,
         },
         {
             durationSeconds: 3120,
             startedAt: '2026-01-03T14:15:00',
-            endedAt: '2026-01-03T15:07:00',
-            workspaceCount: 1,
             notesCount: 3,
         },
         {
             durationSeconds: 0,
             startedAt: '2026-01-07T08:30:00',
-            endedAt: '2026-01-07T09:58:00',
-            workspaceCount: 0,
             notesCount: 0,
         },
         {
             durationSeconds: 2460,
             startedAt: '2026-01-12T19:00:00',
-            endedAt: '2026-01-12T19:41:00',
-            workspaceCount: 1,
             notesCount: 12,
         },
         {
             durationSeconds: 6540,
             startedAt: '2026-01-18T10:20:00',
-            endedAt: '2026-01-18T12:09:00',
-            workspaceCount: 2,
             notesCount: 7,
         },
         {
             durationSeconds: 3780,
             startedAt: '2026-01-24T15:30:00',
-            endedAt: '2026-01-24T16:33:00',
-            workspaceCount: 1,
             notesCount: 4,
         },
         {
             durationSeconds: 0,
             startedAt: '2026-01-30T20:00:00',
-            endedAt: '2026-01-30T21:22:00',
-            workspaceCount: 0,
             notesCount: 0,
         },
     ];
+
+    // update with days
+    if (days.length > 0) {
+        learnSamples = days.map(day => ({
+            durationSeconds: day.duration_seconds_sum,
+            startedAt: day.session_date,
+            notesCount: day.pages_sum,
+        }));
+    }
 
     // Bar tertinggi (100%) = sample dengan durasi terpanjang.
     // Setiap bar lain dihitung sebagai persentase relatif terhadap durasi maksimum itu.
@@ -89,6 +81,14 @@ const LearnGraph: React.FC<Props> = ({ workspaceId, fromDate, toDate }) => {
                 >
                     {learnSamples.map((item, index) => {
                         const percentage = (item.durationSeconds / maxDurationSeconds) * 100;
+                        const duration = intervalToDuration({
+                            start: 0,
+                            end: (item.durationSeconds ?? 0) * 1000 // intervalToDuration expects milliseconds
+                        });
+
+                        // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+                        const totalHours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+                        const minutes = duration.minutes ?? 0;
 
                         return (
                             <div key={item.startedAt ?? index} className="flex flex-col items-center h-full w-12">
@@ -100,15 +100,16 @@ const LearnGraph: React.FC<Props> = ({ workspaceId, fromDate, toDate }) => {
 
                                     <div
                                         className={`w-full rounded-t-4xl relative ${item.durationSeconds > 60 ? 'bg-neutral-600' : 'bg-neutral-200'}`}
-                                        style={{ height: `calc(${percentage}% + 32px)` }}
+                                        style={{ height: `calc(${percentage}% + ${percentage > 0 ? '48px' : '32px'})` }}
                                     >
                                         <div className={`text-xs text-center pt-3 albert-font ${item.durationSeconds > 60 ? 'text-white' : 'text-neutral-600'}`}>
                                             {percentage.toFixed(0)}%
                                         </div>
 
                                         {item.durationSeconds > 60 && (
-                                            <div className="text-[11px] font-normal text-center text-white/80 oswald-font">
-                                                {formatDuration(item.durationSeconds)}
+                                            <div className="text-[11px] flex flex-row flex-wrap gap-0.5 leading-3 justify-center items-center font-normal text-center text-white/80 oswald-font w-[85%] mx-auto">
+                                                <IonText>{totalHours}h</IonText>
+                                                <IonText>{minutes}m</IonText>
                                             </div>
                                         )}
                                     </div>

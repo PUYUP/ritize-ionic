@@ -1,87 +1,83 @@
 import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonIcon, IonItem, IonLabel, IonList, IonText } from "@ionic/react";
-import { chatbubblesOutline, chevronForwardOutline, ellipseOutline, people, peopleOutline } from "ionicons/icons";
+import { chatbubblesOutline, chevronForwardOutline, documentTextOutline, ellipseOutline, people, peopleOutline, timeOutline } from "ionicons/icons";
 import { WorkspaceTypes } from "../../services/workspace";
 import './WorkspaceList.css';
+import { intervalToDuration } from "date-fns";
 
 interface WorkspaceListProps {
     items: WorkspaceTypes[];
 }
 
 const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ item, isLast }) => {
+    const duration = intervalToDuration({
+        start: 0,
+        end: (item.total_duration_seconds ?? 0) * 1000 // intervalToDuration expects milliseconds
+    });
+
+    // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+    const totalHours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+    const minutes = duration.minutes ?? 0;
+
     return (
         <IonCard
             mode="md"
             routerLink={`/dashboard/workspace/${item.id}`}
             routerDirection="forward"
-            className="rounded-xl"
+            className="rounded-xl clear"
         >
-            <IonCardHeader className="ion-padding flex flex-row">
-                <div className="flex-1 pr-2">
-                    <IonCardTitle className="text-lg">
-                        <IonText className="font-semibold">
-                            <h3 className="!mt-0 !mb-0 !text-lg !font-semibold !leading-6">{item.title}</h3>
-                        </IonText>
-                    </IonCardTitle>
-                </div>
+            <IonCardContent className="!px-2 lg:!px-0">
+                <div className="flex items-center">
+                    <div className="block flex-1">
+                        <div className="text-lg mb-1">
+                            <IonText className="text-neutral-800">
+                                <h3 className="!mt-0 !mb-0 !text-[18px] !font-normal !leading-6 line-clamp-2">{item.title}</h3>
+                            </IonText>
+                        </div>
 
-                <div className="ml-auto">
-                    <IonButton shape='round' size='small' color={'light'} routerDirection='none'>
-                        <IonIcon icon={chevronForwardOutline} slot='icon-only' />
-                    </IonButton>
-                </div>
-            </IonCardHeader>
-
-            <IonCardContent className="ion-padding !px-4 !pt-0 -mt-2">
-                <table className="table text-xs w-full">
-                    <tbody>
-                        <tr>
-                            <td className="w-20 !py-0.5">Type</td>
-                            <td className="flex gap-1">
-                                :
-                                <div className="flex gap-2 items-center w-full">
-                                    <IonText className="min-w-6">
-                                        {item.scope === 'personal' ? 'Personal' : 'Group'}
-                                    </IonText>
-                                    {item.scope === 'group' && item.member_count != 0 && (
-                                        <div className="ml-auto flex items-center gap-2">
-                                            <IonIcon icon={people} className='text-base text-neutral-400'></IonIcon>
-                                            <IonText className="text-neutral-600 text-xs font-semibold">{item.member_count}</IonText>
-                                        </div>
-                                    )}
+                        <div className="flex gap-4 items-center w-full text-xs">
+                            <div className="flex gap-2 items-center">
+                                <div className="flex gap-0.5 items-center">
+                                    <IonIcon icon={documentTextOutline} className="mb-0.5" />
+                                    <IonText>{item.total_note_count}</IonText>
+                                    <IonText className="text-neutral-500">notes</IonText>
                                 </div>
-                            </td>
-                        </tr>
 
-                        <tr>
-                            <td className="w-20 !py-0.5">Notes</td>
-                            <td className="flex gap-1">
-                                :
-                                <div className="flex gap-2 items-center w-full">
-                                    <IonText className="min-w-6">{item.total_note_count}</IonText>
-                                    <div className="ml-auto">
-                                        {item.today_note_count != 0 &&
-                                            <IonText className="text-green-500 text-xs font-semibold">{item.today_note_count} today</IonText>
-                                        }
+                                <div className="block">
+                                    {item.today_note_count != 0 &&
+                                        <IonText className="text-green-600">{item.today_note_count} today</IonText>
+                                    }
+                                </div>
+                            </div>
+
+                            {item.scope === 'group' && item.member_count != 0 && (
+                                <div className="flex items-center gap-2">
+                                    <IonIcon icon={peopleOutline} className='text-base text-neutral-400'></IonIcon>
+
+                                    <div className="flex gap-0.5">
+                                        <IonText>{item.member_count}</IonText>
+                                        <IonText className="text-neutral-500">mates</IonText>
                                     </div>
                                 </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="w-20 !py-0.5">Materials</td>
-                            <td className="flex gap-1">
-                                :
-                                <div className="flex gap-2 items-center w-full">
-                                    <IonText className="min-w-6">{item.total_material_count}</IonText>
-                                    <div className="ml-auto">
-                                        {item.today_material_count != 0 &&
-                                            <IonText className="text-green-500 text-xs font-semibold">{item.today_material_count} today</IonText>
-                                        }
-                                    </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="ml-auto pl-2">
+                        <div className="block w-20 h-14 bg-white rounded-xl shadow-md flex items-center justify-center">
+                            <div className="block w-full">
+                                <div className="flex items-end justify-center oswald-font">
+                                    <IonText className="text-lg font-semibold text-green-600">{totalHours}</IonText>
+                                    <IonText className="text-[14px] !font-normal text-green-500 pb-[1px]">.{minutes}h</IonText>
                                 </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+
+                                <div className="text-xs line-clamp-1 w-full text-center">
+                                    <IonText className="font-bold ml-0.5">{item.total_session_count}</IonText>
+                                    <IonText className="ml-0.5">sess.</IonText>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </IonCardContent>
         </IonCard>
     );
@@ -89,9 +85,9 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
 
 const WorkspaceList: React.FC<WorkspaceListProps> = ({ items }) => {
     return (
-        <div className="!py-0 ion-padding flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
             {items.length === 0 && <div className="ion-no-padding text-center">No workspaces found</div>}
-            <div className='grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 xl:gap-5'>
+            <div className='block'>
                 {items.map((item, index, array) => {
                     const isLast = index === array.length - 1;
                     return (

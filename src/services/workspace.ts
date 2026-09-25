@@ -18,6 +18,8 @@ export type WorkspaceTypes = {
     total_note_count?: number;
     total_material_count?: number;
     today_material_count?: number;
+    total_duration_seconds?: number;
+    total_session_count?: number;
 }
 
 export type MemberTypes = {
@@ -35,13 +37,16 @@ export const workspaceAPI = createApi({
         // get workspace by id with full data
         getWorkspaceById: builder.query<WorkspaceTypes, string>({
             queryFn: async (id) => {
+                const user = await getUser();
                 const { data, error } = await supabase
-                    .from("workspaces")
+                    .from("workspaces_with_stats")
                     .select(`
-                        *,
-                        member_count:workspace_members(count)
+                        *
+                        , members:workspace_members!inner(*)
+                        , member_count:workspace_members(count)
                     `)
                     .eq("id", id)
+                    .in('members.user_id', [user.id])
                     .single();
 
                 if (error) {

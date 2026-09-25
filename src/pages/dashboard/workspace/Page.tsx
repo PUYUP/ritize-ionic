@@ -64,40 +64,42 @@ const WorkspacePage: React.FC = () => {
                         My Classes
                     </IonTitle>
                     <IonButtons slot="end" className="ion-padding-end">
-                        <IonButton fill="outline" color={'primary'} size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
+                        <IonButton fill="solid" color={'warning'} size='small' mode="ios" shape='round' aria-label='Add workspace' routerLink={'/dashboard/editor/workspace'}>
                             <IonIcon icon={add} slot='icon-only' className='text-xl' />
                         </IonButton>
                     </IonButtons>
                 </IonToolbar>
             </IonHeader>
 
-            <IonContent color="light" className="ion-padding-top">
-                <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
-                    <IonRefresherContent />
-                </IonRefresher>
+            <IonContent color="light" className="ion-padding">
+                <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
+                    <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+                        <IonRefresherContent />
+                    </IonRefresher>
 
-                {Array.from({ length: pageCount }).map((_, page) => {
-                    return (
-                        <WorkspacePageBlock
-                            key={page}
-                            page={page}
-                            perPage={PER_PAGE}
-                            onLoaded={handlePageLoaded}
+                    {Array.from({ length: pageCount }).map((_, page) => {
+                        return (
+                            <WorkspacePageBlock
+                                key={page}
+                                page={page}
+                                perPage={PER_PAGE}
+                                onLoaded={handlePageLoaded}
+                            />
+                        )
+                    })}
+
+                    <IonInfiniteScroll
+                        ref={infiniteScrollRef}
+                        onIonInfinite={handleLoadMore}
+                        threshold="100px"
+                        disabled={!hasMore}
+                    >
+                        <IonInfiniteScrollContent
+                            loadingSpinner="bubbles"
+                            loadingText="Memuat workspace lainnya..."
                         />
-                    )
-                })}
-
-                <IonInfiniteScroll
-                    ref={infiniteScrollRef}
-                    onIonInfinite={handleLoadMore}
-                    threshold="100px"
-                    disabled={!hasMore}
-                >
-                    <IonInfiniteScrollContent
-                        loadingSpinner="bubbles"
-                        loadingText="Memuat workspace lainnya..."
-                    />
-                </IonInfiniteScroll>
+                    </IonInfiniteScroll>
+                </div>
             </IonContent>
         </IonPage>
     );

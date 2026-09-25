@@ -48,6 +48,7 @@
     "better-auth": "^1.7.2",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
     "ionicons": "^8.1.0",
     "iso-language-codes": "^2.0.1",
     "postcss": "^8.5.26",

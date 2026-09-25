@@ -1,21 +1,20 @@
 import { IonButton, IonIcon, IonText } from "@ionic/react";
-import {
-    addOutline,
-    analyticsOutline,
-    bookOutline,
-    calendarClear,
-    calendarClearOutline,
-    calendarOutline,
-    timeOutline
-} from "ionicons/icons";
+import { intervalToDuration } from "date-fns";
+import { addOutline } from "ionicons/icons";
 
 type Props = {
-    totalMinutes?: number;
-    totalNotes?: number;
-    totalWorkspaces?: number;
+    durationSeconds?: number;
 }
 
-const LearnStats: React.FC<Props> = ({ totalMinutes = 0, totalNotes = 0, totalWorkspaces = 0 }) => {
+const LearnStats: React.FC<Props> = ({ durationSeconds = 0 }) => {
+    const duration = intervalToDuration({
+        start: 0,
+        end: (durationSeconds ?? 0) * 1000 // intervalToDuration expects milliseconds
+    });
+
+    const totalHours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+    const minutes = duration.minutes ?? 0;
+
     return (
         <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
             <div className="block">
@@ -29,8 +28,8 @@ const LearnStats: React.FC<Props> = ({ totalMinutes = 0, totalNotes = 0, totalWo
                 </div>
 
                 <div className="block">
-                    <IonText className="text-5xl font-bold albert-font -tracking-[2px]">15.452</IonText>
-                    <IonText className="text-base text-neutral-500 oswald-font font-light">.30 hrs</IonText>
+                    <IonText className="text-5xl font-bold albert-font -tracking-[2px]">{totalHours}</IonText>
+                    <IonText className="text-base text-neutral-500 oswald-font font-light">.{minutes} hrs</IonText>
                 </div>
             </div>
         </div>

@@ -134,32 +134,36 @@ const WorkspaceDetailPage: React.FC = () => {
 
             <IonContent color="light" role="feed">
                 <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
-                    <div className='ion-padding'>
-                        <div className='flex items-start'>
-                            <div className='block ion-padding-end'>
-                                <h1 className='block mb-1 !mt-0 !leading-3'>
-                                    <IonText className='text-xl'>{workspace.title || 'Class Detail'}</IonText>
-                                </h1>
+                    <div className="bg-gradient-to-b from-[#f4f5f8] to-white rounded-b-3xl relative z-10 pb-4 md:pb-10 shadow-md shadow-neutral-200/50">
+                        <div className='ion-padding'>
+                            <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
+                                <div className='flex items-start'>
+                                    <div className='block ion-padding-end'>
+                                        <h1 className='block mb-1 !mt-0 !leading-3'>
+                                            <IonText className='text-xl'>{workspace.title || 'Class Detail'}</IonText>
+                                        </h1>
 
-                                <div className='flex items-center gap-2 text-neutral-700'>
-                                    <div className='flex gap-2 text-sm items-center'>
-                                        <IonIcon icon={languageOutline} />
-                                        <IonText>{language.name}</IonText>
-                                    </div>
-
-                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                    <IonText className='text-sm'>{workspace.scope === 'group' ? 'Group' : 'Personal'}</IonText>
-
-                                    {workspace.scope === 'group' && (
-                                        <>
-                                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                            <div className='cursor-pointer text-blue-700 flex items-center gap-1 text-sm' onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}>
-                                                <IonText>{workspace.member_count || 0} classmates</IonText>
-                                                <IonIcon icon={chevronForwardOutline} />
+                                        <div className='flex items-center gap-2 text-neutral-700'>
+                                            <div className='flex gap-2 text-sm items-center'>
+                                                <IonIcon icon={languageOutline} />
+                                                <IonText>{language.name}</IonText>
                                             </div>
-                                        </>
-                                    )}
 
+                                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                            <IonText className='text-sm'>{workspace.scope === 'group' ? 'Group' : 'Personal'}</IonText>
+
+                                            {workspace.scope === 'group' && (
+                                                <>
+                                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
+                                                    <div className='cursor-pointer text-blue-700 flex items-center gap-1 text-sm' onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}>
+                                                        <IonText>{workspace.member_count || 0} classmates</IonText>
+                                                        <IonIcon icon={chevronForwardOutline} />
+                                                    </div>
+                                                </>
+                                            )}
+
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

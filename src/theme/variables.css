@@ -118,6 +118,15 @@ ion-item.clear {
     --padding-bottom: 10px;
 }
 
+ion-card.clear {
+    --background: transparent;
+    box-shadow: none;
+}
+
+ion-textarea {
+    --background: #fff !important;
+}
+
 @media only screen and (min-width: 768px) and (min-height: 768px) {
     ion-modal::part(content) {
         border-radius: 16px;

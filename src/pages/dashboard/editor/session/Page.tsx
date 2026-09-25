@@ -4,7 +4,7 @@ import { checkmarkOutline, closeOutline, timeOutline, timeSharp } from 'ionicons
 import { useEffect, useRef, useState } from 'react';
 import { useForm, useController } from 'react-hook-form';
 import { useGetAllWorkspacesQuery, WorkspaceTypes } from '../../../../services/workspace';
-import { format } from 'date-fns';
+import { format, intervalToDuration } from 'date-fns';
 import { LearningSessionTypes, useCreateSessionMutation, useGetLearningSessionByIdQuery, useLazyGetLearningSessionByIdQuery, useUpdateSessionMutation } from '../../../../services/learning.session';
 import { getUser } from '../../../../utils/authState';
 import { useParams } from 'react-router';
@@ -384,13 +384,22 @@ function SessionEditorPage() {
                                 <IonIcon icon={closeOutline} slot='icon-only' color='dark' />
                             </IonButton>
                         </div>
-                        <IonTitle className='ion-text-center text-base absolute left-14 right-14 top-0 bottom-0'>Select a class</IonTitle>
+                        <IonTitle className='ion-text-center absolute left-14 right-14 top-0 bottom-0'>Select a class</IonTitle>
                     </IonToolbar>
                 </IonHeader>
 
                 <IonContent color={'light'} className='ion-padding'>
                     <div className='!p-0 bg-none ion-no-background !flex flex-col gap-0'>
                         {workspaces?.map(item => {
+                            const duration = intervalToDuration({
+                                start: 0,
+                                end: (item.total_duration_seconds ?? 0) * 1000 // intervalToDuration expects milliseconds
+                            });
+
+                            // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+                            const totalHours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+                            const minutes = duration.minutes ?? 0;
+
                             return (
                                 <IonItem
                                     key={item.id}
@@ -407,9 +416,11 @@ function SessionEditorPage() {
                                     <IonLabel className='ion-padding-end'>
                                         <p className='!text-sm !mb-0.5 flex items-center gap-1'>
                                             <IonIcon icon={timeSharp} slot='start' className='text-neutral-300' />
-                                            <IonText>28 hours</IonText>
+                                            <IonText className='!text-neutral-500'>{totalHours} hours</IonText>
+                                            <IonText className='!text-neutral-400'>&bull;</IonText>
+                                            <IonText className='!text-neutral-500'>{minutes} minutes</IonText>
                                         </p>
-                                        <IonText className='albert-font'>{item.title}</IonText>
+                                        <IonText className='albert-font !font-normal text-lg !leading-6'>{item.title}</IonText>
                                     </IonLabel>
                                 </IonItem>
                             )

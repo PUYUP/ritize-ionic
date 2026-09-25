@@ -164,7 +164,7 @@ const Page: React.FC = () => {
             <h1 className='block ion-text-center !mt-0 px-3'>
               <IonText className='text-2xl font-bold'>
                 {/* Exchange lecture notes to assist studies every day. */}
-                Note taking for power students, assist studies <strong className='text-[#ec8d39] font-bold'>while you sleep.</strong>
+                NPower up students notes, assist studies <strong className='text-[#ec8d39] font-bold'>while you sleep.</strong>
               </IonText>
             </h1>
 

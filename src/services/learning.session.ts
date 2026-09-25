@@ -19,6 +19,18 @@ export type LearningSessionTypes = {
     duration_seconds: number;
 }
 
+export type SessionDurationByDay = {
+    session_date: string; // yyyy-mm-dd
+    duration_seconds_sum: number;
+    pages_sum: number;
+};
+
+export type SessionDurationSummary = {
+    total_durations: number;
+    total_pages: number;
+    days: SessionDurationByDay[];
+};
+
 export type GetLearningSessionsByWorkspaceIdParams = {
     workspace_id?: string;
     page?: number;      // default 1
@@ -197,7 +209,6 @@ export const learningSessionAPI = createApi({
         // ...
         // delete session
         // ...
-        // delete session
         deleteSessionById: builder.mutation<{ id: string }, { id: string; workspace_id: string }>({
             queryFn: async ({ id }) => {
                 const user = await getUser();
@@ -374,6 +385,38 @@ export const learningSessionAPI = createApi({
                         { type: 'LearningSession' as const, id: 'LIST' }
                     ],
         }),
+
+        // ...
+        // sessions stats
+        // ...
+        getSessionDurationSummary: builder.query<SessionDurationSummary, {
+            workspace_id?: string;
+            start_date: string;
+            end_date: string;
+            timezone?: string
+        }>({
+            queryFn: async ({ workspace_id, start_date, end_date, timezone }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "[Session Duration] User not found" } };
+
+                const { data, error } = await supabase.rpc('get_session_durations_by_range', {
+                    p_user_id: user.id,
+                    p_start_date: start_date,
+                    p_end_date: end_date,
+                    p_workspace_id: workspace_id ?? null,
+                    p_timezone: timezone ?? 'UTC',
+                });
+
+                if (error) return { error: { message: error.message } };
+
+                const days = data ?? [];
+
+                const total_durations = days.reduce((acc: any, day: any) => acc + day.duration_seconds_sum, 0);
+                const total_pages = days.reduce((acc: any, day: any) => acc + day.pages_sum, 0);
+
+                return { data: { total_durations, total_pages, days } };
+            },
+        }),
     }),
 });
 
@@ -385,4 +428,5 @@ export const {
     useLazyGetLearningSessionByIdQuery,
     useUpdateSessionMutation,
     useDeleteSessionByIdMutation,
+    useGetSessionDurationSummaryQuery,
 } = learningSessionAPI;

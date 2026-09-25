@@ -17,7 +17,7 @@ type Props = {
 
 const LearnStats: React.FC<Props> = ({ totalMinutes = 0, totalNotes = 0, totalWorkspaces = 0 }) => {
     return (
-        <div className="w-full sm:w-12/12 md:w-10/12 lg:w-7/12 xl:w-5/12 mx-auto">
+        <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
             <div className="block">
                 <IonText className="text-sm albert-font text-neutral-500 !font-normal">Study times</IonText>
             </div>

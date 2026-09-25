@@ -659,7 +659,6 @@ export const notesAPI = createApi({
                         (draft) => {
                             // Cari note yang sedang diupdate di dalam array cache
                             const noteIndex = draft.notes.findIndex((n) => n.id === body.workspace_note_id);
-                            console.log('note index', noteIndex);
                             if (noteIndex !== -1) {
                                 // Timpa data lama dengan data baru (patch)
                                 draft.notes[noteIndex].page_count += 1;
@@ -900,7 +899,10 @@ export const notesAPI = createApi({
                     .from("workspace_notes_pages")
                     .update(data)
                     .eq("id", id)
-                    .select()
+                    .select(`
+                        *
+                        , attachments(*, file:file_id(*))
+                    `)
                     .single();
 
                 if (error) return { error: { message: error.message } };
@@ -960,7 +962,21 @@ export const notesAPI = createApi({
                             (draft) => {
                                 // Cari note yang sedang diupdate di dalam array cache
                                 const noteIndex = draft.notes.findIndex((n) => n.id === data.workspace_note_id);
-                                draft.notes[noteIndex].pages_status = data.status;
+                                if (noteIndex !== -1) {
+                                    draft.notes[noteIndex].pages_status = data.status;
+                                    if (draft.notes[noteIndex].pages) {
+                                        const pageIndex = draft.notes[noteIndex].pages.findIndex((p) => p.id === data.id);
+                                        if (pageIndex !== -1) {
+                                            draft.notes[noteIndex].pages[pageIndex] = {
+                                                ...draft.notes[noteIndex].pages[pageIndex],
+                                                ...data,
+                                                content_text: data.content_text,
+                                            };
+                                        } else {
+                                            draft.notes[noteIndex].pages.unshift(data as NotePageTypes);
+                                        }
+                                    }
+                                }
                             }
                         )
                     );
@@ -1007,17 +1023,18 @@ export const notesAPI = createApi({
                         },
                         (draft) => {
                             const noteIndex = draft.notes.findIndex((n) => n.id === workspace_note_id);
-                            if (noteIndex === -1) return; // guard duluan, jangan akses field sebelum ini
+                            if (noteIndex === -1) return;
                             const note = draft.notes[noteIndex];
-                            note.page_count -= 1;
 
-                            if (Array.isArray(note.pages)) {
-                                const reindexPages = note.pages.filter((page) => String(page.id) !== String(page_id));
-                                note.pages = reindexPages.map((p, idx) => ({
-                                    ...p,
-                                    page_num: idx + 1,
-                                }));
-                            }
+                            if (!Array.isArray(note.pages)) return; // jangan decrement kalau pages gak ada di cache ini
+
+                            const found = note.pages.some((page) => String(page.id) === String(page_id));
+                            if (!found) return; // page_id gak match apapun, jangan decrement
+
+                            note.pages = note.pages
+                                .filter((page) => String(page.id) !== String(page_id))
+                                .map((p, idx) => ({ ...p, page_num: idx + 1 }));
+                            note.page_count -= 1;
                         }
                     )
                 );

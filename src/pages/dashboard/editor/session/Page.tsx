@@ -186,7 +186,7 @@ function SessionEditorPage() {
             </IonHeader>
 
             <IonContent color={'light'}>
-                <div className="w-full sm:w-12/12 md:w-10/12 lg:w-7/12 xl:w-5/12 mx-auto">
+                <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
                     <div className='ion-padding !pb-2'>
                         <IonItem
                             lines="none"

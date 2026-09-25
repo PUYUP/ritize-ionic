@@ -1,12 +1,12 @@
-import { IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonFooter, IonHeader, IonIcon, IonModal, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonToast, useIonViewDidLeave } from "@ionic/react";
-import { albumsOutline, cameraOutline, checkmarkCircleOutline, closeOutline, cloudUploadOutline } from "ionicons/icons";
-import { useEffect, useRef, useState } from "react";
+import { IonAlert, IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonCardHeader, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonProgressBar, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonToast, useIonViewDidEnter, useIonViewDidLeave, useIonViewWillLeave } from "@ionic/react";
+import { albums, albumsOutline, cameraOutline, checkmarkCircleOutline, closeOutline, cloudUploadOutline, copyOutline, documentText, trashOutline } from "ionicons/icons";
+import { useCallback, useEffect, useRef, useState } from "react";
 import './Page.css';
 import { Note, Page } from "../../../../databases/entities/notes";
 import NotesRepository from "../../../../databases/datasources/NotesRepository";
 import ImageCapture from "../../../../components/image-capture/ImageCapture";
 import { CameraResultType, Photo } from "@capacitor/camera";
-import { useLazyGetNoteByIdQuery, useUpsertNoteMutation } from "../../../../services/notes";
+import { NoteFormatTypes, NotePageTypes, useLazyGetNoteByIdQuery } from "../../../../services/notes";
 import { useSearchParams } from "react-router-dom";
 import { useGetWorkspaceByIdQuery } from "../../../../services/workspace";
 import { generateUUID } from "../../../../utils/generator";
@@ -54,6 +54,7 @@ const pickedFileToFile = async (pickedFile: PickedFile): Promise<File> => {
 };
 
 const FilesEditorPage: React.FC = () => {
+    const ionRouter = useIonRouter();
     const [presentToast] = useIonToast();
     const [searchParams, setSearchParams] = useSearchParams();
     const workspaceId = searchParams.get('workspaceId');
@@ -80,9 +81,8 @@ const FilesEditorPage: React.FC = () => {
 
     // RTK Query
     const [getNoteById] = useLazyGetNoteByIdQuery();
-    const [upsertNote] = useUpsertNoteMutation();
-    const { data: sessionData } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
     const { data: workspaceData } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
+    const { data: sessionData } = useGetLearningSessionByIdQuery(sessionId ?? "", { skip: !sessionId });
 
     const handleUpdateUrlWithNoteId = (newNoteId: string) => {
         prevNoteIdRef.current = newNoteId;
@@ -91,6 +91,13 @@ const FilesEditorPage: React.FC = () => {
         setSearchParams(newParams, { replace: true });
     };
 
+    useIonViewDidEnter(() => {
+        window.dispatchEvent(new Event('resize'));
+        if (workspaceId) {
+            contentLoader(workspaceId, noteId);
+        }
+    }, [noteId, workspaceId]);
+
     useIonViewDidLeave(() => {
         setPages([]);
         setSelectedPage(null);
@@ -98,36 +105,7 @@ const FilesEditorPage: React.FC = () => {
         prevNoteIdRef.current = null;
     });
 
-    // --- CRUD NOTES ---
-    const initNote = async (workspaceId: string, sessionId: string | null = null) => {
-        const user = await getUser();
-        const entity = await NotesRepository.insertNote({
-            workspaceId: workspaceId,
-            userId: user?.id ?? '',
-            title: "Untitled Note",
-            content: "",
-            noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
-            createdAt: sessionData?.created_at ? sessionData?.created_at : new Date().toISOString(),
-            contentType: "file",
-            status: 'draft',
-            processingStatus: 'pending',
-            learningSessionId: sessionId ? sessionId : '',
-        }, false);
-        return entity;
-    }
-
-    const createPage = async (note: Partial<Note>, data: Partial<Page>, syncToServer: boolean = true): Promise<Page> => {
-        const user = await getUser();
-        const entity = await NotesRepository.addPage(
-            { id: note.id },
-            { ...data, userId: user.id ?? '' },
-            syncToServer
-        );
-        return entity;
-    }
-    // --- END CRUD NOTES ---
-
-    // Reset state & editor saat berpindah antar note (mengatasi isu cache/stale data)
+    // Reset state & editor saat berpindah antar note
     useEffect(() => {
         if (prevNoteIdRef.current !== noteId) {
             setPages([]);
@@ -137,55 +115,250 @@ const FilesEditorPage: React.FC = () => {
         }
     }, [noteId]);
 
-    // --- CAPTURE IMAGE AND UPLOAD FUNCTION ---
-    const handleImageCaptured = async (photo: Photo) => {
-        if (!selectedPage || !photo || !photo.webPath) return;
-        let note: any = null;
-        if (!workspaceId) return;
-        if (!selectedNote) {
-            // buat catatan dulu
-            const newNote = await initNote(workspaceId);
-            if (!noteId) {
-                handleUpdateUrlWithNoteId(newNote.id);
-            }
+    // --- CRUD NOTES ---
+    const initNote = async (workspaceId: string, sessionId: string | null = null): Promise<Note> => {
+        const user = await getUser();
+        return await NotesRepository.insertNote({
+            workspaceId,
+            userId: user?.id ?? '',
+            title: "Untitled Note",
+            content: "",
+            noteDatetime: sessionData?.ended_at ?? new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            contentType: "file",
+            status: 'draft',
+            processingStatus: 'pending',
+            learningSessionId: sessionId ?? '',
+            syncedId: generateUUID(),
+            syncedAt: new Date().toISOString(),
+        }, true);
+    }
 
-            note = newNote;
-            setSelectedNote(newNote);
-            console.log('active note', newNote);
-        } else {
-            note = selectedNote;
+    const createPage = async (note: Partial<Note>, data: Partial<Page>, syncToServer: boolean = true): Promise<Page> => {
+        const user = await getUser();
+        return await NotesRepository.addPage(
+            { id: note.id },
+            { ...data, userId: user.id ?? '' },
+            syncToServer
+        );
+    }
+    // --- END CRUD NOTES ---
+
+    const contentLoader = async (workspaceId: string, currentNoteId: string | null = null) => {
+        let note: Note | null = null;
+
+        if (currentNoteId) {
+            note = await NotesRepository.getNoteById(currentNoteId);
+
+            if (!note) {
+                const { data: serverNote } = await getNoteById({ id: currentNoteId });
+
+                if (serverNote) {
+                    const nData = {
+                        id: serverNote.id,
+                        workspaceId,
+                        title: serverNote.title || "Untitled Note",
+                        content: serverNote.content,
+                        status: serverNote.status,
+                        processingStatus: serverNote.processing_status,
+                        noteDatetime: serverNote.note_datetime ?? new Date().toISOString(),
+                        contentType: serverNote.content_type as NoteFormatTypes,
+                        syncedId: serverNote.synced_id ?? generateUUID(),
+                        syncedAt: serverNote.synced_at ?? new Date().toISOString(),
+                        createdAt: serverNote.created_at ?? new Date().toISOString(),
+                        learningSessionId: sessionId ?? '',
+                    };
+
+                    note = await NotesRepository.insertNote(nData);
+
+                    const injectedPages = (serverNote.pages || [])
+                        .slice()
+                        .sort((a: NotePageTypes, b: NotePageTypes) => a.page_num - b.page_num)
+                        .map((p: NotePageTypes) => ({
+                            id: p.id,
+                            workspaceId: p.workspace_id,
+                            workspaceNoteId: p.workspace_note_id,
+                            contentText: p.content_text,
+                            contentData: p.content_data ? Buffer.from(JSON.stringify(p.content_data), 'utf-8') : null,
+                            userId: p.user_id,
+                            pageNum: p.page_num,
+                            status: p.status,
+                            processingStatus: p.processing_status,
+                            isActive: p.is_active,
+                            syncedId: p.synced_id ?? generateUUID(),
+                            syncedAt: p.synced_at ?? new Date().toISOString(),
+                            createdAt: p.created_at ?? new Date().toISOString(),
+                            note: { id: serverNote.id },
+                            attributes: p.attributes,
+                            learningSessionId: sessionId ?? '',
+                        }));
+
+                    if (injectedPages.length > 0) {
+                        await NotesRepository.addPagesBulk(injectedPages);
+                    }
+                }
+            }
         }
 
+        if (note) {
+            setSelectedNote(note);
+            const savedPages = await NotesRepository.getPagesByNoteId(note.id);
+            setPages([...savedPages]);
+
+            const activePage = savedPages.find((p: Page) => p.isActive);
+            if (activePage) setSelectedPage(activePage);
+        }
+    }
+
+    // --- REUSABLE UPLOAD HANDLER ---
+    // Logika upload diekstrak kesini agar tidak duplikat
+    const processSingleFileUpload = async (
+        fileToUpload: File,
+        tempPageId: string,
+        noteContext: Note,
+        user: any,
+        pageNum: number
+    ) => {
+        try {
+            const result = await uploadFileToGCS(
+                fileToUpload,
+                {
+                    onProgress: (p: UploadProgress) => {
+                        setPages(prev => prev.map(page => page.id === tempPageId
+                            ? { ...page, uploadProgress: p.percentage, isSaving: true }
+                            : page
+                        ));
+                    },
+                },
+                {
+                    pageId: tempPageId,
+                    workspaceId: workspaceId,
+                    learningSessionId: sessionId ?? '',
+                }
+            );
+
+            const newPage = await createPage(noteContext, {
+                id: tempPageId,
+                title: fileToUpload.name ?? 'Untitled Page',
+                pageNum: pageNum,
+                workspaceId: noteContext.workspaceId,
+                workspaceNoteId: noteContext.id,
+                isActive: true,
+                status: 'draft',
+                processingStatus: 'pending',
+                createdAt: new Date().toISOString(),
+                learningSessionId: sessionId ?? '',
+                syncedId: generateUUID(),
+                syncedAt: new Date().toISOString(),
+            });
+
+            const filePayload = {
+                user_id: user.id,
+                disk: 'gcs/atlafiles',
+                file_type: getFileTypePure(fileToUpload.type),
+                mime_type: result.contentType,
+                original_filename: fileToUpload.name,
+                size_bytes: result.size,
+                created_at: result.timeCreated,
+                updated_at: result.updated,
+                checksum_sha256: result.md5Hash,
+                path: result.name,
+                media_link: result.mediaLink
+            };
+
+            // BUG FIX: Tambahkan validasi error Supabase
+            const { data: fileData, error: fileError } = await supabase.from("files").insert(filePayload).select('*').single();
+            if (fileError || !fileData) throw new Error(`Files DB Error: ${fileError?.message}`);
+
+            const attachmentPayload = {
+                file_id: fileData.id,
+                user_id: user.id,
+                entity_type: 'workspace_notes_pages',
+                entity_id: newPage.id,
+                purpose: 'captured_notebook',
+            }
+
+            const { data: attachmentData, error: attachmentError } = await supabase.from("attachments").insert(attachmentPayload).select('*').single();
+            if (attachmentError || !attachmentData) throw new Error(`Attachments DB Error: ${attachmentError?.message}`);
+
+            const attributes = { file: fileData, attachment: attachmentData };
+
+            await NotesRepository.microUpdatePage(newPage.id as string, {
+                attributes: attributes,
+                workspaceNoteId: noteContext.id,
+            });
+
+            setPages(prev => prev.map(page => page.id === tempPageId ? {
+                ...page,
+                id: tempPageId,
+                workspaceNoteId: noteContext.id,
+                syncedId: newPage.syncedId ?? generateUUID(),
+                syncedAt: newPage.syncedAt ?? new Date().toISOString(),
+                pageNum: pageNum,
+                uploadProgress: null,
+                isSaving: false,
+                attributes: attributes,
+                status: 'draft',
+                processingStatus: 'pending',
+                isActive: true,
+            } : { ...page, isActive: false }));
+
+        } catch (err) {
+            console.error(`Failed to process file "${fileToUpload.name}"`, err);
+            presentToast({ message: `Gagal mengunggah "${fileToUpload.name}".`, duration: 2500, color: 'danger' });
+
+            setPages(prev => prev.map(page => page.id === tempPageId ? {
+                ...page,
+                uploadProgress: null,
+                uploadError: true,
+                isSaving: false,
+                isActive: true,
+            } : { ...page, isActive: false }));
+        }
+    };
+
+    // Helper untuk menginisialisasi note jika belum ada
+    const ensureNoteActive = async (): Promise<Note | null> => {
+        if (!workspaceId) return null;
+        if (selectedNote) return selectedNote;
+
+        const newNote = await initNote(workspaceId, sessionId);
+        if (!noteId) handleUpdateUrlWithNoteId(newNote.id);
+        setSelectedNote(newNote);
+        return newNote;
+    };
+
+    // --- CAPTURE IMAGE FUNCTION ---
+    const handleImageCaptured = async (photo: Photo) => {
+        if (!selectedPage || !photo || !photo.webPath || !workspaceId) return;
+
+        const existingPageCount = pages.length;
+
         ionContentRef.current?.scrollToBottom(0);
-
         const user = await getUser();
-        const response = await fetch(photo.webPath);
-        const blob = await response.blob();
-        const url = new URL(photo.webPath);
-        const fileName = url.pathname.split('/').pop() || 'image.png';
-
-        const pickedFile = new File(
-            [blob],
-            fileName,
-            { type: blob.type }
-        );
-
-        // temp page
-        const tempEntry = {
-            id: generateUUID(),
-            title: pickedFile.name,
-            uploadProgress: 0,
-            uploadError: false,
-            userId: user.id,
-            workspaceId: workspaceId,
-            workspaceNoteId: note?.id,
-            learningSessionId: sessionId ? sessionId : '',
-        } as FilePage;
-
-        setPages((prev) => [...prev, tempEntry]);
+        const activeNote = await ensureNoteActive();
+        if (!activeNote) return;
 
         try {
-            // PickedFile -> File asli dulu, baru bisa dioper ke uploadFileToGCS
+            const response = await fetch(photo.webPath);
+            const blob = await response.blob();
+            const fileName = new URL(photo.webPath).pathname.split('/').pop() || 'image.png';
+            const pickedFile = new File([blob], fileName, { type: blob.type });
+            const pageNum = existingPageCount + 1;
+
+            const tempEntryId = generateUUID();
+            const tempEntry = {
+                id: tempEntryId,
+                title: pickedFile.name,
+                uploadProgress: 0,
+                uploadError: false,
+                userId: user.id,
+                workspaceId,
+                learningSessionId: sessionId ?? '',
+            } as FilePage;
+
+            setPages(prev => [...prev, tempEntry]);
+
             const file = await pickedFileToFile({
                 blob: pickedFile,
                 mimeType: blob.type,
@@ -193,395 +366,101 @@ const FilesEditorPage: React.FC = () => {
                 size: blob.size,
             });
 
-            const result = await uploadFileToGCS(
-                file,
-                {
-                    onProgress: (p: UploadProgress) => {
-                        setPages((prev) =>
-                            prev.map((page) =>
-                                page.id === tempEntry.id
-                                    ? {
-                                        ...page,
-                                        uploadProgress: p.percentage,
-                                        isSaving: true,
-                                    }
-                                    : page
-                            )
-                        );
-                    },
-                },
-                {
-                    // pakai id yang sama dengan tempEntries, nanti id ini juga
-                    // dipakai sebagai id page asli di bulkNewPagesHandler,
-                    // jadi file yang ter-upload konsisten terhubung ke page-nya.
-                    pageId: tempEntry.id,
-                    workspaceId: workspaceId,
-                    workspaceNoteId: note?.id,
-                }
-            );
-
-            // create page directly after upload sucess
-            if (note) {
-                const existingPageCount = pages.length;
-                const pageNum = existingPageCount + 1;
-                const syncedId = generateUUID();
-                const syncedAt = new Date().toISOString();
-
-                const newPage = await createPage(note, {
-                    title: file.name ?? 'Untitled Page',
-                    pageNum: pageNum,
-                    workspaceId: note.workspaceId,
-                    workspaceNoteId: note.id,
-                    learningSessionId: sessionId ? sessionId : '',
-                    isActive: true,
-                    syncedAt: syncedAt,
-                    syncedId: syncedId,
-                    status: 'draft', // directly as published karena user tidak bisa edit
-                    processingStatus: 'pending',
-                });
-
-                // relasikan file dengan attachment
-                // kemudian relasikan attachment dengan page
-                // save the file
-                const filePayload = {
-                    user_id: user.id,
-                    disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
-                    file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
-                    mime_type: result.contentType,
-                    original_filename: file.name,
-                    size_bytes: result.size,
-                    created_at: result.timeCreated,
-                    updated_at: result.updated,
-                    checksum_sha256: result.md5Hash,
-                    path: result.name,
-                    media_link: result.mediaLink
-                };
-
-                // save file metadata
-                const { data: fileData, error: fileError } = await supabase.from("files")
-                    .insert(filePayload)
-                    .select('*')
-                    .single();
-
-                // create attachment
-                const attachmentPayload = {
-                    file_id: fileData.id,
-                    user_id: user.id,
-                    entity_type: 'workspace_notes_pages',
-                    entity_id: newPage.id,
-                    purpose: 'captured_notebook',
-                }
-
-                const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
-                    .insert(attachmentPayload)
-                    .select('*')
-                    .single();
-
-                const attributes = {
-                    file: fileData,
-                    attachment: attachmentData,
-                }
-
-                // update page with file metadata
-                await NotesRepository.updatePage(newPage.id as string, { attributes: attributes });
-
-                setPages((prev) =>
-                    prev.map((page) =>
-                        page.id === tempEntry.id
-                            ? {
-                                ...page,
-                                id: newPage.id,
-                                pageNum: pageNum,
-                                uploadProgress: null,
-                                isSaving: false,
-                                attributes: attributes,
-                                status: 'draft',
-                                processingStatus: 'pending',
-                                syncedAt: syncedAt,
-                                syncedId: syncedId,
-                            }
-                            : page
-                    )
-                );
-            }
+            await processSingleFileUpload(file, tempEntryId, activeNote, user, pageNum);
 
         } catch (err) {
-            // pakai pickedFile.name (bukan file.name) karena kalau
-            // pickedFileToFile sendiri yang gagal, `file` belum sempat ada
-            console.error(`Failed to upload file "${pickedFile.name}"`, err);
-            presentToast({
-                message: `Failed to upload file "${pickedFile.name}", continuing to next file.`,
-                duration: 2500,
-                color: 'danger',
-            });
-
-            // tandai entry ini gagal di UI, lalu lanjut ke file berikutnya
-            // (tidak throw / break, biar loop tetap jalan)
-            setPages((prev) =>
-                prev.map((page) =>
-                    page.id === tempEntry.id
-                        ? {
-                            ...page,
-                            uploadProgress: null,
-                            uploadError: true,
-                            isSaving: false,
-                        }
-                        : page
-                )
-            );
+            console.error('Image capture pre-processing error:', err);
+            presentToast({ message: `Gagal memproses gambar dari kamera.`, duration: 2500, color: 'danger' });
         }
     };
 
-    const handleError = (error: Error) => {
-        console.error('Image capture error:', error);
-    };
-    // --- END CAPTURE IMAGE AND UPLOAD FUNCTION ---
-
-    // --- SELECT FILE AND UPLOAD FUNCTION ---
+    // --- SELECT MULTIPLE FILES FUNCTION ---
     const selectFile = async () => {
-        let note: any = null;
         if (!workspaceId) return;
-        if (!selectedNote) {
-            // buat catatan dulu
-            const newNote = await initNote(workspaceId);
-            if (!noteId) {
-                handleUpdateUrlWithNoteId(newNote.id);
-            }
 
-            note = newNote;
-            setSelectedNote(newNote);
-            console.log('active note', newNote);
-        } else {
-            note = selectedNote;
-        }
-
-        const user = await getUser();
         let result;
-
         try {
-            result = await FilePicker.pickFiles({
-                types: [
-                    'image/png',
-                    'image/jpeg',
-                    'image/jpg',
-                    'image/gif',
-                    'image/webp',
-                ],
-                limit: 0,
-            });
+            result = await FilePicker.pickImages();
         } catch (err) {
             console.error('Failed to open file picker', err);
             return;
         }
 
-        console.log('select file', result);
         if (!result.files.length) return;
-
         ionContentRef.current?.scrollToBottom(0);
 
-        // Buat entry sementara dulu untuk tiap file yang dipilih, supaya progress
-        // upload-nya kelihatan di list selagi masih berjalan (belum tersimpan di DB).
-        const tempEntries: FilePage[] = result.files.map((file) => ({
+        const existingPageCount = pages.length;
+        const user = await getUser();
+        const activeNote = await ensureNoteActive();
+        if (!activeNote) return;
+
+        const tempEntries = result.files.map(file => ({
             id: generateUUID(),
             title: file.name,
             uploadProgress: 0,
             uploadError: false,
             userId: user.id,
-            workspaceId: workspaceId,
-            workspaceNoteId: note?.id,
-            learningSessionId: sessionId ? sessionId : '',
+            workspaceId,
+            learningSessionId: sessionId ?? '',
         } as FilePage));
 
-        setPages((prev) => [...prev, ...tempEntries]);
+        setPages(prev => [...prev, ...tempEntries]);
 
-        const existingPageCount = pages.length;
-
-        // Upload satu per satu secara berurutan (bukan Promise.all / .map),
-        // supaya urutannya A -> B -> C dan progress masing-masing bisa dipantau.
         for (let i = 0; i < result.files.length; i++) {
-            const pickedFile = result.files[i];
-            const tempId = tempEntries[i].id as string;
-
             try {
-                // PickedFile -> File asli dulu, baru bisa dioper ke uploadFileToGCS
+                const pickedFile = result.files[i];
                 const file = await pickedFileToFile(pickedFile);
-                const result = await uploadFileToGCS(
-                    file,
-                    {
-                        onProgress: (p: UploadProgress) => {
-                            setPages((prev) =>
-                                prev.map((page) =>
-                                    page.id === tempId
-                                        ? {
-                                            ...page,
-                                            uploadProgress: p.percentage,
-                                            isSaving: true,
-                                        }
-                                        : page
-                                )
-                            );
-                        },
-                    },
-                    {
-                        // pakai id yang sama dengan tempEntries, nanti id ini juga
-                        // dipakai sebagai id page asli di bulkNewPagesHandler,
-                        // jadi file yang ter-upload konsisten terhubung ke page-nya.
-                        pageId: tempId,
-                        workspaceId: workspaceId,
-                        workspaceNoteId: note?.id,
-                    }
-                );
-
-                // create page directly after upload sucess
-                if (note) {
-                    const pageNum = existingPageCount + i + 1;
-                    const syncedId = generateUUID();
-                    const syncedAt = new Date().toISOString();
-
-                    const newPage = await createPage(note, {
-                        title: file.name ?? 'Untitled Page',
-                        pageNum: pageNum,
-                        workspaceId: note.workspaceId,
-                        workspaceNoteId: note.id,
-                        learningSessionId: sessionId ? sessionId : '',
-                        isActive: true,
-                        syncedAt: syncedAt,
-                        syncedId: syncedId,
-                        status: 'draft', // directly as published karena user tidak bisa edit
-                        processingStatus: 'pending',
-                    });
-
-                    // relasikan file dengan attachment
-                    // kemudian relasikan attachment dengan page
-                    // save the file
-                    const filePayload = {
-                        user_id: user.id,
-                        disk: 'gcs/atlafiles', // <storage_platform>/<bucket_name>
-                        file_type: getFileTypePure(file.type), // actually only use like 'image', 'pdf', 'audio', etc not an mime_type such as image/png
-                        mime_type: result.contentType,
-                        original_filename: file.name,
-                        size_bytes: result.size,
-                        created_at: result.timeCreated,
-                        updated_at: result.updated,
-                        checksum_sha256: result.md5Hash,
-                        path: result.name,
-                        media_link: result.mediaLink
-                    };
-
-                    // save file metadata
-                    const { data: fileData, error: fileError } = await supabase.from("files")
-                        .insert(filePayload)
-                        .select('*')
-                        .single();
-
-                    // create attachment
-                    const attachmentPayload = {
-                        file_id: fileData.id,
-                        user_id: user.id,
-                        entity_type: 'workspace_notes_pages',
-                        entity_id: newPage.id,
-                        purpose: 'captured_notebook',
-                    }
-
-                    const { data: attachmentData, error: attachmentError } = await supabase.from("attachments")
-                        .insert(attachmentPayload)
-                        .select('*')
-                        .single();
-
-                    const attributes = {
-                        file: fileData,
-                        attachment: attachmentData,
-                    }
-
-                    // update page with file metadata
-                    await NotesRepository.updatePage(newPage.id as string, { attributes: attributes });
-
-                    setPages((prev) =>
-                        prev.map((page) =>
-                            page.id === tempId
-                                ? {
-                                    ...page,
-                                    id: newPage.id,
-                                    pageNum: pageNum,
-                                    uploadProgress: null,
-                                    isSaving: false,
-                                    attributes: attributes,
-                                    status: 'draft',
-                                    processingStatus: 'pending',
-                                    syncedAt: syncedAt,
-                                    syncedId: syncedId,
-                                }
-                                : page
-                        )
-                    );
-                }
-
+                const pageNum = existingPageCount + i + 1;
+                await processSingleFileUpload(file, tempEntries[i].id as string, activeNote, user, pageNum);
             } catch (err) {
-                // pakai pickedFile.name (bukan file.name) karena kalau
-                // pickedFileToFile sendiri yang gagal, `file` belum sempat ada
-                console.error(`Failed to upload file "${pickedFile.name}"`, err);
-                presentToast({
-                    message: `Failed to upload "${pickedFile.name}", going to upload next...`,
-                    duration: 2500,
-                    color: 'danger',
-                });
-
-                // tandai entry ini gagal di UI, lalu lanjut ke file berikutnya
-                // (tidak throw / break, biar loop tetap jalan)
-                setPages((prev) =>
-                    prev.map((page) =>
-                        page.id === tempId
-                            ? {
-                                ...page,
-                                uploadProgress: null,
-                                uploadError: true,
-                                isSaving: false,
-                            }
-                            : page
-                    )
-                );
+                console.error('File pick pre-processing error:', err);
             }
         }
     };
-    // --- END SELECT FILE AND UPLOAD FUNCTION ---
 
-    // ...
-    // save changes
-    // ...
     const handleSaveChanges = async () => {
         if (!selectedNoteRef?.current?.id) return;
-
-        const updatedPages = pages.map(p => {
-            delete p.uploadError;
-            delete p.uploadProgress;
-            delete p.isSaving;
-
-            return {
-                ...p,
-                status: 'published' as any,
-            };
-        });
-
-        // update semua pages as published
-        await NotesRepository.updatePagesBulk(updatedPages);
-        setPages(updatedPages);
+        const user = await getUser();
 
         // update note dari 'draft' ke 'publish'
         // tujuannya untuk start embedding
-        await NotesRepository.updateNote({
-            id: selectedNoteRef.current.id,
+        const res = await NotesRepository.upsertNote({
+            id: selectedNoteRef.current.id || generateUUID(),
+            userId: user.id,
             status: 'published',
-        });
+            processingStatus: 'pending',
+            contentType: 'canvas',
+            noteDatetime: sessionData?.ended_at ? sessionData?.ended_at : new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            // Canvas tidak punya representasi teks polos seperti Quill —
+            // pertahankan content yang sudah ada (biasanya kosong).
+            content: selectedNoteRef.current?.content ?? '',
+            syncedId: selectedNoteRef.current.syncedId || generateUUID(),
+            syncedAt: new Date().toISOString(),
+            learningSessionId: selectedNoteRef.current.learningSessionId,
+            workspaceId: selectedNoteRef.current.workspaceId,
+        }, ['id'], true);
 
-        setSelectedNote((prev: Note | null) => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                status: 'published',
-            };
-        });
+        if (res) {
+            const updatedPages = pages.map(p => ({
+                ...p,
+                workspaceId: res.workspaceId,
+                status: 'published' as any,
+                syncedId: p.syncedId || generateUUID(),
+                syncedAt: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+            }));
 
-        presentToast('Note saved successfully!', 1000);
+            await NotesRepository.upsertPagesBulk(updatedPages);
+            setPages(updatedPages);
+            setSelectedNote(res);
+            presentToast('Note saved successfully!', 1000);
+        }
+    }
+
+    const handleError = (error: any) => {
+        console.error(error);
+        presentToast('Processing error, please try again.', 2500);
     }
 
     return (
@@ -602,7 +481,7 @@ const FilesEditorPage: React.FC = () => {
                                 <IonButtons slot="end" className="ion-padding-end">
                                     <IonButton
                                         fill="solid"
-                                        color="primary"
+                                        color="dark"
                                         size="small"
                                         mode="ios"
                                         shape="round"
@@ -627,87 +506,92 @@ const FilesEditorPage: React.FC = () => {
             </IonHeader>
 
             <IonContent ref={ionContentRef} className="ion-padding" color={'light'}>
-                {pages.length === 0 && (
-                    <div className='flex flex-col items-center justify-center h-full ion-padding'>
-                        <IonIcon icon={albumsOutline} className="text-4xl mb-2"></IonIcon>
-                        <IonText className="text-sm text-center w-2/3 mx-auto" color={'medium'}>
-                            No files uploaded yet. Tap button to upload a file.
-                        </IonText>
-                    </div>
-                )}
+                <div className="w-full sm:w-12/12 md:w-10/12 lg:w-7/12 xl:w-5/12 mx-auto h-full">
+                    {pages.length === 0 && (
+                        <div className='flex flex-col items-center justify-center h-full ion-padding'>
+                            <IonIcon icon={albumsOutline} className="text-4xl mb-2"></IonIcon>
+                            <IonText className="text-sm text-center w-2/3 mx-auto" color={'medium'}>
+                                No files uploaded yet. Tap button to upload a file.
+                            </IonText>
+                        </div>
+                    )}
 
-                {pages.length > 0 && (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                        {[...pages].map((page: FilePage, index, array) => {
-                            const isUploading = page.uploadProgress !== null && page.uploadProgress !== undefined;
+                    {pages.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                            {[...pages].map((page: FilePage, index, array) => {
+                                const isUploading = page.uploadProgress !== null && page.uploadProgress !== undefined;
 
-                            return (
-                                <div key={page.id} className="block">
-                                    <IonCard className="rounded-xl" onClick={() => setViewImage(page)}>
-                                        <IonCardContent>
-                                            <div className="relative aspect-square">
-                                                {(isUploading && ((page.uploadProgress ?? 0) < 100 || page.isSaving)) && (
-                                                    <div className="absolute top-0 right-0 bottom-0 left-0 flex items-center justify-center">
-                                                        <IonSpinner name="crescent" color="primary" className="w-4 h-4" />
-                                                    </div>
-                                                )}
+                                return (
+                                    <div key={page.id} className="block">
+                                        <IonCard className="rounded-xl" onClick={() => setViewImage(page)}>
+                                            <IonCardContent>
+                                                <div className="relative aspect-square">
+                                                    {(isUploading && ((page.uploadProgress ?? 0) < 100 || page.isSaving)) && (
+                                                        <div className="absolute top-0 right-0 bottom-0 left-0 flex items-center justify-center">
+                                                            <IonSpinner name="crescent" color="primary" className="w-4 h-4" />
+                                                        </div>
+                                                    )}
 
-                                                {(page.pageNum && page.attributes) && (
-                                                    <div className="absolute top-0 right-0 bottom-0 left-0">
-                                                        <img src={page?.attributes?.file?.media_link} className="h-full w-full object-cover" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </IonCardContent>
-                                    </IonCard>
-
-                                    <div className="block ion-text-center pt-2">
-                                        {!isUploading && (
-                                            <div className="flex items-center justify-between">
-                                                <div className="w-5 h-5 text-neutral-700 bg-neutral-100 shadow rounded-full flex items-center justify-center text-xs font-semibold">{page.pageNum}</div>
-                                                <div className="flex items-center justify-end flex-1">
-                                                    <IonButton
-                                                        fill="clear"
-                                                        mode="ios"
-                                                        color="primary"
-                                                        size="small"
-                                                        disabled={isProcessed}
-                                                        onClick={async () => {
-                                                            setSelectedPage(page);
-                                                            setShowRemoveAlert(true)
-                                                        }}
-                                                    >
-                                                        <IonText className="ml-1">Delete</IonText>
-                                                    </IonButton>
+                                                    {(page.pageNum && page.attributes) && (
+                                                        <div className="absolute top-0 right-0 bottom-0 left-0">
+                                                            <img src={page?.attributes?.file?.media_link} className="h-full w-full object-cover" />
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        )}
+                                            </IonCardContent>
+                                        </IonCard>
 
-                                        {(isUploading || page.isSaving) && (
-                                            <div className="ion-padding-start ion-padding-end">
-                                                <IonProgressBar
-                                                    value={(page.uploadProgress ?? 0) / 100}
-                                                    color="primary"
-                                                    className="mt-3 h-2 rounded-full"
-                                                />
-                                            </div>
-                                        )}
+                                        <div className="block ion-text-center pt-2">
+                                            {!isUploading && (
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-neutral-700 flex items-center font-semibold">
+                                                        <IonIcon className='text-sm text-neutral-400 mr-1' icon={documentText} />
+                                                        <IonText className="text-sm">{page.pageNum}</IonText>
+                                                    </div>
+                                                    <div className="flex items-center justify-end flex-1">
+                                                        <IonButton
+                                                            fill="clear"
+                                                            mode="ios"
+                                                            color="primary"
+                                                            size="small"
+                                                            disabled={isProcessed}
+                                                            onClick={async () => {
+                                                                setSelectedPage(page);
+                                                                setShowRemoveAlert(true)
+                                                            }}
+                                                        >
+                                                            <IonText className="ml-1">Delete</IonText>
+                                                        </IonButton>
+                                                    </div>
+                                                </div>
+                                            )}
 
-                                        {page.uploadError && (
-                                            <IonText color="danger" className="block !text-xs ion-text-center">
-                                                Upload failed!
-                                            </IonText>
-                                        )}
+                                            {(isUploading || page.isSaving) && (
+                                                <div className="ion-padding-start ion-padding-end">
+                                                    <IonProgressBar
+                                                        value={(page.uploadProgress ?? 0) / 100}
+                                                        color="primary"
+                                                        className="mt-3 h-2 rounded-full"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {page.uploadError && (
+                                                <IonText color="danger" className="block !text-xs ion-text-center">
+                                                    Upload failed!
+                                                </IonText>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </IonContent>
 
             {!isProcessed && (
-                <IonFooter className="w-full py-3 ion-no-border bg-[#f4f5f8]" color="light">
+                <IonFooter className="w-full py-3 ion-no-border bg-[#f4f5f8]">
                     <div style={{ paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
                         <div className='px-3 text-center'>
                             <IonText className="text-sm text-center w-full" color={'medium'}>
@@ -761,26 +645,44 @@ const FilesEditorPage: React.FC = () => {
                         handler: async () => {
                             if (!selectedPage) return;
 
-                            let activeIndex = pages.findIndex(p => p.id === selectedPage.id);
-                            console.log(activeIndex);
+                            // update active index
+                            const withActivePages = pages.map((p) => ({ ...p, isActive: p.id === selectedPage.id }));
+                            let activeIndex = withActivePages.findIndex(p => p.id === selectedPage.id);
                             if (activeIndex === -1) {
-                                activeIndex = pages.findIndex((p) => p.isActive);
+                                activeIndex = withActivePages.findIndex((p) => p.isActive);
                             }
 
                             // delete page from db
                             await NotesRepository.deletePage({
-                                pageId: pages[activeIndex].id,
-                                workspaceId: pages[activeIndex].workspaceId,
-                                workspaceNoteId: pages[activeIndex].workspaceNoteId,
-                                learningSessionId: pages[activeIndex].learningSessionId,
+                                pageId: withActivePages[activeIndex].id,
+                                workspaceId: withActivePages[activeIndex].workspaceId,
+                                workspaceNoteId: withActivePages[activeIndex].workspaceNoteId,
+                                learningSessionId: withActivePages[activeIndex].learningSessionId,
                                 syncToServer: true,
                             });
 
-                            const filtered = pages.filter((_, idx) => idx !== activeIndex);
+                            const filtered = withActivePages.filter((_, idx) => idx !== activeIndex);
 
                             // tidak ada page tersisa -> clear canvas
                             if (filtered.length === 0) {
                                 setPages([]);
+
+                                // hapus note nya juga
+                                if (selectedPage.workspaceNoteId && selectedPage.workspaceId && selectedPage.learningSessionId) {
+                                    await NotesRepository.deleteNote(
+                                        selectedPage.workspaceNoteId,
+                                        selectedPage.workspaceId,
+                                        selectedPage.learningSessionId,
+                                        true,
+                                    );
+
+                                    // redirect ke halaman workspace
+                                    if (ionRouter.canGoBack()) {
+                                        ionRouter.goBack();
+                                    } else {
+                                        ionRouter.push(`dashboard/workspace/${selectedPage.workspaceId}/sessions/${selectedPage.learningSessionId}`, 'none', 'replace');
+                                    }
+                                }
                                 return;
                             }
 
@@ -814,7 +716,9 @@ const FilesEditorPage: React.FC = () => {
             ></IonAlert>
 
             {/* image viewer */}
-            <IonModal isOpen={!!viewImage} onDidDismiss={() => setViewImage(null)}
+            <IonModal
+                isOpen={!!viewImage}
+                onDidDismiss={() => setViewImage(null)}
                 className='rounded-2xl'
             >
                 <IonHeader className="ion-no-border">

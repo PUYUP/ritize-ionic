@@ -962,8 +962,6 @@ const CanvasEditorPage: React.FC = () => {
 				createdAt: new Date().toISOString(),
 			}));
 
-			console.log(updatedPages);
-
 			await NotesRepository.upsertPagesBulk(updatedPages);
 			setPages(updatedPages);
 			setSelectedNote(res);

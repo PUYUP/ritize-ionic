@@ -82,7 +82,7 @@ const LearnGraph: React.FC<Props> = ({ workspaceId, fromDate, toDate }) => {
 
     return (
         <div className="ion-padding-start ion-padding-end">
-            <div className="w-full sm:w-12/12 md:w-10/12 lg:w-7/12 xl:w-5/12 mx-auto">
+            <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
                 <div
                     className="flex gap-2 md:gap-7 justify-between"
                     style={{ height: `${wrapperHeight - 220}px` }}
@@ -119,7 +119,7 @@ const LearnGraph: React.FC<Props> = ({ workspaceId, fromDate, toDate }) => {
                 </div>
             </div>
 
-            <div className="w-full sm:w-12/12 md:w-10/12 lg:w-7/12 xl:w-5/12 mx-auto">
+            <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
                 <div
                     className="flex gap-2 md:gap-7 justify-between"
                     style={{ height: `${wrapperHeight - 220}px` }}

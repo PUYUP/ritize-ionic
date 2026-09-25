@@ -434,7 +434,7 @@ class NotesRepository {
             const savedPage = await this.getPageById(pageId);
 
             // Update bulk langsung ke supabase jangan 1 per 1
-            if (savedPage) {
+            if (savedPage && syncToServer) {
                 let objString = null;
                 if (savedPage.contentData) {
                     const decoder = new TextDecoder('utf-8');
@@ -507,6 +507,7 @@ class NotesRepository {
                             is_active: data.isActive,
                             status: data.status,
                             processing_status: data.processingStatus,
+                            attributes: data.attributes,
                         })
                     }))
                     .unwrap();

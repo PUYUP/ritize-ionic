@@ -19,6 +19,8 @@ export type WorkspaceTypes = {
     total_material_count?: number;
     today_material_count?: number;
     total_duration_seconds?: number;
+    today_duration_seconds?: number;
+    today_session_count?: number;
     total_session_count?: number;
 }
 

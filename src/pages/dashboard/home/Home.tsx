@@ -188,8 +188,8 @@ const HomePage: React.FC = () => {
                 </div>
             </IonContent>
 
-            <IonFooter color='light' className='ion-no-border ion-padding'>
-                <div className='flex justify-end'>
+            <IonFooter color='light' className='ion-no-border'>
+                <div className='flex justify-center ion-padding'>
                     <IonButton
                         color={'dark'}
                         shape="round"

@@ -8,6 +8,7 @@ import { format, intervalToDuration } from 'date-fns';
 import { LearningSessionTypes, useCreateSessionMutation, useGetLearningSessionByIdQuery, useLazyGetLearningSessionByIdQuery, useUpdateSessionMutation } from '../../../../services/learning.session';
 import { getUser } from '../../../../utils/authState';
 import { useParams } from 'react-router';
+import { useSearchParams } from 'react-router-dom';
 
 type SessionFormValues = {
     workspace: WorkspaceTypes | null;
@@ -24,6 +25,8 @@ interface RouteParams {
 
 function SessionEditorPage() {
     const ionRouter = useIonRouter();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const workspaceIdArg = searchParams.get('workspaceId');
 
     // Parameter dari URL
     const { id: workspaceId, sessionId } = useParams<RouteParams>();
@@ -173,12 +176,12 @@ function SessionEditorPage() {
 
         // redirect to session detail
         if (result) {
-            ionRouter.push(`/dashboard/workspace/${result.workspace_id}/sessions/${result.id}`);
+            ionRouter.push(`/dashboard/workspace/${result.workspace_id}/sessions/${result.id}`, 'forward', 'replace');
         }
     };
 
     // Page lifecycle
-    useIonViewDidEnter(() => {
+    useIonViewWillEnter(() => {
         reset({
             workspace: null,
             startedAt: undefined,
@@ -188,25 +191,32 @@ function SessionEditorPage() {
         setSelectedDateTemp(undefined);
         setShowSelectDatetimeModal({ isOpen: false, type: 'startedAt' });
         setShowWorkspacesModal(false);
-        // populate formState.isValid immediately so the submit button
-        // starts out disabled rather than waiting for the first interaction
-        trigger();
-    }, []);
 
-    useIonViewWillEnter(() => {
         (async () => {
             if (sessionId) {
                 const { data, error } = await getSession(sessionId);
-                if (error) {
-                    return;
-                }
-
-                if (data) {
-                    setSessionData(data);
-                }
+                if (error) return;
+                if (data) setSessionData(data);
+            } else {
+                setSessionData(null); // biar data sesi lama gak nyangkut waktu balik ke mode "new"
             }
         })();
-    }, [sessionId])
+    }, [sessionId, reset]);
+
+    useIonViewDidEnter(() => {
+        trigger();
+    }, []);
+
+    useEffect(() => {
+        if (!sessionId && workspaceIdArg && workspaces && !isFetchingWorkspaces) {
+            const matched = workspaces.find(w => w.id === workspaceIdArg);
+            if (matched) {
+                setTimeout(() => {
+                    workspaceField.onChange(matched);
+                }, 500)
+            }
+        }
+    }, [workspaceIdArg, workspaces, sessionId, isFetchingWorkspaces]);
 
     // Effect handler
     useEffect(() => {

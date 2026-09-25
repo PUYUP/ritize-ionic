@@ -1,6 +1,6 @@
 import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
-import { chevronForwardOutline, closeOutline, filterOutline, languageOutline, pencilOutline, peopleOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
+import { addSharp, bookOutline, chevronForwardOutline, closeOutline, filterOutline, languageOutline, pencilOutline, peopleOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
 import StartNote from '../../../../components/startnote/StartNote';
 import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
 import NoteList from '../../../../components/note-list/NoteList';
@@ -10,6 +10,7 @@ import { useDeleteWorkspaceMutation, useGetWorkspaceByIdQuery, useLazyGetWorkspa
 import { by639_1 } from 'iso-language-codes';
 import MaterialList from '../../../../components/material-list/MaterialList';
 import DigestList from '../../../../components/digest-list/DigestList';
+import { intervalToDuration } from 'date-fns';
 
 interface RouteParams {
     id?: string
@@ -114,6 +115,24 @@ const WorkspaceDetailPage: React.FC = () => {
         });
     }
 
+    const duration = intervalToDuration({
+        start: 0,
+        end: (workspace.total_duration_seconds ?? 0) * 1000 // intervalToDuration expects milliseconds
+    });
+
+    // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+    const totalHours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+    const minutes = duration.minutes ?? 0;
+
+    const todayDuration = intervalToDuration({
+        start: 0,
+        end: (workspace.today_duration_seconds ?? 0) * 1000 // intervalToDuration expects milliseconds
+    });
+
+    // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+    const todayTotalHours = (todayDuration.days ?? 0) * 24 + (todayDuration.hours ?? 0);
+    const todayMinutes = todayDuration.minutes ?? 0;
+
     return (
         <IonPage>
             <IonHeader color={'light'} className="ion-no-border">
@@ -122,7 +141,17 @@ const WorkspaceDetailPage: React.FC = () => {
                         <IonBackButton defaultHref="/dashboard" />
                     </IonButtons>
                     <IonTitle className="text-base text-center flex items-center justify-center fixed left-14 right-14 top-0 bottom-0 text-lg line-clamp-1">
-                        Class
+                        Class Detail
+
+                        <div className='flex gap-1 items-center justify-center text-xs font-normal text-neutral-600'>
+                            <div className='flex gap-1 items-center'>
+                                <IonIcon icon={languageOutline} />
+                                <IonText>{language.name}</IonText>
+                            </div>
+
+                            <IonText className='text-sm text-neutral-300'>&bull;</IonText>
+                            <IonText className='text-neutral-600'>{workspace.scope === 'group' ? `${workspace.member_count} mates` : `Personal`}</IonText>
+                        </div>
                     </IonTitle>
                     <IonButtons slot="end" className='ion-padding-end'>
                         <IonButton className='!w-auto !h-auto' id="workspace-actions">
@@ -134,39 +163,96 @@ const WorkspaceDetailPage: React.FC = () => {
 
             <IonContent color="light" role="feed">
                 <div style={{ 'paddingBottom': 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0))' }}>
-                    <div className="bg-gradient-to-b from-[#f4f5f8] to-white rounded-b-3xl relative z-10 pb-4 md:pb-10 shadow-md shadow-neutral-200/50">
+                    <div className="bg-gradient-to-b from-[#f4f5f8] to-white rounded-b-3xl relative z-10 pb-6 md:pb-12 shadow-md shadow-neutral-200/50">
                         <div className='ion-padding'>
                             <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
-                                <div className='flex items-start'>
-                                    <div className='block ion-padding-end'>
-                                        <h1 className='block mb-1 !mt-0 !leading-3'>
-                                            <IonText className='text-xl'>{workspace.title || 'Class Detail'}</IonText>
-                                        </h1>
+                                <div className='block ion-text-center'>
+                                    <h1 className='block mb-1 !mt-0 !leading-3 text-center'>
+                                        <IonText className='text-xl ion-text-center'>{workspace.title || 'Class Detail'}</IonText>
+                                    </h1>
 
-                                        <div className='flex items-center gap-2 text-neutral-700'>
-                                            <div className='flex gap-2 text-sm items-center'>
-                                                <IonIcon icon={languageOutline} />
-                                                <IonText>{language.name}</IonText>
-                                            </div>
+                                    <div className='flex justify-center gap-10 lg:gap-16 mt-6'>
+                                        <div className='block w-auto'>
+                                            <div className='flex flex-col'>
+                                                <IonText className='text-[10px] mb-0 pb-0 albert-font text-neutral-400 !font-normal uppercase tracking-widest'>Studied</IonText>
 
-                                            <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                            <IonText className='text-sm'>{workspace.scope === 'group' ? 'Group' : 'Personal'}</IonText>
-
-                                            {workspace.scope === 'group' && (
-                                                <>
-                                                    <IonText className='text-sm text-neutral-400'>&bull;</IonText>
-                                                    <div className='cursor-pointer text-blue-700 flex items-center gap-1 text-sm' onClick={() => ionRouter.push(`/dashboard/workspace/${id}/members`, "forward")}>
-                                                        <IonText>{workspace.member_count || 0} classmates</IonText>
-                                                        <IonIcon icon={chevronForwardOutline} />
+                                                <div className='flex flex-col'>
+                                                    <div className='flex justify-center items-end flex-row'>
+                                                        <IonText className='oswald-font text-2xl font-normal'>{totalHours}</IonText>
+                                                        <IonText className='oswald-font text-lg font-bold'>.{minutes}</IonText>
                                                     </div>
-                                                </>
-                                            )}
 
+                                                    {workspace?.today_duration_seconds === 0 && (
+                                                        <IonText className='oswald-font text-sm text-neutral-500 !font-normal -mt-0.5'>hours</IonText>
+                                                    )}
+
+                                                    {!!workspace?.today_duration_seconds && workspace.today_duration_seconds > 0 && (
+                                                        <IonText className='oswald-font text-sm text-green-500 !font-normal -mt-0.5'>+ {todayTotalHours} hours</IonText>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className='block w-auto'>
+                                            <div className='flex flex-col'>
+                                                <IonText className='text-[10px] mb-0 pb-0 albert-font text-neutral-400 !font-normal uppercase tracking-widest'>Sessions</IonText>
+
+                                                <div className='flex flex-col'>
+                                                    <div className='flex justify-center items-end flex-row'>
+                                                        <IonText className='oswald-font text-2xl font-normal'>{workspace.total_session_count}</IonText>
+                                                    </div>
+
+                                                    {workspace?.today_session_count === 0 && (
+                                                        <IonText className='oswald-font text-sm text-neutral-500 !font-normal -mt-0.5'>in total</IonText>
+                                                    )}
+
+                                                    {!!workspace?.today_session_count && workspace.today_session_count > 0 && (
+                                                        <IonText className='oswald-font text-sm text-green-500 !font-normal -mt-0.5'>+ {workspace.today_session_count} today</IonText>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className='block w-auto'>
+                                            <div className='flex flex-col'>
+                                                <IonText className='text-[10px] mb-0 pb-0 albert-font text-neutral-400 !font-normal uppercase tracking-widest'>Notes</IonText>
+
+                                                <div className='flex flex-col'>
+                                                    <div className='flex justify-center items-end flex-row'>
+                                                        <IonText className='oswald-font text-2xl font-normal'>{workspace.total_note_count}</IonText>
+                                                    </div>
+
+                                                    {workspace?.today_note_count === 0 && (
+                                                        <IonText className='oswald-font text-sm text-neutral-500 !font-normal -mt-0.5'>in total</IonText>
+                                                    )}
+
+                                                    {!!workspace?.today_note_count && workspace.today_note_count > 0 && (
+                                                        <IonText className='oswald-font text-sm text-green-500 !font-normal -mt-0.5'>+ {workspace.today_note_count} today</IonText>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div className='-mt-6 relative z-20 flex gap-3 justify-center'>
+                        <IonButton mode="md" shape="round" color="warning" style={{ 'minHeight': '44px' }}>
+                            <IonIcon icon={bookOutline} slot="start" className='mr-2' />
+                            <IonText className="normal-case tracking-normal">Start Session</IonText>
+                        </IonButton>
+
+                        <IonButton
+                            mode="md"
+                            shape="round"
+                            color="dark"
+                            style={{ 'minHeight': '44px', 'minWidth': '44px' }}
+                            routerLink={`/dashboard/editor/session?workspaceId=${id}`}
+                        >
+                            <IonIcon icon={addSharp} slot="icon-only" />
+                        </IonButton>
                     </div>
 
                     <div className='ion-padding !pt-0'>

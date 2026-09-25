@@ -18,7 +18,7 @@ const LearnStats: React.FC<Props> = ({ durationSeconds = 0 }) => {
     return (
         <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
             <div className="block">
-                <IonText className="text-sm albert-font text-neutral-500 !font-normal">Study times</IonText>
+                <IonText className="text-sm albert-font text-neutral-500 !font-normal">Studied times</IonText>
             </div>
             <div className="flex justify-start items-center">
                 <div className="flex-none w-10">

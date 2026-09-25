@@ -72,7 +72,7 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
 
                                 <div className="text-xs line-clamp-1 w-full text-center">
                                     <IonText className="font-bold ml-0.5">{item.total_session_count}</IonText>
-                                    <IonText className="ml-0.5">sess.</IonText>
+                                    <IonText className="ml-0.5">sess</IonText>
                                 </div>
                             </div>
                         </div>
@@ -87,11 +87,13 @@ const WorkspaceList: React.FC<WorkspaceListProps> = ({ items }) => {
     return (
         <div className="flex flex-col gap-4">
             {items.length === 0 && <div className="ion-no-padding text-center">No workspaces found</div>}
-            <div className='block'>
+            <div className='block divide-y-[1px] divide-neutral-200 divide-solid'>
                 {items.map((item, index, array) => {
                     const isLast = index === array.length - 1;
                     return (
-                        <WorkspaceItem key={index} item={item} isLast={isLast} />
+                        <div key={index} className='py-0'>
+                            <WorkspaceItem item={item} isLast={isLast} />
+                        </div>
                     );
                 })}
             </div>

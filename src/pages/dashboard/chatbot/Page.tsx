@@ -151,8 +151,8 @@ const ChatbotPage: React.FC = () => {
                 <div ref={messagesEndRef} />
             </IonContent>
 
-            <IonFooter color='light' className='ion-padding ion-no-border ion-no-background chat-footer'>
-                <div className='bg-white rounded-3xl shadow-lg'>
+            <IonFooter color='light' className='ion-no-border ion-no-background chat-footer'>
+                <div className='bg-white rounded-3xl shadow-lg ion-padding'>
                     <form onSubmit={handleSubmit(onSubmit)}>
                         <Controller
                             name="message"

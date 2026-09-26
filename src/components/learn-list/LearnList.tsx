@@ -2,7 +2,7 @@ import { IonButton, IonCard, IonCardContent, IonIcon, IonInfiniteScroll, IonInfi
 import { LearningSessionTypes, useGetLearningSessionsByWorkspaceIdQuery } from "../../services/learning.session";
 import { useEffect, useMemo, useState } from "react";
 import { checkmarkDoneOutline, chevronForwardSharp, imageOutline, returnDownForwardSharp, shapesOutline, textOutline, timerOutline } from "ionicons/icons";
-import { format, intervalToDuration } from "date-fns";
+import { differenceInSeconds, format, intervalToDuration } from "date-fns";
 import { getUser } from "../../utils/authState";
 
 interface Props {
@@ -84,9 +84,13 @@ const SessionItem: React.FC<{
             borderColor = 'border-green-300';
         }
 
+        let seconds = item.duration_seconds ?? 0;
+        if (item.status !== 'completed') {
+            seconds = differenceInSeconds(new Date(), new Date(item.started_at));
+        }
         const duration = intervalToDuration({
             start: 0,
-            end: (item.duration_seconds ?? 0) * 1000 // intervalToDuration expects milliseconds
+            end: seconds * 1000 // intervalToDuration expects milliseconds
         });
 
         // Kalikan hari dengan 24 dan tambahkan ke sisa jam
@@ -105,16 +109,17 @@ const SessionItem: React.FC<{
                         <div className="flex gap-2 items-center">
                             <IonText className='font-normal text-neutral-600 text-sm oswald-font'>{format(item.started_at, 'HH:mm')}</IonText>
                             <IonIcon icon={returnDownForwardSharp} className='text-neutral-500 text-sm' />
-                            <IonText className='font-normal text-neutral-600 text-sm oswald-font'>{format(item.ended_at, 'HH:mm')}</IonText>
-                        </div>
 
-                        <div className="ml-auto flex items-center gap-2">
-                            {item.status !== 'completed' && (
+                            {item.status === 'completed' ? (
+                                <IonText className='font-normal text-neutral-600 text-sm oswald-font'>{format(item.ended_at, 'HH:mm')}</IonText>
+                            ) : (
                                 <div className="px-1 py-0.5 leading-3 text-[10px] uppercase bg-orange-100 border border-orange-200 rounded-full font-normal text-orange-700 shadow">
                                     <IonText>ongoing</IonText>
                                 </div>
                             )}
+                        </div>
 
+                        <div className="ml-auto flex items-center gap-2">
                             <IonText className={`font-normal text-sm oswald-font ${item.status !== 'completed' ? 'text-orange-600' : 'text-green-600'}`}>
                                 {totalHours}.{minutes}h
                             </IonText>

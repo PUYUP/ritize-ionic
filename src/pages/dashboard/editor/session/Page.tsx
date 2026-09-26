@@ -254,7 +254,7 @@ function SessionEditorPage() {
                     </IonButtons>
 
                     <IonTitle className='text-base ion-padding-start ion-padding-end ion-text-center'>
-                        {sessionData ? `Edit Study Session` : 'New Study Session'}
+                        {sessionData ? `Edit Session` : 'Log Session'}
                     </IonTitle>
 
                     <div slot="end" className="ion-padding-end">

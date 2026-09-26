@@ -91,9 +91,16 @@ const OAuthGooglePage: React.FC = () => {
 
                 // save user
                 if ('user' in data && data.user) {
+                    // Getting user from custom `user` table
+                    const { data: customUser, error: customUserError } = await supabase
+                        .from('user')
+                        .select('*')
+                        .eq('auth_user_id', data.user?.id)
+                        .single();
+
                     await Preferences.set({
                         key: 'ritize_user',
-                        value: JSON.stringify(data.user.user_metadata)
+                        value: JSON.stringify({ ...customUser, session: data.session })
                     });
 
                     if (data.session) {
@@ -116,7 +123,7 @@ const OAuthGooglePage: React.FC = () => {
                     if (userData) {
                         await Preferences.set({
                             key: 'ritize_user',
-                            value: JSON.stringify(userData)
+                            value: JSON.stringify({ ...userData, session: data.session })
                         });
                     }
                 }

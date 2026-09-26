@@ -55,16 +55,9 @@ const RegisterPage: React.FC = () => {
                     .eq('auth_user_id', user.user?.id)
                     .single();
 
-                const userData = {
-                    id: customUser?.id,
-                    email: customUser?.email,
-                    name: customUser?.name,
-                    session: user.session
-                }
-
                 await Preferences.set({
                     key: 'ritize_user',
-                    value: JSON.stringify(userData)
+                    value: JSON.stringify({ ...customUser, session: user.session })
                 });
 
                 // Reset form

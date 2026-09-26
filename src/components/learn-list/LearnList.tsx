@@ -149,31 +149,37 @@ const SessionItem: React.FC<{
 
                                     <div className="flex flex-row gap-1 items-end">
                                         <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 bg-[#E1F2F1] text-[#008C88] border-[#008C88]/30 shadow border rounded-full relative z-10 flex items-center justify-center`}>
-                                                <IonIcon icon={textOutline} className="text-neutral-500" />
+                                            <div className={`w-6 h-6 ${item.pages_text && item.pages_text.length > 0 ? 'bg-[#E1F2F1] text-[#008C88] border-[#008C88]/30' : 'bg-neutral-100 text-neutral-500 border-neutral-300'} shadow border rounded-full relative z-10 flex items-center justify-center`}>
+                                                <IonIcon icon={textOutline} className={item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88]' : 'text-neutral-500'} />
                                             </div>
 
-                                            <IonText className="oswald-font text-xl font-semibold pb-0.5 text-[#008C88]">{item.pages_text?.length ?? 0}</IonText>
+                                            <IonText className={`oswald-font text-xl font-semibold pb-0.5 ${item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88]' : 'text-neutral-400'}`}>
+                                                {item.pages_text?.length ?? 0}
+                                            </IonText>
                                         </div>
                                     </div>
 
                                     <div className="flex flex-row gap-1 items-end">
                                         <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 bg-[#E9F4E5] text-[#32A315] border-[#32A315]/30 shadow border rounded-full relative z-10 flex items-center justify-center`}>
-                                                <IonIcon icon={shapesOutline} className="text-neutral-500" />
+                                            <div className={`w-6 h-6 ${item.pages_canvas && item.pages_canvas.length > 0 ? 'bg-[#E9F4E5] text-[#32A315] border-[#32A315]/30' : 'bg-neutral-100 text-neutral-500 border-neutral-300'} shadow border rounded-full relative z-10 flex items-center justify-center`}>
+                                                <IonIcon icon={shapesOutline} className={item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315]' : 'text-neutral-500'} />
                                             </div>
 
-                                            <IonText className="oswald-font text-xl font-semibold pb-0.5 text-[#32A315]">{item.pages_canvas?.length ?? 0}</IonText>
+                                            <IonText className={`oswald-font text-xl font-semibold pb-0.5 ${item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315]' : 'text-neutral-400'}`}>
+                                                {item.pages_canvas?.length ?? 0}
+                                            </IonText>
                                         </div>
                                     </div>
 
                                     <div className="flex flex-row gap-1 items-end">
                                         <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 bg-[#EEE4FA] text-[#5B00C9] border-[#5B00C9]/30 shadow border rounded-full relative z-10 flex items-center justify-center`}>
-                                                <IonIcon icon={imageOutline} className="text-neutral-500" />
+                                            <div className={`w-6 h-6 ${item.pages_file && item.pages_file.length > 0 ? 'bg-[#EEE4FA] text-[#5B00C9] border-[#5B00C9]/30' : 'bg-neutral-100 text-neutral-500 border-neutral-300'} shadow border rounded-full relative z-10 flex items-center justify-center`}>
+                                                <IonIcon icon={imageOutline} className={item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9]' : 'text-neutral-500'} />
                                             </div>
 
-                                            <IonText className="oswald-font text-xl font-semibold pb-0.5 text-[#5B00C9]">{item.pages_file?.length ?? 0}</IonText>
+                                            <IonText className={`oswald-font text-xl font-semibold pb-0.5 ${item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9]' : 'text-neutral-400'}`}>
+                                                {item.pages_file?.length ?? 0}
+                                            </IonText>
                                         </div>
                                     </div>
                                 </div>

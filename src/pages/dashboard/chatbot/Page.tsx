@@ -152,50 +152,52 @@ const ChatbotPage: React.FC = () => {
             </IonContent>
 
             <IonFooter color='light' className='ion-no-border ion-no-background chat-footer'>
-                <div className='bg-white rounded-3xl shadow-lg ion-padding'>
-                    <form onSubmit={handleSubmit(onSubmit)}>
-                        <Controller
-                            name="message"
-                            control={control}
-                            render={({ field }) => (
-                                <IonTextarea
-                                    className='clear-input px-3'
-                                    autoGrow={true}
-                                    value={field.value}
-                                    onIonInput={(e) => field.onChange(e.detail.value ?? '')}
-                                    onIonBlur={field.onBlur}
-                                    rows={1}
-                                    placeholder='Ask anything about notes...'
-                                />
-                            )}
-                        />
+                <div className='ion-padding'>
+                    <div className='bg-white rounded-3xl shadow-lg'>
+                        <form onSubmit={handleSubmit(onSubmit)}>
+                            <Controller
+                                name="message"
+                                control={control}
+                                render={({ field }) => (
+                                    <IonTextarea
+                                        className='clear-input px-3'
+                                        autoGrow={true}
+                                        value={field.value}
+                                        onIonInput={(e) => field.onChange(e.detail.value ?? '')}
+                                        onIonBlur={field.onBlur}
+                                        rows={1}
+                                        placeholder='Ask anything about your notes...'
+                                    />
+                                )}
+                            />
 
-                        <div className='px-2 pb-2 flex justify-end'>
-                            {(status !== 'streaming' && status !== 'submitted') && (
-                                <IonButton
-                                    type='submit'
-                                    mode="ios"
-                                    shape='round'
-                                    disabled={isWaiting || isMessageEmpty}
-                                    color='dark'
-                                >
-                                    <IonIcon icon={arrowUp} slot='icon-only' />
-                                </IonButton>
-                            )}
+                            <div className='px-2 pb-2 flex justify-end'>
+                                {(status !== 'streaming' && status !== 'submitted') && (
+                                    <IonButton
+                                        type='submit'
+                                        mode="ios"
+                                        shape='round'
+                                        disabled={isWaiting || isMessageEmpty}
+                                        color='dark'
+                                    >
+                                        <IonIcon icon={arrowUp} slot='icon-only' />
+                                    </IonButton>
+                                )}
 
-                            {(status === 'submitted' || status === 'streaming') && (
-                                <IonButton
-                                    color='danger'
-                                    mode="ios"
-                                    shape='round'
-                                    type="button"
-                                    onClick={() => stop()}
-                                >
-                                    <IonIcon icon={stopSharp} slot='icon-only' />
-                                </IonButton>
-                            )}
-                        </div>
-                    </form>
+                                {(status === 'submitted' || status === 'streaming') && (
+                                    <IonButton
+                                        color='danger'
+                                        mode="ios"
+                                        shape='round'
+                                        type="button"
+                                        onClick={() => stop()}
+                                    >
+                                        <IonIcon icon={stopSharp} slot='icon-only' />
+                                    </IonButton>
+                                )}
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </IonFooter>
         </IonPage>

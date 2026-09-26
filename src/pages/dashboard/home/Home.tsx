@@ -13,7 +13,6 @@ import LearnGraph from '../../../components/learn-graph/LearnGraph';
 import LearnStats from '../../../components/learn-stats/LearnStats';
 import { useGetSessionDurationSummaryQuery } from '../../../services/learning.session';
 import { useCurrentWeekRange } from '../../../hooks/useCurrentWeekRange';
-import StartNote from '../../../components/startnote/StartNote';
 
 const HomePage: React.FC = () => {
     const ionRouter = useIonRouter();
@@ -57,6 +56,8 @@ const HomePage: React.FC = () => {
         }
     }
 
+    console.log(user);
+
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -69,8 +70,13 @@ const HomePage: React.FC = () => {
 
                     <div slot='end' className='ion-padding-end flex gap-4 w-[65%]'>
                         <div className='flex flex-1 items-center gap-2 justify-end'>
-                            <IonIcon icon={diamondSharp} className='text-xl text-purple-600 animate-bounce' />
-                            <IonText className='oswald-font text-base font-semibold text-purple-500 text-shadow-md'>1.245.525</IonText>
+                            <IonIcon icon={diamondSharp} className='text-2xl text-purple-600 animate-bounce' />
+                            <div className='flex flex-col justify-start items-start'>
+                                <IonText className='text-xs text-neutral-500 albert-font !font-normal'>Chat tokens</IonText>
+                                <IonText className='oswald-font text-lg font-semibold text-purple-500 text-shadow-md -mt-1'>
+                                    {user && user.token_balance ? Number(user.token_balance).toLocaleString() : 0}
+                                </IonText>
+                            </div>
                         </div>
 
                         <div className='flex items-center gap-2'>
@@ -189,14 +195,18 @@ const HomePage: React.FC = () => {
             </IonContent>
 
             <IonFooter color='light' className='ion-no-border'>
-                <div className='flex justify-center ion-padding'>
+                <div className='flex justify-center ion-padding bg-linear-to-t from-[#f4f5f8] to-transparent'>
                     <IonButton
                         color={'dark'}
                         shape="round"
                         mode='md'
                         className='flex items-center gap-2'
                         routerLink={'/dashboard/chatbot'}
-                        style={{ 'minHeight': '44px' }}
+                        style={{
+                            'minHeight': '44px',
+                            '--padding-start': '18px',
+                            '--padding-end': '18px'
+                        }}
                     >
                         <IonIcon slot="start" className='mr-2' icon={chatboxEllipsesSharp} />
                         <IonText className='tracking-normal normal-case'>Chat w/ Note</IonText>

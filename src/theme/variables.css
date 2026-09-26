@@ -46,6 +46,11 @@ ion-toolbar {
     --ion-padding: 12px;
 }
 
+/* ion-toolbar::part(background) {
+    background: #F4F5F8;
+    background: linear-gradient(0deg, rgba(244, 245, 248, 0) 0%, rgba(244, 245, 248, 1) 50%);
+} */
+
 ion-card {
     box-shadow:
         rgba(0, 0, 0, 0.12) 0px 1px 2px 0px,

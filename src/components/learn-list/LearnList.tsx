@@ -41,7 +41,7 @@ const groupItemsByDate = (items: LearningSessionTypes[]): NoteGroup[] => {
     const map = new Map<string, LearningSessionTypes[]>();
 
     for (const note of items) {
-        const key = getDateKey(note.ended_at);
+        const key = getDateKey(note.started_at);
         if (!map.has(key)) map.set(key, []);
         map.get(key)!.push(note);
     }
@@ -115,7 +115,7 @@ const SessionItem: React.FC<{
                                 </div>
                             )}
 
-                            <IonText className='font-normal text-green-600 text-sm oswald-font'>
+                            <IonText className={`font-normal text-sm oswald-font ${item.status !== 'completed' ? 'text-orange-600' : 'text-green-600'}`}>
                                 {totalHours}.{minutes}h
                             </IonText>
                         </div>
@@ -125,13 +125,26 @@ const SessionItem: React.FC<{
                 <div className='pl-8'>
                     <IonCard className="rounded-xl mt-1" routerLink={linkTo}>
                         <IonCardContent className="ion-padding">
+                            {item.title ? (
+                                <div className="block mb-2">
+                                    <div
+                                        dangerouslySetInnerHTML={{ __html: item.title }}
+                                        className='text-neutral-700 text-sm leading-5 line-clamp-3'
+                                    />
+                                </div>
+                            ) : (
+                                <div className="block mb-2">
+                                    <IonText className="text-neutral-500 italic text-sm leading-5 line-clamp-3">No topic provided.</IonText>
+                                </div>
+                            )}
+
                             <div className="flex w-full items-center">
                                 <div className="flex-1 flex flex-row gap-4 items-center">
-                                    <IonText className="text-[11px] uppercase tracking-widest">Notes:</IonText>
+                                    {/* <IonText className="text-[11px] uppercase tracking-widest">Notes:</IonText> */}
 
                                     <div className="flex flex-row gap-1 items-end">
                                         <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 bg-[#E1F2F1] text-[#008C88] border-[#008C88]/30 shadow-sm border rounded-full relative z-10 flex items-center justify-center`}>
+                                            <div className={`w-6 h-6 bg-[#E1F2F1] text-[#008C88] border-[#008C88]/30 shadow border rounded-full relative z-10 flex items-center justify-center`}>
                                                 <IonIcon icon={textOutline} className="text-neutral-500" />
                                             </div>
 
@@ -141,7 +154,7 @@ const SessionItem: React.FC<{
 
                                     <div className="flex flex-row gap-1 items-end">
                                         <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 bg-[#E9F4E5] text-[#32A315] border-[#32A315]/30 shadow-sm border rounded-full relative z-10 flex items-center justify-center`}>
+                                            <div className={`w-6 h-6 bg-[#E9F4E5] text-[#32A315] border-[#32A315]/30 shadow border rounded-full relative z-10 flex items-center justify-center`}>
                                                 <IonIcon icon={shapesOutline} className="text-neutral-500" />
                                             </div>
 
@@ -151,7 +164,7 @@ const SessionItem: React.FC<{
 
                                     <div className="flex flex-row gap-1 items-end">
                                         <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 bg-[#EEE4FA] text-[#5B00C9] border-[#5B00C9]/30 shadow-sm border rounded-full relative z-10 flex items-center justify-center`}>
+                                            <div className={`w-6 h-6 bg-[#EEE4FA] text-[#5B00C9] border-[#5B00C9]/30 shadow border rounded-full relative z-10 flex items-center justify-center`}>
                                                 <IonIcon icon={imageOutline} className="text-neutral-500" />
                                             </div>
 

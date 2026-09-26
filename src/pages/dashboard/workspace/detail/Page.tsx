@@ -1,17 +1,15 @@
 import { IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
-import { addSharp, bookOutline, chevronForwardOutline, closeOutline, filterOutline, languageOutline, pencilOutline, peopleOutline, personCircleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
-import StartNote from '../../../../components/startnote/StartNote';
-import WorkspaceStats from '../../../../components/workspace-stats/WorkspaceStats';
-import NoteList from '../../../../components/note-list/NoteList';
+import { addSharp, bookOutline, closeOutline, languageOutline, pencilOutline, peopleOutline, settingsOutline, trashOutline } from 'ionicons/icons';
 import { useParams } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useDeleteWorkspaceMutation, useGetWorkspaceByIdQuery, useLazyGetWorkspaceStatsQuery } from '../../../../services/workspace';
 import { by639_1 } from 'iso-language-codes';
-import MaterialList from '../../../../components/material-list/MaterialList';
-import DigestList from '../../../../components/digest-list/DigestList';
 import { intervalToDuration } from 'date-fns';
 import LearnList from '../../../../components/learn-list/LearnList';
+import { LearningSessionTypes, useCreateSessionMutation } from '../../../../services/learning.session';
+import { getUser } from '../../../../utils/authState';
+import { dateToPickerValue } from '../../../../utils/generator';
 
 interface RouteParams {
     id?: string
@@ -21,23 +19,24 @@ interface RouteParams {
 
 const WorkspaceDetailPage: React.FC = () => {
     const ionRouter = useIonRouter();
-    const { id } = useParams<RouteParams>();
-    const [activeTab, setActiveTab] = useState<string>('note');
-    const [activeTabLabel, setActiveTabLabel] = useState<string>('Notes');
+    const { id: workspaceId } = useParams<RouteParams>();
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [deleteWorkspace, { isLoading: deleting }] = useDeleteWorkspaceMutation();
-    const { data: workspace, error, isLoading, isFetching } = useGetWorkspaceByIdQuery(id ?? "", { skip: !id });
+    const { data: workspace, error, isLoading, isFetching } = useGetWorkspaceByIdQuery(workspaceId ?? "", { skip: !workspaceId });
     const [getWorkspaceStats, { data: workspaceStats, isFetching: workspaceStatsFetching }] = useLazyGetWorkspaceStatsQuery({});
     const [language, setLanguage] = useState<{ code: string; name: string }>({
         code: workspace?.language_code || 'en',
         name: by639_1[(workspace?.language_code || 'en') as keyof typeof by639_1].name
     });
 
+    // Mutation
+    const [createSession, { isLoading: createSessionLoading }] = useCreateSessionMutation();
+
     useEffect(() => {
-        if (id) {
-            getWorkspaceStats({ workspaceId: id });
+        if (workspaceId) {
+            getWorkspaceStats({ workspaceId: workspaceId });
         }
-    }, [id, getWorkspaceStats]);
+    }, [workspaceId, getWorkspaceStats]);
 
     useEffect(() => {
         if (workspace) {
@@ -47,17 +46,6 @@ const WorkspaceDetailPage: React.FC = () => {
             });
         }
     }, [workspace, setLanguage]);
-
-    const selectedTabHandler = (tab: string) => {
-        if (tab === 'note') {
-            setActiveTabLabel('Notes');
-        } else if (tab === 'material') {
-            setActiveTabLabel('Materials');
-        } else if (tab === 'digest') {
-            setActiveTabLabel('Digest');
-        }
-        setActiveTab(tab);
-    }
 
     if (isLoading || !workspace || isFetching) {
         return (
@@ -79,7 +67,7 @@ const WorkspaceDetailPage: React.FC = () => {
                 action: 'edit',
             },
             handler: () => {
-                ionRouter.push(`/dashboard/editor/workspace/${id}`, "forward");
+                ionRouter.push(`/dashboard/editor/workspace/${workspaceId}`, "forward");
             }
         },
         {
@@ -111,7 +99,7 @@ const WorkspaceDetailPage: React.FC = () => {
                 action: 'manage-members',
             },
             handler: () => {
-                ionRouter.push(`/dashboard/workspace/${id}/members`, "forward");
+                ionRouter.push(`/dashboard/workspace/${workspaceId}/members`, "forward");
             }
         });
     }
@@ -133,6 +121,29 @@ const WorkspaceDetailPage: React.FC = () => {
     // Kalikan hari dengan 24 dan tambahkan ke sisa jam
     const todayTotalHours = (todayDuration.days ?? 0) * 24 + (todayDuration.hours ?? 0);
     const todayMinutes = todayDuration.minutes ?? 0;
+
+    // Start session
+    const startSessionHandler = async () => {
+        const user = await getUser();
+        if (!user) {
+            return;
+        }
+
+        const payload: Partial<LearningSessionTypes> = {
+            user_id: user.id,
+            workspace_id: workspaceId,
+            started_at: new Date().toISOString(),
+            ended_at: undefined,
+            status: 'ongoing',
+        }
+
+        const { data: res, error } = await createSession({ body: payload });
+        if (error) {
+            return;
+        }
+
+        ionRouter.push(`/dashboard/workspace/${workspaceId}/sessions/${res?.id}`, "forward");
+    }
 
     return (
         <IonPage>
@@ -240,9 +251,15 @@ const WorkspaceDetailPage: React.FC = () => {
                     </div>
 
                     <div className='-mt-6 relative z-20 flex gap-3 justify-center'>
-                        <IonButton mode="md" shape="round" color="warning" style={{ 'minHeight': '44px' }}>
+                        <IonButton
+                            mode="md"
+                            shape="round"
+                            color="warning"
+                            style={{ 'minHeight': '44px' }}
+                            onClick={startSessionHandler}
+                        >
                             <IonIcon icon={bookOutline} slot="start" className='mr-2' />
-                            <IonText className="normal-case tracking-normal">Live Session</IonText>
+                            <IonText className="normal-case tracking-normal">Start Session</IonText>
                         </IonButton>
 
                         <IonButton
@@ -250,7 +267,7 @@ const WorkspaceDetailPage: React.FC = () => {
                             shape="round"
                             color="dark"
                             style={{ 'minHeight': '44px', 'minWidth': '44px' }}
-                            routerLink={`/dashboard/editor/session?workspaceId=${id}`}
+                            routerLink={`/dashboard/editor/session?workspaceId=${workspaceId}`}
                         >
                             <IonIcon icon={addSharp} slot="icon-only" />
                         </IonButton>
@@ -258,47 +275,9 @@ const WorkspaceDetailPage: React.FC = () => {
 
                     <div className='pt-6'>
                         <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
-                            <LearnList workspaceId={id} />
+                            <LearnList workspaceId={workspaceId} />
                         </div>
                     </div>
-
-                    {/* <div className='ion-padding !pt-0'>
-                        <div className='block mb-3 text-base text-neutral-600'>
-                            <IonText className='albert-font'>Start new notes</IonText>
-                        </div>
-                        <StartNote workspace={{ id: id, languageCode: workspace.language_code || 'en' }} />
-                    </div>
-
-                    <div className='ion-padding !pt-2'>
-                        <div className='block mb-3 text-base text-neutral-600'>
-                            <IonText className='albert-font'>Today's in Class</IonText>
-                        </div>
-                        <WorkspaceStats
-                            isTab={true}
-                            activeTab={activeTab}
-                            onSetActiveTab={selectedTabHandler}
-                            note={{ todayCount: workspaceStats?.total_notes_today ?? 0, total: workspaceStats?.total_notes ?? 0 }}
-                            material={{ todayCount: workspaceStats?.total_materials_today ?? 0, total: workspaceStats?.total_materials ?? 0 }}
-                            digest={{ todayCount: workspaceStats?.total_digests_today ?? 0, total: workspaceStats?.total_digests ?? 0 }}
-                        />
-                    </div> */}
-
-                    {/* {id && (
-                        <div className='block pt-3'>
-                            <div className='text-lg ion-padding-start ion-padding-end flex items-center justify-center'>
-                                <IonText className='albert-font text-base text-neutral-600'><u>{activeTabLabel}</u> in Class</IonText>
-                                <div className='ml-auto flex items-center'>
-                                    <IonButton shape='round' color="light" size="small">
-                                        <IonIcon icon={filterOutline} slot='icon-only' />
-                                    </IonButton>
-                                </div>
-                            </div>
-
-                            {activeTab == 'note' && <NoteList workspaceId={id} />}
-                            {activeTab == 'material' && <div className="ion-padding"><MaterialList workspaceId={id} insideWorkspaceDetail={true} /></div>}
-                            {activeTab == 'digest' && <div className="ion-padding"><DigestList workspaceId={id} /></div>}
-                        </div>
-                    )} */}
                 </div>
             </IonContent>
 
@@ -320,8 +299,8 @@ const WorkspaceDetailPage: React.FC = () => {
                         text: 'Yes',
                         role: 'destructive',
                         handler: async () => {
-                            if (!id) return;
-                            await deleteWorkspace({ id });
+                            if (!workspaceId) return;
+                            await deleteWorkspace({ id: workspaceId });
 
                             if (ionRouter.canGoBack()) {
                                 ionRouter.goBack();

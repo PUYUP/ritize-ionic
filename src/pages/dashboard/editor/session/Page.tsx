@@ -1,14 +1,16 @@
-import { IonBackButton, IonBadge, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonDatetime, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonPage, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter, useIonViewWillEnter } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonDatetime, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonModal, IonPage, IonSpinner, IonText, IonTextarea, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter, useIonViewWillEnter } from '@ionic/react';
 import './Page.css';
 import { checkmarkOutline, closeOutline, timeOutline, timeSharp } from 'ionicons/icons';
 import { useEffect, useRef, useState } from 'react';
 import { useForm, useController } from 'react-hook-form';
 import { useGetAllWorkspacesQuery, WorkspaceTypes } from '../../../../services/workspace';
 import { format, intervalToDuration } from 'date-fns';
-import { LearningSessionTypes, useCreateSessionMutation, useGetLearningSessionByIdQuery, useLazyGetLearningSessionByIdQuery, useUpdateSessionMutation } from '../../../../services/learning.session';
+import { LearningSessionTypes, useCreateSessionMutation, useLazyGetLearningSessionByIdQuery, useUpdateSessionMutation } from '../../../../services/learning.session';
 import { getUser } from '../../../../utils/authState';
 import { useParams } from 'react-router';
 import { useSearchParams } from 'react-router-dom';
+import { toZonedTime } from 'date-fns-tz';
+import { dateToPickerValue } from '../../../../utils/generator';
 
 type SessionFormValues = {
     workspace: WorkspaceTypes | null;
@@ -24,6 +26,7 @@ interface RouteParams {
 }
 
 function SessionEditorPage() {
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const ionRouter = useIonRouter();
     const [searchParams, setSearchParams] = useSearchParams();
     const workspaceIdArg = searchParams.get('workspaceId');
@@ -72,6 +75,16 @@ function SessionEditorPage() {
     });
 
     const startedAtValue = watch('startedAt');
+    const endedAtValue = watch('endedAt');
+
+    const durationEnded = intervalToDuration({
+        start: startedAtValue ? new Date(startedAtValue) : new Date(),
+        end: endedAtValue ? new Date(endedAtValue) : new Date()
+    });
+
+    // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+    const totalHoursEnded = (durationEnded.days ?? 0) * 24 + (durationEnded.hours ?? 0);
+    const minutesEnded = durationEnded.minutes ?? 0;
 
     const { field: workspaceField, fieldState: workspaceFieldState } = useController({
         control,
@@ -303,18 +316,26 @@ function SessionEditorPage() {
                                 detail={true}
                                 button={true}
                                 className='select-workspace select-date p-2.5 pt-1 -mx-2.5'
-                                onClick={() => setShowSelectDatetimeModal({ isOpen: true, type: 'startedAt' })}
+                                onClick={() => {
+                                    if (startedAtField.value) {
+                                        const zonedDatetime = toZonedTime(new Date(startedAtField.value), userTimeZone);
+                                        setSelectedDateTemp(dateToPickerValue(zonedDatetime));
+                                    }
+
+                                    setShowSelectDatetimeModal({ isOpen: true, type: 'startedAt' });
+                                }}
                                 disabled={isFetchingWorkspaces}
+                                style={{ '--min-height': '48px' }}
                             >
                                 {startedAtField.value ? (
                                     <IonLabel>
                                         <p className='!text-sm !mb-0'>{format(new Date(startedAtField.value), 'MMM dd, yyyy')}</p>
-                                        <IonText className='text-base albert-font'>{format(new Date(startedAtField.value), 'HH:mm')}</IonText>
+                                        <IonText className='text-xl font-bold text-neutral-700 oswald-font'>{format(new Date(startedAtField.value), 'HH:mm')}</IonText>
                                     </IonLabel>
                                 ) : (
                                     <IonLabel>
                                         <p className='!text-sm !mb-0'>Select date</p>
-                                        <IonText className='text-base albert-font !font-normal'>Not selected</IonText>
+                                        <IonText className='text-base albert-font !font-normal line-clamp-1'>Not selected</IonText>
                                     </IonLabel>
                                 )}
                             </IonItem>
@@ -338,13 +359,21 @@ function SessionEditorPage() {
                                 detail={true}
                                 button={true}
                                 className='select-workspace select-date p-2.5 pt-1 -mx-2.5'
-                                onClick={() => setShowSelectDatetimeModal({ isOpen: true, type: 'endedAt' })}
+                                onClick={() => {
+                                    if (endedAtField.value) {
+                                        const zonedDatetime = toZonedTime(new Date(endedAtField.value), userTimeZone);
+                                        setSelectedDateTemp(dateToPickerValue(zonedDatetime));
+                                    }
+
+                                    setShowSelectDatetimeModal({ isOpen: true, type: 'endedAt' });
+                                }}
                                 disabled={isFetchingWorkspaces || !startedAtField.value}
+                                style={{ '--min-height': '48px' }}
                             >
                                 {endedAtField.value ? (
                                     <IonLabel>
                                         <p className='!text-sm !mb-0'>{format(new Date(endedAtField.value), 'MMM dd, yyyy')}</p>
-                                        <IonText className='text-base albert-font'>{format(new Date(endedAtField.value), 'HH:mm')}</IonText>
+                                        <IonText className='text-xl font-bold text-neutral-700 oswald-font'>{format(new Date(endedAtField.value), 'HH:mm')}</IonText>
                                     </IonLabel>
                                 ) : (
                                     <IonLabel>
@@ -361,6 +390,17 @@ function SessionEditorPage() {
                                 </IonText>
                             )}
                         </div>
+                    </div>
+
+                    <div className='text-center py-2'>
+                        <div className='flex items-center justify-center'>
+                            <IonIcon icon={timeOutline} className='text-neutral-400 mr-2 text-xl' />
+                            <IonText className='oswald-font text-3xl block font-bold text-green-600'>
+                                {startedAtField.value && endedAtField.value ? `${totalHoursEnded}.${minutesEnded}` : '0.0'}
+                            </IonText>
+                            <IonText className='oswald-font text-neutral-600 text-lg font-normal ml-2'>hours</IonText>
+                        </div>
+                        <IonText className='albert-font text-neutral-500 text-sm block'>Studied times</IonText>
                     </div>
 
                     <div className='ion-padding'>
@@ -439,6 +479,7 @@ function SessionEditorPage() {
                 </IonContent>
             </IonModal>
 
+            {/* select date */}
             <IonModal
                 ref={selectDatetimeModal}
                 isOpen={showSelectDatetimeModal.isOpen}

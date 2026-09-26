@@ -60,3 +60,10 @@ ion-modal.select-date .ion-page {
     justify-content: start;
     background-color: #f4f5f8;
 }
+
+ion-modal.auto-height {
+    --height: fit-content;
+    --width: 90%;
+    --border-radius: 16px;
+    --box-shadow: 0 28px 48px rgba(0, 0, 0, 0.4);
+}

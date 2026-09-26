@@ -430,12 +430,10 @@ export const learningSessionAPI = createApi({
 
                 if (error) return { error: { message: error.message } };
 
-                const days = data ?? [];
+                const days = data?.days ?? [];
+                const total_pages = days.reduce((acc: any, day: any) => acc + (day.pages_sum ?? 0), 0);
 
-                const total_durations = days.reduce((acc: any, day: any) => acc + day.duration_seconds_sum, 0);
-                const total_pages = days.reduce((acc: any, day: any) => acc + day.pages_sum, 0);
-
-                return { data: { total_durations, total_pages, days } };
+                return { data: { total_durations: data.total_durations, total_pages, days } };
             },
         }),
     }),

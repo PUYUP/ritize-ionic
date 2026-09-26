@@ -1,4 +1,5 @@
 import CryptoJS from 'crypto-js';
+import { format } from 'date-fns-tz';
 
 export const generateUUID = (): string => {
     const hex = CryptoJS.lib.WordArray.random(16).toString(
@@ -43,3 +44,7 @@ export function blobToBase64(blob: Blob) {
         reader.readAsDataURL(blob);
     });
 };
+
+export const dateToPickerValue = (date: Date): string => {
+    return format(date, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+}

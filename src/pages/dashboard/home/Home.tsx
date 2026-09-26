@@ -79,7 +79,7 @@ const HomePage: React.FC = () => {
                             <IonIcon icon={diamondSharp} className='text-2xl text-purple-600 animate-bounce' />
                             {(!isUserDataFetching && userData) && (
                                 <div className='flex flex-col justify-start items-start'>
-                                    <IonText className='text-xs text-neutral-500 albert-font !font-normal'>Chat tokens</IonText>
+                                    <IonText className='text-xs text-neutral-500 albert-font !font-normal'>Tokens bal.</IonText>
                                     <IonText className='oswald-font text-lg font-semibold text-purple-500 text-shadow-md -mt-1'>
                                         {userData.token_balance ? Number(userData.token_balance).toLocaleString() : 0}
                                     </IonText>

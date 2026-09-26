@@ -14,11 +14,13 @@ import LearnStats from '../../../components/learn-stats/LearnStats';
 import { useGetSessionDurationSummaryQuery } from '../../../services/learning.session';
 import { useCurrentWeekRange } from '../../../hooks/useCurrentWeekRange';
 import { generateId } from 'ai';
+import { useGetCurrentUserQuery } from '../../../services/user';
 
 const HomePage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { data: workspaces, isLoading } = useGetAllWorkspacesQuery({ from: 0, to: 10 });
     const [getWorkspaceStats, { data: workspaceStats }] = useLazyGetWorkspaceStatsQuery({});
+    const { data: userData, isFetching: isUserDataFetching } = useGetCurrentUserQuery();
 
     const { timezone, start_date, end_date } = useCurrentWeekRange();
     const { data: sessionStats, isFetching: isSessionStatsFetching } = useGetSessionDurationSummaryQuery({
@@ -75,12 +77,20 @@ const HomePage: React.FC = () => {
                     <div slot='end' className='ion-padding-end flex gap-4 w-[65%]'>
                         <div className='flex flex-1 items-center gap-2 justify-end'>
                             <IonIcon icon={diamondSharp} className='text-2xl text-purple-600 animate-bounce' />
-                            <div className='flex flex-col justify-start items-start'>
-                                <IonText className='text-xs text-neutral-500 albert-font !font-normal'>Chat tokens</IonText>
-                                <IonText className='oswald-font text-lg font-semibold text-purple-500 text-shadow-md -mt-1'>
-                                    {user && user.token_balance ? Number(user.token_balance).toLocaleString() : 0}
-                                </IonText>
-                            </div>
+                            {(!isUserDataFetching && userData) && (
+                                <div className='flex flex-col justify-start items-start'>
+                                    <IonText className='text-xs text-neutral-500 albert-font !font-normal'>Chat tokens</IonText>
+                                    <IonText className='oswald-font text-lg font-semibold text-purple-500 text-shadow-md -mt-1'>
+                                        {userData.token_balance ? Number(userData.token_balance).toLocaleString() : 0}
+                                    </IonText>
+                                </div>
+                            )}
+
+                            {isUserDataFetching && (
+                                <div className='inline-block'>
+                                    <IonSpinner className='w-4 h-4'></IonSpinner>
+                                </div>
+                            )}
                         </div>
 
                         <div className='flex items-center gap-2'>

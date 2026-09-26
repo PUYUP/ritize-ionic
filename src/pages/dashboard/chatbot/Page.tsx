@@ -26,7 +26,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DefaultChatTransport, generateId } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import type { UIMessage } from '@ai-sdk/react';
-import { getSession } from '../../../utils/authState';
+import { getSession, getUser } from '../../../utils/authState';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { arrowUp, createOutline, listOutline, stopSharp } from 'ionicons/icons';
 import { supabase } from '../../../lib/supabase';
@@ -35,6 +35,7 @@ import { addFakeConversation, ChatTypes, useGetConversationsQuery, useLazyGetCon
 import { format } from 'date-fns';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
+import { updateUserState } from '../../../services/user';
 
 interface RouteParams {
     conversationId?: string;
@@ -225,6 +226,16 @@ const ChatUI: React.FC<{
             api: `${import.meta.env.VITE_CHAT_BASE_URL}`,
             headers: { Authorization: `Bearer ${session?.access_token}` },
         }),
+        onFinish: async ({ message }) => {
+            const user = await getUser();
+            const meta = message?.metadata as { remainingBalance: number };
+            if (meta?.remainingBalance !== undefined) {
+                dispatch(updateUserState({
+                    id: user.id,
+                    token_balance: meta?.remainingBalance,
+                }));
+            }
+        },
         onError: (error: Error) => console.error(error, 'ERROR'),
     });
 
@@ -278,9 +289,9 @@ const ChatUI: React.FC<{
                             <div key={`${m.id}-${index}`} className="block">
                                 {m.role === 'user' && (
                                     <div className="flex w-full justify-end user-box">
-                                        <div className="bg-neutral-200 rounded-4xl max-w-[80%] p-3">
+                                        <div className="bg-neutral-200 rounded-4xl max-w-[80%] p-3 shadow-md">
                                             {getTextParts(m.parts).map((part, i) => (
-                                                <div key={i} className="text-sm">
+                                                <div key={i} className="text-base">
                                                     <RichContent content={part.text} />
                                                 </div>
                                             ))}
@@ -290,10 +301,14 @@ const ChatUI: React.FC<{
                                 {m.role === 'assistant' && (
                                     <div className="block message-box">
                                         {getTextParts(m.parts).map((part, i) => (
-                                            <div key={i} className="text-sm">
+                                            <div key={i} className="text-base">
                                                 <RichContent content={part.text} />
                                             </div>
                                         ))}
+
+                                        <div className='text-xs text-gray-500 italic'>
+                                            spend {(m.metadata as any)?.usage?.totalTokens ?? "…"} tokens
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -302,7 +317,13 @@ const ChatUI: React.FC<{
                             <div className="typing-indicator"><span></span><span></span><span></span></div>
                         )}
                     </div>
-                    {error && <IonText color="danger">{error.message}</IonText>}
+                    {error && (
+                        <div className='block'>
+                            <div className="mt-4 bg-red-100 rounded-xl shadow-md px-2 py-1 inline-block">
+                                <IonText color="danger" className='text-sm'>{error.message}</IonText>
+                            </div>
+                        </div>
+                    )}
                     <div ref={messagesEndRef} />
                 </div>
             </IonContent>

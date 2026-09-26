@@ -1,4 +1,5 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { Action, ThunkAction } from '@reduxjs/toolkit';
 import { supabase } from '../lib/supabase';
 
 type GetUserArgs =
@@ -9,7 +10,12 @@ type GetUsersArgs =
     | { ids: string[]; emails?: string[] }
     | { ids?: string[]; emails: string[] };
 
-type User = { id: string; email: string };
+type User = {
+    id: string;
+    email: string;
+    name: string;
+    token_balance: number;
+};
 
 export const userAPI = createApi({
     reducerPath: 'userAPI',
@@ -22,7 +28,7 @@ export const userAPI = createApi({
                     return { error: { message: 'id or email must be provided' } };
                 }
 
-                let query = supabase.from('user').select('id, email');
+                let query = supabase.from('user').select('id, email, name, token_balance');
 
                 if (id && email) {
                     query = query.or(`id.eq.${id},email.eq.${email}`);
@@ -43,6 +49,34 @@ export const userAPI = createApi({
                 result ? [{ type: 'User', id: result.id }] : [],
         }),
 
+        getCurrentUser: builder.query<User, void>({
+            queryFn: async () => {
+                const { data, error } = await supabase.auth.getUser();
+                if (error) return { error: { message: error.message } };
+                if (!data.user) return { error: { message: 'User not found' } };
+
+                const { data: userData } = await supabase
+                    .from('user')
+                    .select('id, email, name, token_balance')
+                    .eq('auth_user_id', data.user.id)
+                    .maybeSingle();
+
+                if (!userData) return { error: { message: 'User not found' } };
+
+                return {
+                    data: {
+                        id: userData.id,
+                        email: userData.email,
+                        name: userData.name,
+                        token_balance: userData.token_balance
+                    }
+
+                };
+            },
+            providesTags: (result) =>
+                result ? [{ type: 'User', id: result.id }] : [],
+        }),
+
         getUsers: builder.query<User[], GetUsersArgs>({
             queryFn: async ({ ids, emails }) => {
                 if ((!ids || ids.length === 0) && (!emails || emails.length === 0)) {
@@ -53,7 +87,7 @@ export const userAPI = createApi({
                 const idList = ids?.map((v) => `"${v}"`).join(',');
                 const emailList = emails?.map((v) => `"${v}"`).join(',');
 
-                let query = supabase.from('user').select('id, email');
+                let query = supabase.from('user').select('id, email, name, token_balance');
 
                 if (ids?.length && emails?.length) {
                     query = query.or(`id.in.(${idList}),email.in.(${emailList})`);
@@ -85,4 +119,54 @@ export const {
     useLazyGetUserQuery,
     useGetUsersQuery,
     useLazyGetUsersQuery,
+    useGetCurrentUserQuery,
 } = userAPI;
+
+/**
+ * Update user data yang sudah ada di cache RTK Query secara lokal saja,
+ * TANPA melakukan request apa pun ke Supabase/DB.
+ *
+ * Berguna untuk optimistic update, misalnya setelah token_balance berubah
+ * akibat aksi di client (mis. user memakai token), tanpa perlu refetch.
+ *
+ * Fungsi ini akan mem-patch semua cache entry yang cocok dengan `id` di:
+ * - getCurrentUser (single entry)
+ * - getUser (bisa ada banyak cache entry dengan args berbeda: by id, by email, dst)
+ * - getUsers (list queries; user yang cocok di dalam array akan ikut di-update)
+ *
+ * Cara pakai:
+ *   dispatch(updateUserState({ id: user.id, token_balance: 100 }));
+ */
+export const updateUserState =
+    (patch: Partial<Omit<User, 'id'>> & { id: string }): ThunkAction<void, any, unknown, Action> =>
+        (dispatch, getState) => {
+            const { id, ...changes } = patch;
+            const state = getState();
+
+            // getCurrentUser -> selalu di-cache dengan arg `undefined`
+            dispatch(
+                userAPI.util.updateQueryData('getCurrentUser', undefined, (draft) => {
+                    if (draft.id === id) Object.assign(draft, changes);
+                })
+            );
+
+            // getUser -> bisa punya beberapa cache entry (by id, by email, dst),
+            // jadi kita loop semua args yang sedang ter-cache
+            userAPI.util.selectCachedArgsForQuery(state, 'getUser').forEach((args) => {
+                dispatch(
+                    userAPI.util.updateQueryData('getUser', args, (draft) => {
+                        if (draft.id === id) Object.assign(draft, changes);
+                    })
+                );
+            });
+
+            // getUsers -> cari user dengan id yang cocok di setiap list yang ter-cache
+            userAPI.util.selectCachedArgsForQuery(state, 'getUsers').forEach((args) => {
+                dispatch(
+                    userAPI.util.updateQueryData('getUsers', args, (draft) => {
+                        const user = draft.find((u) => u.id === id);
+                        if (user) Object.assign(user, changes);
+                    })
+                );
+            });
+        };

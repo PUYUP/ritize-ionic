@@ -6,6 +6,7 @@ import { notesAPI } from './services/notes'
 import { digestAPI } from './services/digest'
 import { digestVisibleThinkingAPI } from './services/digest.visible.thinking'
 import { learningSessionAPI } from './services/learning.session'
+import { chatAPI } from './services/chat'
 
 export const store = configureStore({
     reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
         [digestAPI.reducerPath]: digestAPI.reducer,
         [digestVisibleThinkingAPI.reducerPath]: digestVisibleThinkingAPI.reducer,
         [learningSessionAPI.reducerPath]: learningSessionAPI.reducer,
+        [chatAPI.reducerPath]: chatAPI.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(
@@ -26,6 +28,7 @@ export const store = configureStore({
             digestAPI.middleware,
             digestVisibleThinkingAPI.middleware,
             learningSessionAPI.middleware,
+            chatAPI.middleware,
         ),
 })
 

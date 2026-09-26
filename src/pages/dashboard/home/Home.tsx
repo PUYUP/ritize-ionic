@@ -13,6 +13,7 @@ import LearnGraph from '../../../components/learn-graph/LearnGraph';
 import LearnStats from '../../../components/learn-stats/LearnStats';
 import { useGetSessionDurationSummaryQuery } from '../../../services/learning.session';
 import { useCurrentWeekRange } from '../../../hooks/useCurrentWeekRange';
+import { generateId } from 'ai';
 
 const HomePage: React.FC = () => {
     const ionRouter = useIonRouter();
@@ -56,7 +57,10 @@ const HomePage: React.FC = () => {
         }
     }
 
-    console.log(user);
+    const newChatHandler = async () => {
+        const newId = generateId();
+        ionRouter.push(`/dashboard/chatbot/c/${newId}`, 'forward', 'push');
+    };
 
     return (
         <IonPage>
@@ -201,7 +205,7 @@ const HomePage: React.FC = () => {
                         shape="round"
                         mode='md'
                         className='flex items-center gap-2'
-                        routerLink={'/dashboard/chatbot'}
+                        onClick={newChatHandler}
                         style={{
                             'minHeight': '44px',
                             '--padding-start': '18px',

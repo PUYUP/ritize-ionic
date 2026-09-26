@@ -109,6 +109,10 @@ l.message-box i {
     animation-delay: -0.16s;
 }
 
+ion-content.chat-history::part(scroll) {
+    padding-top: 0 !important;
+}
+
 @keyframes typing-bounce {
 
     0%,

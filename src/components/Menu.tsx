@@ -38,12 +38,12 @@ const appPages: AppPage[] = [
         iosIcon: schoolOutline,
         mdIcon: schoolOutline
     },
-    {
-        title: 'Notes Chatbot',
-        url: '/dashboard/chatbot',
-        iosIcon: medicalOutline,
-        mdIcon: medicalOutline,
-    },
+    // {
+    //     title: 'Chat w/ Note',
+    //     url: '/dashboard/chatbot',
+    //     iosIcon: medicalOutline,
+    //     mdIcon: medicalOutline,
+    // },
     {
         title: 'Delete Account',
         url: '/dashboard/account-deletion',

@@ -34,5 +34,6 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/digests", element: <DigestsPage /> },
     { path: "/dashboard/account-deletion", element: <AccountDeletionPage /> },
     { path: "/dashboard/chatbot", element: <ChatbotPage /> },
+    { path: "/dashboard/chatbot/c/:conversationId", element: <ChatbotPage /> },
     { path: "/dashboard/editor/session", element: <SessionEditorPage /> },
 ];

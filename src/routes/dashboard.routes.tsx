@@ -16,6 +16,7 @@ import SessionEditorPage from "../pages/dashboard/editor/session/Page";
 import SessionsPage from "../pages/dashboard/workspace/sessions/Page";
 import SessionDetailPage from "../pages/dashboard/workspace/sessions/detail/Page";
 import CalendarPage from "../pages/dashboard/calendar/Page";
+import ProfilePage from "../pages/dashboard/profile/Profile";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -38,4 +39,5 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/chatbot/c/:conversationId", element: <ChatbotPage /> },
     { path: "/dashboard/editor/session", element: <SessionEditorPage /> },
     { path: "/dashboard/calendar", element: <CalendarPage /> },
+    { path: "/dashboard/profile", element: <ProfilePage /> },
 ];

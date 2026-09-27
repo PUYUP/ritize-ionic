@@ -95,7 +95,7 @@ const HomePage: React.FC = () => {
                         </div>
 
                         <div className='flex items-center gap-2'>
-                            <IonButton shape="round" mode="md" color="medium" className='normal-button'>
+                            <IonButton shape="round" mode="md" color="medium" className='normal-button' routerLink={`/dashboard/profile`}>
                                 <IonIcon icon={personOutline} slot="icon-only" />
                             </IonButton>
 

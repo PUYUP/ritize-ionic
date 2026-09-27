@@ -1,6 +1,7 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getUser } from "../utils/authState";
 import { supabase } from "../lib/supabase";
+import { workspaceAPI } from './workspace';
 
 export type LearningSessionTypes = {
     readonly id: string;
@@ -50,7 +51,7 @@ type GetActiveLearningSessionsParams = Omit<GetLearningSessionsByWorkspaceIdPara
 export const learningSessionAPI = createApi({
     reducerPath: 'learningSessionAPI',
     baseQuery: fakeBaseQuery<{ message: string }>(),
-    tagTypes: ['LearningSession'],
+    tagTypes: ['LearningSession', 'Workspace'],
     endpoints: (builder) => ({
         // ...
         // create session
@@ -190,6 +191,32 @@ export const learningSessionAPI = createApi({
                             (draft) => {
                                 const item = draft.results.find((s) => s.id === id);
                                 if (item) Object.assign(item, data);
+                            }
+                        )
+                    );
+
+                    dispatch(
+                        workspaceAPI.util.updateQueryData(
+                            'getAllWorkspaces',
+                            { "from": 0, "to": 10 },
+                            (draft) => {
+                                const wsIndex = draft.findIndex((s) => s.id === data.workspace_id);
+                                if (data.status === 'completed') {
+                                    draft[wsIndex].sessions = draft[wsIndex].sessions?.filter((s) => s.id !== id);
+                                }
+                            }
+                        )
+                    );
+
+                    dispatch(
+                        workspaceAPI.util.updateQueryData(
+                            'getAllWorkspaces',
+                            { "from": 0, "to": 24 },
+                            (draft) => {
+                                const wsIndex = draft.findIndex((s) => s.id === data.workspace_id);
+                                if (data.status === 'completed') {
+                                    draft[wsIndex].sessions = draft[wsIndex].sessions?.filter((s) => s.id !== id);
+                                }
                             }
                         )
                     );

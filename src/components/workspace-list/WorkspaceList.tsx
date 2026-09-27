@@ -113,6 +113,9 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                                         '--background': '#ede5c3',
                                         '--border-width': '1px',
                                         '--border-radius': '0.75rem',
+                                        '--min-height': '32px',
+                                        '--padding-start': '12px',
+                                        '--inner-padding-end': '12px',
                                     }}
                                 >
                                     <IonLabel>

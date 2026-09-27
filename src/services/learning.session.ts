@@ -27,8 +27,11 @@ export type SessionDurationByDay = {
 
 export type SessionDurationSummary = {
     total_durations: number;
+    total_sessions: number;
     total_pages: number;
     days: SessionDurationByDay[];
+    total_durations_ranged: number;
+    total_sessions_ranged: number;
 };
 
 export type GetLearningSessionsByWorkspaceIdParams = {
@@ -432,8 +435,19 @@ export const learningSessionAPI = createApi({
 
                 const days = data?.days ?? [];
                 const total_pages = days.reduce((acc: any, day: any) => acc + (day.pages_sum ?? 0), 0);
+                const total_durations_ranged = days.reduce((acc: any, day: any) => acc + (day.duration_seconds_sum ?? 0), 0);
+                const total_sessions_ranged = days.reduce((acc: any, day: any) => acc + (day.sessions_count ?? 0), 0);
 
-                return { data: { total_durations: data.total_durations, total_pages, days } };
+                return {
+                    data: {
+                        total_durations: data.total_durations,
+                        total_durations_ranged: total_durations_ranged,
+                        total_sessions: data.total_sessions,
+                        total_sessions_ranged: total_sessions_ranged,
+                        total_pages,
+                        days
+                    }
+                };
             },
         }),
     }),

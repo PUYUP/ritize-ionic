@@ -11,6 +11,49 @@ type LearnGraphTypes = {
     durationSeconds: number;
     startedAt: string;
     notesCount: number;
+    backgroundColor: string;
+    beltBackgroundColor: string;
+}
+
+// Abu-abu → hijau → orange → merah, versi soft (mirip alert background)
+const COLOR_STOPS: [number, number, number][] = [
+    [138, 145, 151], // abu-abu  #8a9197
+    [83, 184, 104],  // hijau     #53b868
+    [255, 173, 51],  // orange    #ffad33
+    [227, 93, 105],  // merah     #e35d69
+];
+
+const COLOR_STOPS_GRAY: [number, number, number][] = [
+    [108, 117, 125], // abu-abu   #6c757d
+    [40, 167, 69],   // hijau     #28a745
+    [255, 152, 0],   // orange    #ff9800
+    [220, 53, 69],   // merah     #dc3545
+];
+
+function getColorBySisaKamar(value: number, min: number, max: number): string {
+    const t = Math.min(1, Math.max(0, (value - min) / (max - min || 1)));
+    const segCount = COLOR_STOPS.length - 1;
+    const seg = Math.min(segCount - 1, Math.floor(t * segCount));
+    const segT = t * segCount - seg;
+
+    const [r1, g1, b1] = COLOR_STOPS[seg];
+    const [r2, g2, b2] = COLOR_STOPS[seg + 1];
+    const lerp = (a: number, b: number) => Math.round(a + (b - a) * segT);
+
+    return `rgb(${lerp(r1, r2)}, ${lerp(g1, g2)}, ${lerp(b1, b2)})`;
+}
+
+function getColorBySisaKamar_GRAY(value: number, min: number, max: number): string {
+    const t = Math.min(1, Math.max(0, (value - min) / (max - min || 1)));
+    const segCount = COLOR_STOPS_GRAY.length - 1;
+    const seg = Math.min(segCount - 1, Math.floor(t * segCount));
+    const segT = t * segCount - seg;
+
+    const [r1, g1, b1] = COLOR_STOPS_GRAY[seg];
+    const [r2, g2, b2] = COLOR_STOPS_GRAY[seg + 1];
+    const lerp = (a: number, b: number) => Math.round(a + (b - a) * segT);
+
+    return `rgb(${lerp(r1, r2)}, ${lerp(g1, g2)}, ${lerp(b1, b2)})`;
 }
 
 const LearnGraph: React.FC<Props> = ({ days }) => {
@@ -20,57 +63,73 @@ const LearnGraph: React.FC<Props> = ({ days }) => {
             durationSeconds: 4050,
             startedAt: '2026-01-01T09:00:00',
             notesCount: 1,
+            backgroundColor: '#e5e5e5',
+            beltBackgroundColor: '#a1a1a1',
         },
         {
             durationSeconds: 3120,
             startedAt: '2026-01-03T14:15:00',
             notesCount: 3,
+            backgroundColor: '#e5e5e5',
+            beltBackgroundColor: '#a1a1a1',
         },
         {
             durationSeconds: 0,
             startedAt: '2026-01-07T08:30:00',
             notesCount: 0,
+            backgroundColor: '#e5e5e5',
+            beltBackgroundColor: '#a1a1a1',
         },
         {
             durationSeconds: 2460,
             startedAt: '2026-01-12T19:00:00',
             notesCount: 12,
+            backgroundColor: '#e5e5e5',
+            beltBackgroundColor: '#a1a1a1',
         },
         {
             durationSeconds: 6540,
             startedAt: '2026-01-18T10:20:00',
             notesCount: 7,
+            backgroundColor: '#e5e5e5',
+            beltBackgroundColor: '#a1a1a1',
         },
         {
             durationSeconds: 3780,
             startedAt: '2026-01-24T15:30:00',
             notesCount: 4,
+            backgroundColor: '#e5e5e5',
+            beltBackgroundColor: '#a1a1a1',
         },
         {
             durationSeconds: 0,
             startedAt: '2026-01-30T20:00:00',
             notesCount: 0,
+            backgroundColor: '#e5e5e5',
+            beltBackgroundColor: '#a1a1a1',
         },
     ];
 
     // update with days
     if (days.length > 0) {
-        learnSamples = days.map(day => ({
-            durationSeconds: day.duration_seconds_sum,
-            startedAt: day.session_date,
-            notesCount: day.pages_sum,
-        }));
+        learnSamples = days.map(day => {
+            const nilai = days.map(e => e.duration_seconds_sum);
+            const min = Math.min(...nilai);
+            const max = Math.max(...nilai);
+
+            return {
+                durationSeconds: day.duration_seconds_sum,
+                startedAt: day.session_date,
+                notesCount: day.pages_sum,
+                backgroundColor: getColorBySisaKamar(day.duration_seconds_sum, min, max),
+                beltBackgroundColor: getColorBySisaKamar_GRAY(day.duration_seconds_sum, min, max),
+            }
+        });
     }
 
     // Bar tertinggi (100%) = sample dengan durasi terpanjang.
     // Setiap bar lain dihitung sebagai persentase relatif terhadap durasi maksimum itu.
     const maxDurationSeconds = Math.max(...learnSamples.map(s => s.durationSeconds));
-
-    const formatDuration = (seconds: number) => {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.round((seconds % 3600) / 60);
-        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-    };
 
     return (
         <div className="ion-padding-start ion-padding-end">
@@ -100,7 +159,10 @@ const LearnGraph: React.FC<Props> = ({ days }) => {
 
                                     <div
                                         className={`w-full rounded-t-4xl relative ${item.durationSeconds > 60 ? 'bg-neutral-600' : 'bg-neutral-200'}`}
-                                        style={{ height: `calc(${percentage}% + ${percentage > 0 ? '48px' : '32px'})` }}
+                                        style={{
+                                            height: `calc(${percentage}% + ${percentage > 0 ? '48px' : '32px'})`,
+                                            backgroundColor: `${item.durationSeconds > 60 ? item.backgroundColor : '#e5e5e5'}`
+                                        }}
                                     >
                                         <div className={`text-xs text-center pt-3 albert-font ${item.durationSeconds > 60 ? 'text-white' : 'text-neutral-600'}`}>
                                             {percentage.toFixed(0)}%
@@ -129,7 +191,11 @@ const LearnGraph: React.FC<Props> = ({ days }) => {
                         return (
                             <div key={item.startedAt ?? index} className="flex flex-col items-center h-full w-12">
                                 <div className='flex flex-col items-center justify-center w-full'>
-                                    <div className={`pb-0.5 w-full oswald-font text-sm ion-text-center flex justify-center gap-0.5 rounded-b-lg ${item.durationSeconds > 60 ? 'bg-neutral-800' : 'bg-neutral-400'}`}>
+                                    <div
+                                        style={{
+                                            backgroundColor: `${item.durationSeconds > 60 ? item.beltBackgroundColor : '#a1a1a1'}`
+                                        }}
+                                        className={`pb-0.5 w-full oswald-font text-sm ion-text-center flex justify-center gap-0.5 rounded-b-lg`}>
                                         <IonText className='text-white font-normal'>
                                             {format(item.startedAt, 'cccccc')}
                                         </IonText>

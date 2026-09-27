@@ -153,7 +153,7 @@ const SessionItem: React.FC<{
                                                 <IonIcon icon={textOutline} className={item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88]' : 'text-neutral-500'} />
                                             </div>
 
-                                            <IonText className={`oswald-font text-xl font-semibold pb-0.5 ${item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88]' : 'text-neutral-400'}`}>
+                                            <IonText className={`oswald-font text-xl font-normal pb-0.5 ${item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88]' : 'text-neutral-400'}`}>
                                                 {item.pages_text?.length ?? 0}
                                             </IonText>
                                         </div>
@@ -165,7 +165,7 @@ const SessionItem: React.FC<{
                                                 <IonIcon icon={shapesOutline} className={item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315]' : 'text-neutral-500'} />
                                             </div>
 
-                                            <IonText className={`oswald-font text-xl font-semibold pb-0.5 ${item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315]' : 'text-neutral-400'}`}>
+                                            <IonText className={`oswald-font text-xl font-normal pb-0.5 ${item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315]' : 'text-neutral-400'}`}>
                                                 {item.pages_canvas?.length ?? 0}
                                             </IonText>
                                         </div>
@@ -177,7 +177,7 @@ const SessionItem: React.FC<{
                                                 <IonIcon icon={imageOutline} className={item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9]' : 'text-neutral-500'} />
                                             </div>
 
-                                            <IonText className={`oswald-font text-xl font-semibold pb-0.5 ${item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9]' : 'text-neutral-400'}`}>
+                                            <IonText className={`oswald-font text-xl font-normal pb-0.5 ${item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9]' : 'text-neutral-400'}`}>
                                                 {item.pages_file?.length ?? 0}
                                             </IonText>
                                         </div>

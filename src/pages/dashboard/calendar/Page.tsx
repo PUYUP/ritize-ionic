@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/react/daygrid';
 import themePlugin from "@fullcalendar/react/themes/monarch";
 import '@fullcalendar/react/themes/monarch/palettes/purple.css';
 import '@fullcalendar/react/skeleton.css';
-import { chevronBack, chevronForward, documentTextOutline } from 'ionicons/icons';
+import { chevronBack, chevronForward } from 'ionicons/icons';
 import { addDays, format, intervalToDuration } from 'date-fns';
 import { useCurrentMonthRange } from '../../../hooks/useCurrentMonthRange';
 import { useLazyGetSessionDurationSummaryQuery } from '../../../services/learning.session';
@@ -36,9 +36,14 @@ const CalendarPage: React.FC = () => {
     const calendarRef = useRef(null);
     const controller = useCalendarController();
     const initialRange = useCurrentMonthRange();
-    const [dateRange, setDateRange] = useState(initialRange);
     const [getSessions] = useLazyGetSessionDurationSummaryQuery();
     const [days, setDays] = useState<any[]>([]);
+    const [statsRanged, setStatsRanged] = useState<{ total_durations: string, total_durations_ranged: string, total_sessions_ranged: number, total_pages: number }>({
+        total_durations: '0.0',
+        total_durations_ranged: '0.0',
+        total_sessions_ranged: 0,
+        total_pages: 0
+    });
 
     const handleDatesSet = useCallback(async (arg: any) => {
         // view.currentStart & currentEnd = rentang bulan aktif (tanpa padding hari dari bulan sebelah)
@@ -47,6 +52,34 @@ const CalendarPage: React.FC = () => {
 
         const { data: sessionData } = await getSessions({ timezone: initialRange.timezone, start_date: startDate, end_date: endDate });
         setDays(sessionData?.days ?? []);
+
+        // set ranged stats
+        if (sessionData) {
+            const duration = intervalToDuration({
+                start: 0,
+                end: (sessionData.total_durations ?? 0) * 1000 // intervalToDuration expects milliseconds
+            });
+
+            // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+            const totalHours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+            const minutes = duration.minutes ?? 0;
+
+            const durationRanged = intervalToDuration({
+                start: 0,
+                end: (sessionData.total_durations_ranged ?? 0) * 1000 // intervalToDuration expects milliseconds
+            });
+
+            // Kalikan hari dengan 24 dan tambahkan ke sisa jam
+            const totalHoursRanged = (durationRanged.days ?? 0) * 24 + (durationRanged.hours ?? 0);
+            const minutesRanged = durationRanged.minutes ?? 0;
+
+            setStatsRanged({
+                total_durations: `${totalHours}.${minutes}`,
+                total_durations_ranged: `${totalHoursRanged}.${minutesRanged}`,
+                total_sessions_ranged: sessionData.total_sessions_ranged,
+                total_pages: sessionData.total_pages
+            });
+        }
     }, []);
 
     const styledEvents = useMemo(() => {
@@ -168,10 +201,37 @@ const CalendarPage: React.FC = () => {
 
             <IonContent color="light" className='ion-padding'>
                 <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
+                    {/* Ranged Stats */}
+
+                    <div className="mb-4 flex gap-6">
+                        <div className="text-left mb-2 flex flex-col">
+                            <IonText className="!font-normal text-sm albert-font text-neutral-500">Studied times</IonText>
+                            <div className='flex items-end'>
+                                <IonText className="text-xl font-bold oswald-font text-neutral-600">{statsRanged.total_durations_ranged}</IonText>
+                                <IonText className="text-md font-normal oswald-font text-neutral-500">h</IonText>
+                            </div>
+                        </div>
+
+                        <div className="text-left mb-2 flex flex-col">
+                            <IonText className="!font-normal text-sm albert-font text-neutral-500">Sessions</IonText>
+                            <div className='flex items-end'>
+                                <IonText className="text-xl font-bold oswald-font text-neutral-600">{statsRanged.total_sessions_ranged}</IonText>
+                                <IonText className="text-md font-normal oswald-font text-neutral-500">total</IonText>
+                            </div>
+                        </div>
+
+                        <div className="text-left mb-2 flex flex-col">
+                            <IonText className="!font-normal text-sm albert-font text-neutral-500">Notes</IonText>
+                            <div className='flex items-end'>
+                                <IonText className="text-xl font-bold oswald-font text-neutral-600">{statsRanged.total_pages}</IonText>
+                                <IonText className="text-md font-normal oswald-font text-neutral-500">pages</IonText>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className='block calendar-ui pt-2 sm:pt-6 lg:pt-14'>
                         <FullCalendar
                             ref={calendarRef}
-                            //key={`${dateRange.start_date}-${dateRange.end_date}`}
                             controller={controller}
                             plugins={[themePlugin, dayGridPlugin]}
                             initialView="dayGridMonth"
@@ -198,21 +258,30 @@ const CalendarPage: React.FC = () => {
                                             <div className="flex justify-center pt-1 pb-1">
                                                 <div className='w-4 h-4 sm:h-6 sm:w-6 shadow flex items-center justify-center rounded-full oswald-font text-[11px] sm:text-sm bg-white'>{dayNumber}</div>
                                             </div>
-                                            <div className="oswald-font text-center flex items-center justify-center gap-0.5 pb-1 text-sm sm:text-base">
-                                                <span>{extProps?.duration ?? 0}</span>
-                                                <span className="text-neutral-500">h</span>
+
+                                            <div className="oswald-font text-center flex items-center justify-center gap-0.5 pb-1 h-6 text-sm sm:text-base">
+                                                {!arg.isFuture ? (
+                                                    <>
+                                                        <span>{extProps?.duration ?? 0}</span>
+                                                        <span className="text-neutral-500">h</span>
+                                                    </>
+                                                ) : null}
                                             </div>
                                         </div>
 
-                                        <div className="shadow-md bg-linear-to-t from-neutral-50 to-transparent rounded-xl py-1.5">
-                                            <div className="flex items-center justify-center text-center w-full text-[11px] sm:text-sm lowercase !font-normal albert-font text-neutral-400">
-                                                Notes
-                                            </div>
-                                            <div className="flex flex-row justify-center items-center w-full">
-                                                <span className="text-sm font-semibold block text-neutral-500 leading-3">
-                                                    {extProps?.totalNotes ?? 0}
-                                                </span>
-                                            </div>
+                                        <div className={`shadow-md ${arg.isFuture ? 'hazard-stripes' : 'bg-linear-to-t from-neutral-50 to-transparent'} rounded-xl h-8 flex items-center justify-center mt-2`}>
+                                            {!arg.isFuture ? (
+                                                <div className='block'>
+                                                    <div className="flex items-center justify-center text-center w-full text-[11px] sm:text-sm lowercase !font-normal albert-font text-neutral-400 leading-3">
+                                                        Notes
+                                                    </div>
+                                                    <div className="flex flex-row justify-center items-center w-full">
+                                                        <span className="text-sm font-semibold block text-neutral-500 leading-3">
+                                                            {extProps?.totalNotes ?? 0}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
                                 );

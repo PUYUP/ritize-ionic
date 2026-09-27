@@ -22,6 +22,7 @@ export type WorkspaceTypes = {
     today_duration_seconds?: number;
     today_session_count?: number;
     total_session_count?: number;
+    sessions?: any[];
 }
 
 export type MemberTypes = {
@@ -160,8 +161,11 @@ export const workspaceAPI = createApi({
                     .select(`
                         *
                         , members:workspace_members!inner(*)
+                        , sessions:workspace_learning_sessions(*)
                     `)
                     .in('members.user_id', [user.id])
+                    .eq('sessions.user_id', user.id)
+                    .neq('sessions.status', 'completed')
                     .order('last_note_update', { ascending: false })
                     .range(from, to);
 

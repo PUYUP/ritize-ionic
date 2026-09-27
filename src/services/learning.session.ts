@@ -45,6 +45,8 @@ export type PaginatedLearningSessionsResponse = {
     count: number;
 }
 
+type GetActiveLearningSessionsParams = Omit<GetLearningSessionsByWorkspaceIdParams, 'workspace_id'>;
+
 export const learningSessionAPI = createApi({
     reducerPath: 'learningSessionAPI',
     baseQuery: fakeBaseQuery<{ message: string }>(),
@@ -410,6 +412,105 @@ export const learningSessionAPI = createApi({
                     ],
         }),
 
+        // Get active learning sessions by user id (paginated)
+        // Filter: user_id saja, TIDAK ada workspace_id.
+        // 'Active' = semua sesi yang status-nya BUKAN 'completed' (draft, in_progress, dst ikut terambil semua).
+        getActiveLearningSessionsByUserId: builder.query<PaginatedLearningSessionsResponse, GetActiveLearningSessionsParams>({
+            queryFn: async ({ page = 1, pageSize = 20 }) => {
+                const user = await getUser();
+                if (!user?.id) return { error: { message: "[Get Active Learning Session] User not found" } };
+
+                const from = (page - 1) * pageSize;
+                const to = from + pageSize - 1;
+
+                let query = supabase
+                    .from("workspace_learning_sessions")
+                    .select(`
+                *
+                , user:user_id!inner(id, name)
+                , workspace:workspace_id!inner(title, scope, workspace_members!inner(user_id))
+                , status
+                , pages_text:workspace_notes_pages(
+                    id
+                    , note:workspace_note_id!inner(
+                        content_type
+                    )
+                )
+                , pages_canvas:workspace_notes_pages(
+                    id
+                    , note:workspace_note_id!inner(
+                        content_type
+                    )
+                )
+                , pages_file:workspace_notes_pages(
+                    id
+                    , note:workspace_note_id!inner(
+                        content_type
+                    )
+                )
+            `, { count: "exact" })
+                    .eq("pages_text.note.content_type", "text")
+                    .eq("pages_canvas.note.content_type", "canvas")
+                    .eq("pages_file.note.content_type", "file")
+                    .eq('user_id', user.id)
+                    .neq('status', 'completed');
+
+                let { data, error, count } = await query
+                    .order("created_at", { ascending: false })
+                    .range(from, to);
+
+                if (error) {
+                    // PGRST103 / HTTP 416 berarti range halaman habis (sudah halaman terakhir)
+                    // Kembalikan array kosong agar cache RTK Query tetap berstatus 'fulfilled'
+                    if (error.code === 'PGRST103' || error.message.includes("range")) {
+                        return { data: { results: [], count: count ?? 0 } };
+                    }
+                    return { error: { message: error.message } };
+                }
+
+                return { data: { results: data ?? [], count: count ?? 0 } };
+            },
+
+            // --- TAMBAHAN UNTUK PAGINASI (APPEND) ---
+
+            // 1. Tidak ada workspace_id sebagai pembeda cache, jadi cukup pakai
+            //    endpointName saja supaya semua page untuk user ini tergabung
+            //    di satu key (page tetap diabaikan dari key, sama seperti versi workspace).
+            serializeQueryArgs: ({ endpointName }) => {
+                return endpointName;
+            },
+
+            // 2. Gabungkan data baru ke data lama
+            merge: (currentCache, newItems, { arg }) => {
+                if (arg.page === 1) {
+                    // Jika memuat ulang dari halaman 1, timpa / reset cache lama
+                    currentCache.results = newItems.results;
+                    currentCache.count = newItems.count;
+                } else {
+                    // Jika halaman 2 dan seterusnya, APPEND data ke array 'results'
+                    currentCache.results.push(...newItems.results);
+                    currentCache.count = newItems.count; // Update count terbaru
+                }
+            },
+
+            // 3. Wajibkan refetch setiap kali nomor 'page' berubah
+            forceRefetch({ currentArg, previousArg }) {
+                return currentArg?.page !== previousArg?.page;
+            },
+
+            // ----------------------------------------
+
+            providesTags: (result) =>
+                result
+                    ? [
+                        ...result.results.map(({ id }) => ({ type: 'LearningSession' as const, id })),
+                        { type: 'LearningSession' as const, id: 'LIST' },
+                    ]
+                    : [
+                        { type: 'LearningSession' as const, id: 'LIST' }
+                    ],
+        }),
+
         // ...
         // sessions stats
         // ...
@@ -463,4 +564,5 @@ export const {
     useDeleteSessionByIdMutation,
     useLazyGetSessionDurationSummaryQuery,
     useGetSessionDurationSummaryQuery,
+    useGetActiveLearningSessionsByUserIdQuery,
 } = learningSessionAPI;

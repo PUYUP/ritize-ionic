@@ -2,7 +2,7 @@ import { IonButton, IonButtons, IonContent, IonFab, IonFooter, IonHeader, IonIco
 import { useParams } from 'react-router';
 import './Home.css';
 import WorkspaceList from '../../../components/workspace-list/WorkspaceList';
-import { add, arrowForwardOutline, bookmarkOutline, bookOutline, calendarOutline, chatboxEllipsesSharp, diamondSharp, menuOutline, personCircleOutline, personOutline } from 'ionicons/icons';
+import { add, arrowForwardOutline, bookmarkOutline, bookOutline, calendarOutline, chatboxEllipsesSharp, diamondSharp, menuOutline, personCircleOutline, personOutline, timerOutline } from 'ionicons/icons';
 import { getGreeting } from '../../../utils/dayGreeting';
 import WorkspaceStats from '../../../components/workspace-stats/WorkspaceStats';
 import { useEffect, useState } from 'react';
@@ -15,6 +15,7 @@ import { useGetSessionDurationSummaryQuery } from '../../../services/learning.se
 import { useCurrentWeekRange } from '../../../hooks/useCurrentWeekRange';
 import { generateId } from 'ai';
 import { useGetCurrentUserQuery } from '../../../services/user';
+import LearnActiveList from '../../../components/learn-active/LearnActive';
 
 const HomePage: React.FC = () => {
     const ionRouter = useIonRouter();
@@ -157,6 +158,27 @@ const HomePage: React.FC = () => {
                         material={{ todayCount: 1, total: 221 }}
                         digest={{ todayCount: 3, total: 62 }}
                     />
+                </div> */}
+
+                {/* <div className='block pt-4 md:pt-6 ion-padding-bottom ion-padding-start ion-padding-end'>
+                    <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
+                        <div className='block mb-3 text-lg flex items-center justify-between'>
+                            <div className='shadow-md bg-white px-2 py-1 rounded-2xl leading-3 flex items-center gap-1.5'>
+                                <IonIcon icon={timerOutline} />
+                                <IonText className='text-sm albert-font text-neutral-600'>
+                                    Active Sessions
+                                </IonText>
+                            </div>
+
+                            <div className='ml-auto'>
+                                <IonButton fill="solid" color={'warning'} shape='round' aria-label='Add session' routerLink={'/dashboard/editor/session'}>
+                                    <IonIcon icon={add} slot='icon-only' className='text-xl' />
+                                </IonButton>
+                            </div>
+                        </div>
+
+                        <LearnActiveList />
+                    </div>
                 </div> */}
 
                 <div className='block pt-4 md:pt-6 ion-padding-bottom ion-padding-start ion-padding-end'>

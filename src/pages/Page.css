@@ -2,7 +2,12 @@
     animation: float 3s ease-in-out infinite;
 }
 
+.cta-button {
+    min-height: 44px;
+}
+
 @keyframes float {
+
     0%,
     100% {
         transform: translateY(0);

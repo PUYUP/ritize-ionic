@@ -125,6 +125,18 @@ const LearnGraph: React.FC<Props> = ({ days }) => {
                 beltBackgroundColor: getColorBySisaKamar_GRAY(day.duration_seconds_sum, min, max),
             }
         });
+    } else {
+        learnSamples = learnSamples.map(day => {
+            const nilai = learnSamples.map(e => e.durationSeconds);
+            const min = Math.min(...nilai);
+            const max = Math.max(...nilai);
+
+            return {
+                ...day,
+                backgroundColor: getColorBySisaKamar(day.durationSeconds, min, max),
+                beltBackgroundColor: getColorBySisaKamar_GRAY(day.durationSeconds, min, max),
+            }
+        });
     }
 
     // Bar tertinggi (100%) = sample dengan durasi terpanjang.
@@ -165,7 +177,7 @@ const LearnGraph: React.FC<Props> = ({ days }) => {
                                         }}
                                     >
                                         <div className={`text-xs text-center pt-3 albert-font ${item.durationSeconds > 60 ? 'text-white' : 'text-neutral-600'}`}>
-                                            {percentage.toFixed(0)}%
+                                            {percentage > 0 ? percentage.toFixed(0) : '0'}%
                                         </div>
 
                                         {item.durationSeconds > 60 && (

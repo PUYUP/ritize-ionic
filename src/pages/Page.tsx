@@ -156,7 +156,7 @@ const Page: React.FC = () => {
 
           <div className='block mt-auto'>
             <h3 className='block ion-text-center !mb-2'>
-              <IonText className='text-sm uppercase text-neutral-600 tracking-widest'>
+              <IonText className='text-sm uppercase text-neutral-600 tracking-widest font-normal oswald-font'>
                 Welcome to Ritize
               </IonText>
             </h3>
@@ -164,7 +164,7 @@ const Page: React.FC = () => {
             <h1 className='block ion-text-center !mt-0 px-3'>
               <IonText className='text-2xl font-bold'>
                 {/* Exchange lecture notes to assist studies every day. */}
-                NPower up students notes, assist studies <strong className='text-[#ec8d39] font-bold'>while you sleep.</strong>
+                Power up students notes, assist studies <strong className='text-[#ec8d39] font-bold'>while you sleep.</strong>
               </IonText>
             </h1>
 

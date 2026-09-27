@@ -207,7 +207,7 @@ const CalendarPage: React.FC = () => {
                         <div className="text-left mb-2 flex flex-col">
                             <IonText className="!font-normal text-sm albert-font text-neutral-500">Studied times</IonText>
                             <div className='flex items-end'>
-                                <IonText className="text-xl font-bold oswald-font text-neutral-600">{statsRanged.total_durations_ranged}</IonText>
+                                <IonText className="text-xl font-bold oswald-font text-neutral-700 text-shadow">{statsRanged.total_durations_ranged}</IonText>
                                 <IonText className="text-md font-normal oswald-font text-neutral-500">h</IonText>
                             </div>
                         </div>
@@ -215,7 +215,7 @@ const CalendarPage: React.FC = () => {
                         <div className="text-left mb-2 flex flex-col">
                             <IonText className="!font-normal text-sm albert-font text-neutral-500">Sessions</IonText>
                             <div className='flex items-end'>
-                                <IonText className="text-xl font-bold oswald-font text-neutral-600">{statsRanged.total_sessions_ranged}</IonText>
+                                <IonText className="text-xl font-bold oswald-font text-neutral-700 text-shadow">{statsRanged.total_sessions_ranged}</IonText>
                                 <IonText className="text-md font-normal oswald-font text-neutral-500">total</IonText>
                             </div>
                         </div>
@@ -223,7 +223,7 @@ const CalendarPage: React.FC = () => {
                         <div className="text-left mb-2 flex flex-col">
                             <IonText className="!font-normal text-sm albert-font text-neutral-500">Notes</IonText>
                             <div className='flex items-end'>
-                                <IonText className="text-xl font-bold oswald-font text-neutral-600">{statsRanged.total_pages}</IonText>
+                                <IonText className="text-xl font-bold oswald-font text-neutral-700 text-shadow">{statsRanged.total_pages}</IonText>
                                 <IonText className="text-md font-normal oswald-font text-neutral-500">pages</IonText>
                             </div>
                         </div>

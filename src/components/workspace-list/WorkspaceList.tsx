@@ -66,8 +66,8 @@ const WorkspaceItem: React.FC<{ item: WorkspaceTypes; isLast: boolean }> = ({ it
                         <div className="block w-20 h-14 bg-white rounded-xl shadow-md flex items-center justify-center">
                             <div className="block w-full">
                                 <div className="flex items-end justify-center oswald-font">
-                                    <IonText className="text-lg font-semibold text-green-600">{totalHours}</IonText>
-                                    <IonText className="text-[14px] !font-normal text-green-500 pb-[1px]">.{minutes}h</IonText>
+                                    <IonText className="text-lg font-semibold text-neutral-700">{totalHours}</IonText>
+                                    <IonText className="text-[14px] !font-normal text-neutral-500 pb-[1px]">.{minutes}h</IonText>
                                 </div>
 
                                 <div className="text-xs line-clamp-1 w-full text-center">

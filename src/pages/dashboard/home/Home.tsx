@@ -98,7 +98,7 @@ const HomePage: React.FC = () => {
                                 <IonIcon icon={personOutline} slot="icon-only" />
                             </IonButton>
 
-                            <IonButton shape="round" mode="md" color="medium" className='normal-button'>
+                            <IonButton shape="round" mode="md" color="medium" className='normal-button' routerLink={`/dashboard/calendar`}>
                                 <IonIcon icon={calendarOutline} slot="icon-only" />
                             </IonButton>
                         </div>

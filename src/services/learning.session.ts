@@ -447,5 +447,6 @@ export const {
     useLazyGetLearningSessionByIdQuery,
     useUpdateSessionMutation,
     useDeleteSessionByIdMutation,
+    useLazyGetSessionDurationSummaryQuery,
     useGetSessionDurationSummaryQuery,
 } = learningSessionAPI;

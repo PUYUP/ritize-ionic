@@ -1,6 +1,6 @@
 import { IonButton, IonIcon, IonText } from "@ionic/react";
 import { intervalToDuration } from "date-fns";
-import { addOutline } from "ionicons/icons";
+import { addOutline, chevronForwardOutline } from "ionicons/icons";
 
 type Props = {
     durationSeconds?: number;
@@ -31,12 +31,25 @@ const LearnStats: React.FC<Props> = ({ durationSeconds = 0 }) => {
 
                         <div className="block">
                             <IonText className="text-5xl font-bold albert-font -tracking-[2px]">{totalHours}</IonText>
-                            <IonText className="text-base text-neutral-500 oswald-font font-light">.{minutes} hrs</IonText>
+                            <IonText className="text-xl text-neutral-500 oswald-font font-light">.{minutes} hrs</IonText>
                         </div>
                     </div>
                 </div>
 
-                <div className="ml-auto"></div>
+                <div className="ml-auto">
+                    <IonButton fill="clear" mode='ios' routerLink={"/dashboard/reward"}>
+                        <div className="flex">
+                            <div className="flex flex-col">
+                                <IonText className="text-sm text-neutral-400">Get token</IonText>
+                                <IonText className="text-left oswald-font text-2xl uppercase leading-4 font-bold text-purple-600 tracking-widest">Free</IonText>
+                            </div>
+
+                            <div className="flex items-end justify-center">
+                                <IonIcon icon={chevronForwardOutline} color="dark" className="text-lg relative top-0.5" />
+                            </div>
+                        </div>
+                    </IonButton>
+                </div>
             </div>
         </div>
     );

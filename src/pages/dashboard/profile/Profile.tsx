@@ -1,6 +1,8 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonPage, IonSpinner, IonText, IonTitle, IonToolbar } from "@ionic/react";
-import { useGetCurrentUserQuery } from "../../../services/user";
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonPage, IonSpinner, IonText, IonTitle, IonToolbar, useIonRouter } from "@ionic/react";
+import { useGetCurrentUserQuery, useUpdateUserMutation } from "../../../services/user";
 import { diamondSharp } from "ionicons/icons";
+import { Capacitor } from "@capacitor/core";
+import { useEffect } from "react";
 
 const ProfilePage: React.FC = () => {
     const { data: userData, isFetching: isUserDataFetching } = useGetCurrentUserQuery();
@@ -36,6 +38,8 @@ const ProfilePage: React.FC = () => {
         )
     }
 
+
+
     return (
         <IonPage>
             <IonHeader className="ion-no-border">
@@ -50,50 +54,35 @@ const ProfilePage: React.FC = () => {
             </IonHeader>
 
             <IonContent color={'light'} className="ion-padding">
-                <IonItem lines="full" style={{ '--background': 'transparent', '--padding-bottom': '10px', '--padding-top': '10px' }}>
-                    <IonLabel>
-                        <p>ID</p>
-                        <IonText className="text-neutral-600 font-semibold albert-font">{userData.id}</IonText>
-                    </IonLabel>
-                </IonItem>
+                <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
+                    <IonItem lines="full" style={{ '--background': 'transparent', '--padding-bottom': '10px', '--padding-top': '10px' }}>
+                        <IonLabel>
+                            <p>ID</p>
+                            <IonText className="text-neutral-600 font-semibold albert-font">{userData.id}</IonText>
+                        </IonLabel>
+                    </IonItem>
 
-                <IonItem lines="full" style={{ '--background': 'transparent', '--padding-bottom': '10px', '--padding-top': '10px' }}>
-                    <IonLabel>
-                        <p>Name</p>
-                        <IonText className="text-neutral-600 font-semibold albert-font">{userData.name}</IonText>
-                    </IonLabel>
-                </IonItem>
+                    <IonItem lines="full" style={{ '--background': 'transparent', '--padding-bottom': '10px', '--padding-top': '10px' }}>
+                        <IonLabel>
+                            <p>Name</p>
+                            <IonText className="text-neutral-600 font-semibold albert-font">{userData.name}</IonText>
+                        </IonLabel>
+                    </IonItem>
 
-                <IonItem lines="full" style={{ '--background': 'transparent', '--padding-bottom': '10px', '--padding-top': '10px' }}>
-                    <IonLabel>
-                        <p>Email</p>
-                        <IonText className="text-neutral-600 font-semibold albert-font">{userData.email}</IonText>
-                    </IonLabel>
-                </IonItem>
+                    <IonItem lines="full" style={{ '--background': 'transparent', '--padding-bottom': '10px', '--padding-top': '10px' }}>
+                        <IonLabel>
+                            <p>Email</p>
+                            <IonText className="text-neutral-600 font-semibold albert-font">{userData.email}</IonText>
+                        </IonLabel>
+                    </IonItem>
 
-                <IonItem lines="none" className="clear">
-                    <IonLabel>
-                        <p>Tokens balance</p>
-                        <IonText className="text-neutral-600 font-semibold albert-font">{userData.token_balance}</IonText>
-                    </IonLabel>
-
-                    <div slot="end">
-                        <IonButton
-                            shape="round"
-                            color="secondary"
-                            mode="ios"
-                            fill='solid'
-                            style={{
-                                'minHeight': '38px',
-                                '--padding-start': '14px',
-                                '--padding-end': '14px',
-                            }}
-                        >
-                            <IonIcon icon={diamondSharp} className="mr-1 mt-0.5" />
-                            <IonText>Get Free Tokens</IonText>
-                        </IonButton>
-                    </div>
-                </IonItem>
+                    <IonItem lines="none" className="clear">
+                        <IonLabel>
+                            <p>Tokens balance</p>
+                            <IonText className="text-neutral-600 font-semibold albert-font">{userData.token_balance}</IonText>
+                        </IonLabel>
+                    </IonItem>
+                </div>
             </IonContent>
         </IonPage>
     );

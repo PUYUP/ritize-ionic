@@ -282,6 +282,19 @@ const BoadingPage: React.FC = () => {
 
 												<div className='block'>
 													<IonButton
+														routerLink="/login"
+														routerDirection="root"
+														color={'primary'}
+														mode={'ios'}
+														shape='round'
+														className='items-center gap-3 -mt-6'
+														fill='clear'
+														size='small'
+													>
+														<IonIcon slot='start' icon={logoGoogle} />
+														<IonText className='ml-2 albert-font'>Login with Google</IonText>
+													</IonButton>
+													<IonButton
 														routerLink="/oauth-google"
 														routerDirection="root"
 														color={'primary'}

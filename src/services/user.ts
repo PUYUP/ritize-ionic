@@ -17,6 +17,11 @@ type User = {
     token_balance: number;
 };
 
+export type UpdateUserArgs = {
+    id: User['id'];
+    patch: Partial<Pick<User, 'name' | 'email' | 'token_balance'>>;
+};
+
 export const userAPI = createApi({
     reducerPath: 'userAPI',
     baseQuery: fakeBaseQuery<{ message: string }>(),
@@ -111,6 +116,42 @@ export const userAPI = createApi({
                     ]
                     : [{ type: 'User' as const, id: 'LIST' }],
         }),
+
+        // ...
+        // update user
+        // ...
+        updateUser: builder.mutation<User, UpdateUserArgs>({
+            queryFn: async ({ id, patch }) => {
+                if (!id) {
+                    return { error: { message: 'id must be provided' } };
+                }
+
+                // buang field undefined supaya tidak ikut terkirim
+                const cleanPatch = Object.fromEntries(
+                    Object.entries(patch).filter(([, v]) => v !== undefined)
+                );
+
+                if (Object.keys(cleanPatch).length === 0) {
+                    return { error: { message: 'nothing to update' } };
+                }
+
+                const { data, error } = await supabase
+                    .from('user')
+                    .update(cleanPatch)
+                    .eq('id', id)
+                    .select('id, email, name, token_balance')
+                    .maybeSingle();
+
+                if (error) return { error: { message: error.message } };
+                if (!data) return { error: { message: 'User not found or update not permitted' } };
+
+                return { data };
+            },
+            // invalidate tag per-id → getUser, getCurrentUser, dan getUsers
+            // yang memuat user ini akan otomatis refetch
+            invalidatesTags: (result, error, { id }) =>
+                error ? [] : [{ type: 'User', id }],
+        }),
     }),
 });
 
@@ -120,6 +161,7 @@ export const {
     useGetUsersQuery,
     useLazyGetUsersQuery,
     useGetCurrentUserQuery,
+    useUpdateUserMutation,
 } = userAPI;
 
 /**

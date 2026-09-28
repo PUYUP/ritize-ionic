@@ -17,6 +17,8 @@ import SessionsPage from "../pages/dashboard/workspace/sessions/Page";
 import SessionDetailPage from "../pages/dashboard/workspace/sessions/detail/Page";
 import CalendarPage from "../pages/dashboard/calendar/Page";
 import ProfilePage from "../pages/dashboard/profile/Profile";
+import TokenRewardSuccessPage from "../pages/dashboard/token-reward-success/TokenRewardSuccess";
+import TokenRewardPage from "../pages/dashboard/token-reward/TokenReward";
 
 export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard", element: <HomePage /> },
@@ -40,4 +42,6 @@ export const dashboardRoutes: RouteProps[] = [
     { path: "/dashboard/editor/session", element: <SessionEditorPage /> },
     { path: "/dashboard/calendar", element: <CalendarPage /> },
     { path: "/dashboard/profile", element: <ProfilePage /> },
+    { path: "/dashboard/reward", element: <TokenRewardPage /> },
+    { path: "/dashboard/reward-success", element: <TokenRewardSuccessPage /> },
 ];

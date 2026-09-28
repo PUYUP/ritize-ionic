@@ -127,7 +127,7 @@ const HomePage: React.FC = () => {
                         <LearnStats durationSeconds={sessionStats?.total_durations ?? 0} />
                     </div>
 
-                    <div className='block ion-padding-top !pt-14'>
+                    <div className='block ion-padding-top !pt-14 ion-padding-start ion-padding-end'>
                         <LearnGraph days={sessionStats?.days ?? []} />
                     </div>
                 </div>
@@ -208,8 +208,8 @@ const HomePage: React.FC = () => {
                                 <div className='ion-padding-start ion-padding-end'>
                                     <div className='flex flex-col items-center justify-center gap-4 bg-red-100 rounded-lg border border-red-200 ion-padding'>
                                         <IonText className='text-center text-base block'>
-                                            No workspaces found.
-                                            If you’re a university student, think workspace as a course.
+                                            No classes found.
+                                            Create your first class to get started.
                                         </IonText>
                                         <IonButton mode='ios' routerLink={'/dashboard/editor/workspace'} shape="round">Create Workspace</IonButton>
                                     </div>

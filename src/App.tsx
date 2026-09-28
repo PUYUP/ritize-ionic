@@ -1,5 +1,6 @@
 import { IonApp, IonRouterOutlet, IonSplitPane, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
+import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 import Menu from './components/Menu';
 
 /* Core CSS required for Ionic components to work properly */
@@ -31,9 +32,32 @@ import { mainRoutes } from './routes/main.routes';
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { Route, useLocation } from 'react-router'; // Tambahkan useLocation
 import ProtectedRoute from './routes/ProtectedRoute';
-import { AuthProvider } from './utils/authContext';
+import { AuthProvider, useAuth } from './utils/authContext';
+import { Capacitor } from '@capacitor/core';
+import { getUser } from './utils/authState';
+import { supabase } from './lib/supabase';
 
 setupIonicReact({ mode: "md", animated: false });
+
+const RouteWatcher: React.FC = () => {
+	const location = useLocation();
+
+	useEffect(() => {
+		console.log('Halaman berganti ke:', location.pathname);
+
+		// contoh: logout demo user setiap masuk ke '/'
+		if (location.pathname === '/') {
+			(async () => {
+				const user = await getUser();
+				if (user?.email === 'hellopuyup@gmail.com') {
+					await supabase.auth.signOut();
+				}
+			})();
+		}
+	}, [location.pathname]);
+
+	return null;
+};
 
 // Buat komponen layout terpisah agar bisa menggunakan useLocation
 const AppLayout: React.FC = () => {
@@ -95,6 +119,18 @@ const App: React.FC = () => {
 					mode: 'online',
 				}
 			});
+		})();
+
+		// revenuecat init
+		(async () => {
+			if (Capacitor.isNativePlatform()) {
+				const user = await getUser();
+				await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG }); // Enable to get debug logs
+				await Purchases.configure({
+					apiKey: "goog_LxigwsbWEExoyhCOZEAyaIcgjRq",
+					appUserID: user?.id ?? '',
+				});
+			}
 		})();
 	}, []);
 

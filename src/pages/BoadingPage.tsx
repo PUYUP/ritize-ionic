@@ -1,15 +1,17 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonImg, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSelect, IonSelectOption, IonText, IonTextarea, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
+import { IonActionSheet, IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonImg, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSelect, IonSelectOption, IonText, IonTextarea, IonToolbar, useIonRouter, useIonViewDidEnter, useIonViewWillEnter } from '@ionic/react';
 import './Page.css';
 import { useEffect, useRef, useState } from 'react';
 import Swiper from 'swiper';
 import { FreeMode, Pagination } from 'swiper/modules';
 import LearnGraph from '../components/learn-graph/LearnGraph';
 import { generateId } from 'ai';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Controller, SubmitHandler, useForm } from 'react-hook-form';
-import { arrowBackSharp, imagesOutline, logoGoogle, schoolOutline, shapesOutline, textOutline } from 'ionicons/icons';
+import { arrowBackSharp, closeOutline, imagesOutline, keyOutline, logoGoogle, mailOutline, schoolOutline, shapesOutline, textOutline } from 'ionicons/icons';
 import languages from '../utils/ISO-639-1-language.json';
 import { Preferences } from '@capacitor/preferences';
+import { getUser } from '../utils/authState';
+import { supabase } from '../lib/supabase';
 
 type Inputs = {
 	title: string
@@ -139,8 +141,11 @@ const BoadingPage: React.FC = () => {
 	const [activeIndex, setActiveIndex] = useState<number>(0);
 
 	const ionRouter = useIonRouter();
+	const location = useLocation();
 	const pagesSwiperElRef = useRef<HTMLDivElement>(null);
 	const pagesSwiperRef = useRef<Swiper | null>(null);
+
+	const [showLoginChoice, setShowLoginChoice] = useState(false);
 
 	// Initialize the pages Swiper once and clean it up on unmount.
 	useEffect(() => {
@@ -178,12 +183,24 @@ const BoadingPage: React.FC = () => {
 		};
 	}, []);
 
-	useIonViewDidEnter(() => {
-		setTimeout(() => {
-			if (slideIndex) {
-				pagesSwiperRef.current?.slideTo(Number(slideIndex), 300);
+	useIonViewWillEnter(() => {
+		(async () => {
+			const user = await getUser();
+			if (user) {
+				if (user.email === 'hellopuyup@gmail.com') {
+					await supabase.auth.signOut();
+					await Preferences.clear();
+				} else {
+					// redirect to the dashboard
+					ionRouter.push('/dashboard', 'root', 'replace');
+					return;
+				}
 			}
-		}, 10);
+		})();
+
+		if (slideIndex) {
+			pagesSwiperRef.current?.slideTo(Number(slideIndex), 250);
+		}
 	}, [slideIndex]);
 
 	const newChatHandler = async () => {
@@ -222,8 +239,8 @@ const BoadingPage: React.FC = () => {
 	return (
 		<IonPage>
 			{activeIndex != 0 && (
-				<IonHeader className="ion-no-border">
-					<IonToolbar color={'light'} className='borderless'>
+				<IonHeader className="ion-no-border relative">
+					<IonToolbar color={'light'} className='borderless absolute top-0 left-0 right-0 bottom-0 z-60 h-16 ion-no-background'>
 						<div slot="start" className="ion-padding-start">
 							<IonButton shape='round' color='white' onClick={() => pagesSwiperRef.current?.slidePrev()}>
 								<IonIcon icon={arrowBackSharp} slot='icon-only' />
@@ -270,42 +287,17 @@ const BoadingPage: React.FC = () => {
 													<IonText className='ml-2'>Continue</IonText>
 												</IonButton>
 
-												<div className="flex items-center justify-center gap-3 mt-0">
-													<div className="h-px bg-gray-200 w-[20%]"></div>
-
-													<span className="text-xs text-gray-400 whitespace-nowrap">
-														already have an account?
-													</span>
-
-													<div className="h-px bg-gray-200 w-[20%]"></div>
-												</div>
-
-												<div className='block'>
+												<div className='block mt-3'>
 													<IonButton
-														routerLink="/login"
+														onClick={() => setShowLoginChoice(true)}
 														routerDirection="root"
 														color={'primary'}
 														mode={'ios'}
 														shape='round'
 														className='items-center gap-3 -mt-6'
 														fill='clear'
-														size='small'
 													>
-														<IonIcon slot='start' icon={logoGoogle} />
-														<IonText className='ml-2 albert-font'>Login with Google</IonText>
-													</IonButton>
-													<IonButton
-														routerLink="/oauth-google"
-														routerDirection="root"
-														color={'primary'}
-														mode={'ios'}
-														shape='round'
-														className='items-center gap-3 -mt-6'
-														fill='clear'
-														size='small'
-													>
-														<IonIcon slot='start' icon={logoGoogle} />
-														<IonText className='ml-2 albert-font'>Login with Google</IonText>
+														<IonText className='albert-font text-[15px]'>Have an account? Log In</IonText>
 													</IonButton>
 												</div>
 											</div>
@@ -360,8 +352,8 @@ const BoadingPage: React.FC = () => {
 
 						{/* slide 3 */}
 						<div className='swiper-slide h-full'>
-							<div className='flex flex-col w-full h-full ion-padding-top'>
-								<div className='block ion-tcenter mt-auto mb-4 mt-auto'>
+							<div className='flex flex-col w-full h-full pt-14'>
+								<div className='block ion-tcenter mt-auto mb-4'>
 									<div className='w-full mx-auto relative'>
 										<h1 className='block ion-text-center !mt-0 px-3'>
 											<IonText className='text-2xl font-bold'>
@@ -493,11 +485,44 @@ const BoadingPage: React.FC = () => {
 							</div>
 						</div>
 						{/* end slide 3 */}
-
 					</div>
-
 				</div>
 			</IonContent>
+
+			<IonActionSheet
+				isOpen={showLoginChoice}
+				onDidDismiss={() => setShowLoginChoice(false)}
+				header="Choose your Login"
+				buttons={[
+					{
+						text: 'Google Account',
+						icon: logoGoogle,
+						handler: () => {
+							signupHandler('google');
+						}
+					},
+					{
+						text: 'Your Email',
+						icon: mailOutline,
+						handler: () => {
+							ionRouter.push('/login');
+						}
+					},
+					{
+						text: 'Sign up with Email',
+						icon: keyOutline,
+						handler: () => {
+							ionRouter.push('/register');
+						}
+					},
+					{
+						text: 'Cancel',
+						icon: closeOutline,
+						role: 'cancel'
+					}
+				]}
+			>
+			</IonActionSheet>
 		</IonPage>
 	);
 };

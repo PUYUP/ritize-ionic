@@ -1,13 +1,17 @@
 import React from 'react';
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { useAuth } from '../utils/authContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
+    const location = useLocation();
 
-    if (isLoading) return null; // atau splash/loading screen
+    console.log('[ProtectedRoute]', location.pathname, { isAuthenticated, isLoading });
 
-    if (!isAuthenticated) return <Navigate to="/" replace />;
+    if (isLoading) return null;
+    if (!isAuthenticated) {
+        return <Navigate to="/" replace state={{ from: location.pathname }} />;
+    }
 
     return <>{children}</>;
 };

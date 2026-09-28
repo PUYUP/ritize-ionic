@@ -22,6 +22,7 @@ dependencies {
     implementation project(':capawesome-capacitor-file-picker')
     implementation project(':capgo-capacitor-social-login')
     implementation project(':capgo-capacitor-speech-recognition')
+    implementation project(':revenuecat-purchases-capacitor')
 
 }
 

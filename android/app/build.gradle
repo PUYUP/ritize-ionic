@@ -7,7 +7,7 @@ android {
         applicationId "com.ritize.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10100 // 2 digit conversion: 10000 = 1.0.0, 10100 = 1.1.0, 11000 = 1.10.0, etc
+        versionCode 10001 // 2 digit conversion: 10000 = 1.0.0, 10100 = 1.1.0, 11000 = 1.10.0, etc
         versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

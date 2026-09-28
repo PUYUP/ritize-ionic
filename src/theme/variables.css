@@ -37,8 +37,10 @@ ion-title,
     font-style: normal;
 }
 
-.ion-no-background {
-    --background: none;
+.ion-no-background,
+.ion-no-background::part(background) {
+    --background: none !important;
+    background: none !important;
 }
 
 ion-toolbar {

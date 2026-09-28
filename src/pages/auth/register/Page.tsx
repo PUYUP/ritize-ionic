@@ -66,7 +66,7 @@ const RegisterPage: React.FC = () => {
                 // Success - redirect to home or dashboard
                 setTimeout(() => {
                     ionRouter.push('/dashboard', 'forward', 'push');
-                }, 500)
+                }, 2500)
             }
         } catch (error: any) {
             setErrorMsg(error.message || 'Something went wrong');
@@ -198,6 +198,7 @@ const RegisterPage: React.FC = () => {
                             disabled={isLoading || !isValid}
                             mode='ios'
                             shape='round'
+                            color='dark'
                         >
                             {isLoading ? <IonSpinner name="crescent" /> : 'Register'}
                         </IonButton>

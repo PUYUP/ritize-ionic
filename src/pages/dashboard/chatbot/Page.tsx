@@ -19,6 +19,8 @@ import {
     IonTitle,
     IonToolbar,
     useIonRouter,
+    useIonViewWillEnter,
+    useIonViewWillLeave,
 } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Page.css';
@@ -258,6 +260,7 @@ const ChatUI: React.FC<{
     session: any;
     initialMessages: UIMessage[];
 }> = ({ conversationId, session, initialMessages }) => {
+    const ionRouter = useIonRouter();
     const contentRef = useRef<HTMLIonContentElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -333,6 +336,15 @@ const ChatUI: React.FC<{
         }
     }, [isDemo, visibleMessages]);
 
+    // demo start with own notes
+    const startWithOwnNotes = async () => {
+        await supabase.auth.signOut();
+        // delete all preferences
+        await Preferences.clear();
+        // redirect to into page
+        ionRouter.push('/?index=2', 'root', 'replace');
+    };
+
     return (
         <>
             <IonContent ref={contentRef} color={'light'} className="ion-padding">
@@ -391,7 +403,7 @@ const ChatUI: React.FC<{
                 </div>
             </IonContent>
 
-            <IonFooter color="light" className="ion-no-border ion-no-background chat-footer">
+            <IonFooter color="light" className="ion-no-border chat-footer">
                 <div className="ion-padding">
                     <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
                         <div className="bg-white rounded-3xl shadow-md">
@@ -433,7 +445,7 @@ const ChatUI: React.FC<{
                                     shape="round"
                                     mode='ios'
                                     color="dark"
-                                    routerLink={`/?index=2`}
+                                    onClick={startWithOwnNotes}
                                     routerDirection='root'
                                 >
                                     Start with My Notes

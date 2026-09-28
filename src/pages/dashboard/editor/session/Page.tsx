@@ -165,7 +165,8 @@ function SessionEditorPage() {
             const { data: res, error } = await updateSession({
                 id: sessionData.id,
                 workspace_id: sessionData.workspace_id,
-                body: payload
+                body: payload,
+                old_duration_seconds: sessionData.duration_seconds,
             });
 
             if (error) {

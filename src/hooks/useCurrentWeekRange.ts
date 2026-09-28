@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
-function getUserTimezone(): string {
+export function getUserTimezone(): string {
     try {
         return Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch {

@@ -2,6 +2,8 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getUser } from "../utils/authState";
 import { supabase } from "../lib/supabase";
 import { workspaceAPI } from './workspace';
+import { endOfWeek, format, startOfWeek } from 'date-fns';
+import { getUserTimezone } from '../hooks/useCurrentWeekRange';
 
 export type LearningSessionTypes = {
     readonly id: string;
@@ -119,6 +121,37 @@ export const learningSessionAPI = createApi({
                             }
                         )
                     );
+
+                    // update durations
+                    const startWeek = format(startOfWeek(data.ended_at, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                    const endWeek = format(endOfWeek(data.ended_at, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                    const day = format(data.ended_at, 'yyyy-MM-dd');
+                    const timezone = getUserTimezone();
+                    const oldDurationSeconds = 0;
+                    const newDurationSeconds = data.duration_seconds || 0;
+
+                    dispatch(
+                        learningSessionAPI.util.updateQueryData(
+                            'getSessionDurationSummary',
+                            { "end_date": endWeek, "start_date": startWeek, "timezone": timezone },
+                            (draft) => {
+                                const dayIndex = draft.days.findIndex(d => d.session_date === day);
+                                if (dayIndex === -1) return;
+
+                                // hanya update jika incoming duration dan existing duration berganti
+                                // jika incoming lebih besar maka jumlahkan,
+                                // jika incoming lebih kecil maka kurangkan
+                                if (oldDurationSeconds > newDurationSeconds) {
+                                    draft.total_durations = draft.total_durations - oldDurationSeconds + newDurationSeconds;
+                                    draft.days[dayIndex].duration_seconds_sum = draft.days[dayIndex].duration_seconds_sum - oldDurationSeconds + newDurationSeconds;
+                                } else {
+                                    draft.total_durations = draft.total_durations + newDurationSeconds - oldDurationSeconds;
+                                    draft.days[dayIndex].duration_seconds_sum = draft.days[dayIndex].duration_seconds_sum + newDurationSeconds - oldDurationSeconds;
+                                }
+                            }
+                        )
+                    );
+
                 } catch (err) {
                     // Insert gagal di server, cache belum pernah diubah jadi tidak perlu di-undo.
                     console.error('[Create Session] Gagal menyinkronkan session ke cache', err);
@@ -127,8 +160,8 @@ export const learningSessionAPI = createApi({
         }),
 
         // update session
-        updateSession: builder.mutation<LearningSessionTypes, { id: string; workspace_id: string; body: Partial<LearningSessionTypes> }>({
-            queryFn: async ({ id, workspace_id, body }) => {
+        updateSession: builder.mutation<LearningSessionTypes, { id: string; workspace_id: string; body: Partial<LearningSessionTypes>, old_duration_seconds?: number }>({
+            queryFn: async ({ id, workspace_id, body, old_duration_seconds }) => {
                 const user = await getUser();
                 if (!user?.id) return { error: { message: "[Update Session] User not found" } };
                 if (!id) return { error: { message: "[Update Session] Session ID is required" } };
@@ -152,7 +185,7 @@ export const learningSessionAPI = createApi({
                 if (error) return { error: { message: error.message } };
                 return { data: data };
             },
-            async onQueryStarted({ id, workspace_id, body }, { dispatch, queryFulfilled }) {
+            async onQueryStarted({ id, workspace_id, body, old_duration_seconds }, { dispatch, queryFulfilled }) {
                 const listCacheArgs = { workspace_id, page: 1, pageSize: 20 };
 
                 // Optimistic update untuk list session di halaman workspace
@@ -230,6 +263,37 @@ export const learningSessionAPI = createApi({
                             }
                         )
                     );
+
+                    // update durations
+                    const startWeek = format(startOfWeek(data.ended_at, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                    const endWeek = format(endOfWeek(data.ended_at, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                    const day = format(data.ended_at, 'yyyy-MM-dd');
+                    const timezone = getUserTimezone();
+                    const oldDurationSeconds = old_duration_seconds || 0;
+                    const newDurationSeconds = data.duration_seconds || 0;
+
+                    dispatch(
+                        learningSessionAPI.util.updateQueryData(
+                            'getSessionDurationSummary',
+                            { "end_date": endWeek, "start_date": startWeek, "timezone": timezone },
+                            (draft) => {
+                                const dayIndex = draft.days.findIndex(d => d.session_date === day);
+                                if (dayIndex === -1) return;
+
+                                // hanya update jika incoming duration dan existing duration berganti
+                                // jika incoming lebih besar maka jumlahkan,
+                                // jika incoming lebih kecil maka kurangkan
+                                if (oldDurationSeconds > newDurationSeconds) {
+                                    draft.total_durations = draft.total_durations - oldDurationSeconds + newDurationSeconds;
+                                    draft.days[dayIndex].duration_seconds_sum = draft.days[dayIndex].duration_seconds_sum - oldDurationSeconds + newDurationSeconds;
+                                } else {
+                                    draft.total_durations = draft.total_durations + newDurationSeconds - oldDurationSeconds;
+                                    draft.days[dayIndex].duration_seconds_sum = draft.days[dayIndex].duration_seconds_sum + newDurationSeconds - oldDurationSeconds;
+                                }
+                            }
+                        )
+                    );
+
                 } catch (err) {
                     listPatchResult.undo();
                     detailPatchResult.undo();

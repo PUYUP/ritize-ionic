@@ -61,7 +61,7 @@ const DEMO_PROMPT = 'Which date are my notes about ships from?';
 // percakapan, jadi IonMenu/IonSplitPane selalu stabil.
 // ============================================================
 const ChatbotPage: React.FC = () => {
-    const { name = 'Ritize! Chat', userId = DEMO_USER_ID, conversationId } = useParams<RouteParams>();
+    const { name = 'Ritize! Chat', userId, conversationId } = useParams<RouteParams>();
     const [session, setSession] = useState<any>(null);
     const [isDemo, setIsDemo] = useState<boolean>(false);
 

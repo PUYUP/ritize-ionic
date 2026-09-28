@@ -258,7 +258,7 @@ const BoadingPage: React.FC = () => {
 											</IonText>
 										</h1>
 
-										<div className='block text-center mt-6 mb-6'>
+										<div className='block text-center mt-4 mb-2'>
 											<div className='flex flex-col gap-4 justify-center items-center'>
 												<IonButton
 													onClick={() => pagesSwiperRef.current?.slideNext()}
@@ -269,6 +269,32 @@ const BoadingPage: React.FC = () => {
 												>
 													<IonText className='ml-2'>Continue</IonText>
 												</IonButton>
+
+												<div className="flex items-center justify-center gap-3 mt-0">
+													<div className="h-px bg-gray-200 w-[20%]"></div>
+
+													<span className="text-xs text-gray-400 whitespace-nowrap">
+														already have an account?
+													</span>
+
+													<div className="h-px bg-gray-200 w-[20%]"></div>
+												</div>
+
+												<div className='block'>
+													<IonButton
+														routerLink="/oauth-google"
+														routerDirection="root"
+														color={'primary'}
+														mode={'ios'}
+														shape='round'
+														className='items-center gap-3 -mt-6'
+														fill='clear'
+														size='small'
+													>
+														<IonIcon slot='start' icon={logoGoogle} />
+														<IonText className='ml-2 albert-font'>Login with Google</IonText>
+													</IonButton>
+												</div>
 											</div>
 										</div>
 									</div>

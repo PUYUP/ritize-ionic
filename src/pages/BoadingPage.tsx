@@ -240,7 +240,7 @@ const BoadingPage: React.FC = () => {
 		<IonPage>
 			{activeIndex != 0 && (
 				<IonHeader className="ion-no-border relative">
-					<IonToolbar color={'light'} className='borderless absolute top-0 left-0 right-0 bottom-0 z-60 h-16 ion-no-background'>
+					<IonToolbar color={'light'} className='borderless ion-no-background'>
 						<div slot="start" className="ion-padding-start">
 							<IonButton shape='round' color='white' onClick={() => pagesSwiperRef.current?.slidePrev()}>
 								<IonIcon icon={arrowBackSharp} slot='icon-only' />

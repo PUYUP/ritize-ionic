@@ -30,7 +30,7 @@ const TokenRewardPage: React.FC = () => {
                         patch: { token_balance: newBalance }
                     });
 
-                    ionRouter.push(`/dashboard/reward-success?balance=${newBalance}&new=${reward.amount}`, 'forward', 'replace');
+                    ionRouter.push(`/dashboard/reward-success?balanced=${newBalance}&new=${reward.amount}`, 'forward', 'replace');
                 }
             });
 

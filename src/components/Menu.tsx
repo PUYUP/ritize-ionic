@@ -8,6 +8,7 @@ import {
     IonMenu,
     IonMenuToggle,
     IonNote,
+    useIonRouter,
 } from '@ionic/react';
 
 import { briefcaseOutline, homeOutline, logOutOutline, medicalOutline, peopleOutline, schoolOutline, settingsOutline, skullOutline } from 'ionicons/icons';
@@ -65,6 +66,7 @@ const appPages: AppPage[] = [
 ];
 
 const Menu: React.FC = () => {
+    const ionRouter = useIonRouter();
     const location = useLocation();
     const { logout } = useAuth();
     const [user, setUser] = useState<any>(null);
@@ -83,6 +85,7 @@ const Menu: React.FC = () => {
         await Preferences.clear();
 
         localStorage.removeItem('capgo_social_login_google_state');
+        ionRouter.push('/', 'root');
     }
 
     return (

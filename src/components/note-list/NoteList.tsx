@@ -416,7 +416,7 @@ const NoteList: React.FC<Props> = ({ workspaceId }) => {
                             if (selectedNote.content_type == 'canvas') {
                                 editor = 'canvas';
                             } else if (selectedNote.content_type == 'file') {
-                                editor = 'file';
+                                editor = 'files';
                             }
                             ionRouter.push(`/dashboard/editor/${editor}?workspaceId=${selectedNote.workspace_id}&noteId=${selectedNote.id}`, "forward");
                         }

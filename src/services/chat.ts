@@ -11,6 +11,10 @@ export type ChatTypes = {
     messages: any;
 }
 
+const PAGE_SIZE = 20;
+
+type PageArgs = { from?: number; to?: number };
+
 export const chatAPI = createApi({
     reducerPath: 'chatAPI',
     baseQuery: fakeBaseQuery<{ message: string }>(),
@@ -19,8 +23,10 @@ export const chatAPI = createApi({
         // ...
         // get conversations
         // ...
-        getConversations: builder.query<any, void>({
-            queryFn: async () => {
+        getConversations: builder.query<ChatTypes[], PageArgs | void>({
+            queryFn: async (arg) => {
+                const { from = 0, to = from + PAGE_SIZE - 1 }: PageArgs = arg || {};
+
                 const user = await getUser();
                 if (!user) return { error: { message: 'Unauthorized' } };
 
@@ -28,7 +34,8 @@ export const chatAPI = createApi({
                     .from('chats')
                     .select('*')
                     .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false })
+                    .range(from, to);
 
                 if (error) return { error };
                 return { data };

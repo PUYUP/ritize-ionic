@@ -130,6 +130,11 @@ ion-card.clear {
 
 ion-textarea {
     --background: #fff !important;
+    --padding-bottom: 16px !important;
+}
+
+ion-textarea .textarea-control {
+    line-height: 1.4 !important;
 }
 
 @media only screen and (min-width: 768px) and (min-height: 768px) {

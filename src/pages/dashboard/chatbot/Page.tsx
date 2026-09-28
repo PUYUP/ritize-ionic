@@ -36,6 +36,7 @@ import { format } from 'date-fns';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
 import { updateUserState } from '../../../services/user';
+import { Preferences } from '@capacitor/preferences';
 
 interface RouteParams {
     conversationId?: string;
@@ -46,20 +47,55 @@ type Inputs = {
     message: string;
 };
 
+const DEMO_USER_ID = 'a1ffa462-1595-4373-92ff-2d422cbef153';
+const DEMO_USER_EMAIL = 'hellopuyup@gmail.com';
+const DEMO_USER_PASSWORD = 'demochat123!';
+const DEMO_GREETING =
+    'This demo user have notes from August 1, 2026 to September 25, 2026 ' +
+    'covering electronics, physics, shipbuilding, and economics.';
+
+const DEMO_PROMPT = 'Which date are my notes about ships from?';
+
 // ============================================================
 // Lapis 1: shell + sidebar. Nggak pernah remount tiap ganti
 // percakapan, jadi IonMenu/IonSplitPane selalu stabil.
 // ============================================================
 const ChatbotPage: React.FC = () => {
-    const { name = 'Ritize! Chat', conversationId } = useParams<RouteParams>();
+    const { name = 'Ritize! Chat', userId = DEMO_USER_ID, conversationId } = useParams<RouteParams>();
     const [session, setSession] = useState<any>(null);
+    const [isDemo, setIsDemo] = useState<boolean>(false);
 
-    const { data: chats, isLoading } = useGetConversationsQuery();
+    const { data: chats, isLoading } = useGetConversationsQuery({ from: 0, to: 50 });
 
     useEffect(() => {
         const fetchSession = async () => {
-            const session = await getSession();
-            setSession(session);
+            // demo user
+            if (DEMO_USER_ID === userId) {
+                console.log('generate demo user session');
+                const { data: user, error } = await supabase.auth.signInWithPassword({
+                    email: DEMO_USER_EMAIL,
+                    password: DEMO_USER_PASSWORD,
+                });
+
+                // Getting user from custom `user` table
+                const { data: customUser, error: customUserError } = await supabase
+                    .from('user')
+                    .select('*')
+                    .eq('auth_user_id', user.user?.id)
+                    .single();
+
+                await Preferences.set({
+                    key: 'ritize_user',
+                    value: JSON.stringify({ ...customUser, session: user.session })
+                });
+
+                setSession(user.session);
+                setIsDemo(true);
+            } else {
+                const session = await getSession();
+                setSession(session);
+                setIsDemo(false);
+            }
         };
         fetchSession();
     }, []);
@@ -116,7 +152,7 @@ const ChatbotPage: React.FC = () => {
                 key={conversationId ?? 'new'}
                 conversationId={conversationId}
                 session={session}
-                name={name}
+                name={isDemo ? 'Ritize! Chat' : name}
             />
         </IonSplitPane>
     );
@@ -136,6 +172,7 @@ const ChatBody: React.FC<{ conversationId?: string; session: any; name: string }
     const [getConversation] = useLazyGetConversationByIdQuery();
     const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
     const [historyReady, setHistoryReady] = useState(!conversationId);
+    const isDemo = session?.user?.email === DEMO_USER_EMAIL;
 
     useEffect(() => {
         if (!conversationId) {
@@ -159,6 +196,11 @@ const ChatBody: React.FC<{ conversationId?: string; session: any; name: string }
 
     const newChatHandler = async () => {
         const newId = generateId();
+        if (isDemo) {
+            router.push(`/chatbot/u/${DEMO_USER_ID}/c/${newId}`, 'root', 'push');
+            return;
+        }
+
         router.push(`/dashboard/chatbot/c/${newId}`, 'root', 'push');
     };
 
@@ -167,7 +209,7 @@ const ChatBody: React.FC<{ conversationId?: string; session: any; name: string }
             <IonHeader className="ion-no-border">
                 <IonToolbar color={'light'} className="borderless">
                     <IonButtons slot="start" className="ion-padding-start">
-                        <IonBackButton defaultHref="/dashboard" />
+                        <IonBackButton defaultHref={isDemo ? '/' : `/dashboard`} />
                     </IonButtons>
                     <IonTitle className="text-base text-center fixed left-16 right-12 top-0 bottom-0 text-lg">
                         {name}
@@ -256,9 +298,10 @@ const ChatUI: React.FC<{
     const lastMessageHasText = getTextParts(lastMessage?.parts).length > 0;
     const showTypingIndicator = isWaiting && (lastMessage?.role !== 'assistant' || !lastMessageHasText);
 
-    const { control, handleSubmit, reset, watch } = useForm<Inputs>({ defaultValues: { message: '' } });
+    const { control, handleSubmit, reset, watch, setValue } = useForm<Inputs>({ defaultValues: { message: '' } });
     const messageValue = watch('message');
     const isMessageEmpty = !messageValue?.trim();
+    const [isDemo, setIsDemo] = useState<boolean>(session?.user?.email === DEMO_USER_EMAIL);
 
     const dispatch = useDispatch<AppDispatch>();
 
@@ -280,16 +323,36 @@ const ChatUI: React.FC<{
         reset();
     };
 
+    // set demo message
+    useEffect(() => {
+        console.log('TEST LOG: isDemo', isDemo);
+        if (isDemo && visibleMessages.length === 0) {
+            setTimeout(() => {
+                setValue('message', `Try: "${DEMO_PROMPT}"`);
+            }, 200);
+        }
+    }, [isDemo, visibleMessages]);
+
     return (
         <>
             <IonContent ref={contentRef} color={'light'} className="ion-padding">
                 <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
                     <div className="flex flex-col gap-4">
+                        {isDemo && visibleMessages.length === 0 && (
+                            <div className="mt-10 text-center text-neutral-600">
+                                <p className="text-base font-medium">Hello! 👋</p>
+                                <p className="text-sm mt-1">{DEMO_GREETING}</p>
+                                {/* <p className="text-sm mt-3 text-neutral-500">
+                                    Try asking: <span className="italic">"{DEMO_PROMPT}"</span>
+                                </p> */}
+                            </div>
+                        )}
+
                         {visibleMessages.map((m, index) => (
-                            <div key={`${m.id}-${index}`} className="block">
+                            <div key={`${m.id} - ${index}`} className="block">
                                 {m.role === 'user' && (
                                     <div className="flex w-full justify-end user-box">
-                                        <div className="bg-neutral-200 rounded-4xl max-w-[80%] p-3 shadow-md">
+                                        <div className="bg-neutral-200 rounded-4xl max-w-[80%] p-2 px-4 shadow-md">
                                             {getTextParts(m.parts).map((part, i) => (
                                                 <div key={i} className="text-base">
                                                     <RichContent content={part.text} />
@@ -331,14 +394,14 @@ const ChatUI: React.FC<{
             <IonFooter color="light" className="ion-no-border ion-no-background chat-footer">
                 <div className="ion-padding">
                     <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
-                        <div className="bg-white rounded-3xl shadow-lg">
+                        <div className="bg-white rounded-3xl shadow-md">
                             <form onSubmit={handleSubmit(onSubmit)}>
                                 <Controller
                                     name="message"
                                     control={control}
                                     render={({ field }) => (
                                         <IonTextarea
-                                            className="clear-input px-3"
+                                            className="clear-input px-3 leading-5"
                                             autoGrow={true}
                                             value={field.value}
                                             onIonInput={(e) => field.onChange(e.detail.value ?? '')}
@@ -362,6 +425,21 @@ const ChatUI: React.FC<{
                                 </div>
                             </form>
                         </div>
+
+                        {isDemo && (
+                            <div className="mt-4 text-center">
+                                <IonButton
+                                    fill="solid"
+                                    shape="round"
+                                    mode='ios'
+                                    color="dark"
+                                    routerLink={`/?index=2`}
+                                    routerDirection='root'
+                                >
+                                    Start with My Notes
+                                </IonButton>
+                            </div>
+                        )}
                     </div>
                 </div>
             </IonFooter>

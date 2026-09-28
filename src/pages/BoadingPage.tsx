@@ -1,9 +1,22 @@
-import { IonButton, IonContent, IonImg, IonPage, IonText } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonImg, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonRadio, IonRadioGroup, IonSelect, IonSelectOption, IonText, IonTextarea, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 import './Page.css';
 import { useEffect, useRef, useState } from 'react';
 import Swiper from 'swiper';
 import { FreeMode, Pagination } from 'swiper/modules';
 import LearnGraph from '../components/learn-graph/LearnGraph';
+import { generateId } from 'ai';
+import { useSearchParams } from 'react-router-dom';
+import { Controller, SubmitHandler, useForm } from 'react-hook-form';
+import { arrowBackSharp, imagesOutline, logoGoogle, schoolOutline, shapesOutline, textOutline } from 'ionicons/icons';
+import languages from '../utils/ISO-639-1-language.json';
+import { Preferences } from '@capacitor/preferences';
+
+type Inputs = {
+	title: string
+	scope: 'personal' | 'group'
+	language_code: string
+	content_type: 'text' | 'canvas' | 'file'
+}
 
 const ArrowDiagram: React.FC = () => {
 	const [lines, setLines] = useState<{ startX: number, startY: number, endX: number, endY: number }[]>([]);
@@ -82,23 +95,23 @@ const ShortFeature: React.FC = () => {
 			<ArrowDiagram />
 			<div className='flex justify-between relative z-10'>
 				<div id="wrapper-notes" className='block pl-[5%]'>
-					<div id="notes" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-1 w-[140px] flex items-center gap-0 bg-white'>
+					<div id="notes" className='featbox rounded-full border-1 border-white shadow-md px-3 py-2 w-[140px] flex items-center gap-0 bg-[#e9ecef]'>
 						<IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/paper.png'></IonImg>
 						<IonText className='text-sm leading-4 albert-font !font-light'>Your Notes</IonText>
 					</div>
 				</div>
 
 				<div id="wrapper-papers" className='block pt-6'>
-					<div id="papers" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-1 w-[130px] flex items-center gap-2 bg-white' style={{ animationDelay: '1s' }}>
+					<div id="papers" className='featbox rounded-full border border-white shadow-md px-3 py-2 w-[130px] flex items-center gap-2 bg-[#ffe0b2]' style={{ animationDelay: '1s' }}>
 						<IonImg className='w-auto h-6 mx-auto flex-none' src='/icons/research.png'></IonImg>
-						<IonText className='text-xs leading-4 albert-font !font-light'>Research Papers</IonText>
+						<IonText className='text-sm leading-4 albert-font !font-light'>Research Papers</IonText>
 					</div>
 				</div>
 			</div>
 
-			<div className='flex justify-center pt-12 relative z-10'>
+			<div className='flex justify-center pt-16 relative z-10'>
 				<div id="wrapper-materials" className='block'>
-					<div id="materials" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[220px] flex items-center gap-2 bg-white relative' style={{ animationDelay: '2s' }}>
+					<div id="materials" className='featbox rounded-full border border-white shadow-md px-3 py-3 w-[220px] flex items-center gap-2 bg-[#f8d7da] relative' style={{ animationDelay: '2s' }}>
 						<IonImg className='w-8 h-auto mx-auto flex-none' src='/icons/learning-material.png'></IonImg>
 						<IonText className='text-sm leading-4 albert-font !font-light'>
 							<strong>AI Enhanced</strong> <i>while you sleep.</i>
@@ -110,9 +123,9 @@ const ShortFeature: React.FC = () => {
 
 			<div className='flex justify-center pt-16 relative z-10'>
 				<div id="wrapper-chatbot" className='block'>
-					<div id="chatbot" className='featbox rounded-full border border-neutral-100 shadow-lg px-3 py-2 w-[140px] flex items-center gap-2 bg-white' style={{ animationDelay: '0.75s' }}>
+					<div id="chatbot" className='featbox rounded-full border border-white shadow-md px-3 py-2 w-[140px] flex items-center gap-2 bg-[#d4edda]' style={{ animationDelay: '0.75s' }}>
 						<IonImg className='w-auto h-8 mx-auto flex-none' src='/icons/ai-language-model.png'></IonImg>
-						<IonText className='text-xs leading-4 albert-font !font-light'>Chat with Own Notes</IonText>
+						<IonText className='text-sm leading-4 albert-font !font-light'>Chat with Own Notes</IonText>
 					</div>
 				</div>
 			</div>
@@ -121,6 +134,11 @@ const ShortFeature: React.FC = () => {
 }
 
 const BoadingPage: React.FC = () => {
+	const [searchParams, setSearchParams] = useSearchParams();
+	const slideIndex = searchParams.get('index') ?? '0';
+	const [activeIndex, setActiveIndex] = useState<number>(0);
+
+	const ionRouter = useIonRouter();
 	const pagesSwiperElRef = useRef<HTMLDivElement>(null);
 	const pagesSwiperRef = useRef<Swiper | null>(null);
 
@@ -144,6 +162,14 @@ const BoadingPage: React.FC = () => {
 			// 	el: '.swiper-pagination',
 			// 	clickable: true,
 			// },
+			on: {
+				slideChange: () => {
+					const swiper = pagesSwiperRef.current;
+					if (swiper) {
+						setActiveIndex(Number(swiper.realIndex));
+					}
+				}
+			}
 		});
 
 		return () => {
@@ -152,15 +178,68 @@ const BoadingPage: React.FC = () => {
 		};
 	}, []);
 
+	useIonViewDidEnter(() => {
+		setTimeout(() => {
+			if (slideIndex) {
+				pagesSwiperRef.current?.slideTo(Number(slideIndex), 300);
+			}
+		}, 10);
+	}, [slideIndex]);
+
+	const newChatHandler = async () => {
+		const newId = generateId();
+		ionRouter.push(`/chatbot/u/a1ffa462-1595-4373-92ff-2d422cbef153/c/${newId}`, 'forward', 'push');
+	};
+
+	const {
+		control,
+		setValue,
+		handleSubmit,
+		trigger,
+		formState: { errors, isValid, isSubmitting, isSubmitSuccessful },
+		reset,
+	} = useForm<Inputs>({
+		mode: 'onChange',
+		defaultValues: { title: '', scope: 'personal', language_code: 'en', content_type: 'text' },
+	});
+
+	const onSubmit: SubmitHandler<Inputs> = async (values) => {
+		await Preferences.set({
+			key: 'onboarding_form',
+			value: JSON.stringify(values)
+		});
+	}
+
+	const signupHandler = async (method: string) => {
+		await handleSubmit(onSubmit)();
+		reset();
+
+		if (method === 'google') {
+			ionRouter.push('/oauth-google');
+		}
+	}
+
 	return (
 		<IonPage>
+			{activeIndex != 0 && (
+				<IonHeader className="ion-no-border">
+					<IonToolbar color={'light'} className='borderless'>
+						<div slot="start" className="ion-padding-start">
+							<IonButton shape='round' color='white' onClick={() => pagesSwiperRef.current?.slidePrev()}>
+								<IonIcon icon={arrowBackSharp} slot='icon-only' />
+							</IonButton>
+						</div>
+					</IonToolbar>
+				</IonHeader>
+			)}
+
 			<IonContent color="light" className='ion-padding' scrollY={true} fullscreen>
 				<div ref={pagesSwiperElRef} className='swiper h-full relative'>
 					<div className='swiper-wrapper flex flex-row h-full'>
 						{/* slide 1 */}
 						<div className='swiper-slide h-full'>
 							<div className="w-full h-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
-								<div className='flex flex-col w-full h-full ion-padding-top'>
+								<div className='flex flex-col w-full h-full'>
 									<div className='block ion-tcenter mt-auto mb-2'>
 										<ShortFeature />
 									</div>
@@ -201,7 +280,7 @@ const BoadingPage: React.FC = () => {
 						{/* slide 2 */}
 						<div className='swiper-slide h-full'>
 							<div className='flex flex-col w-full h-full ion-padding-top'>
-								<div className='block ion-tcenter mt-auto mb-8 mt-auto'>
+								<div className='block ion-tcenter mt-auto mb-6 sm:mb-16 md:mb-24 mt-auto'>
 									<div className='w-full mx-auto relative'>
 										<LearnGraph days={[]} />
 									</div>
@@ -224,13 +303,13 @@ const BoadingPage: React.FC = () => {
 										<div className='block text-center mt-6 mb-6'>
 											<div className='flex flex-col gap-4 justify-center items-center'>
 												<IonButton
-													routerLink="/oauth-google"
+													onClick={() => newChatHandler()}
 													color={'dark'}
 													mode={'md'}
 													shape='round'
 													className='items-center gap-6 cta-button'
 												>
-													<IonText className='ml-2'>Continue</IonText>
+													<IonText className='ml-2'>Try Chat w/ Notes</IonText>
 												</IonButton>
 											</div>
 										</div>
@@ -239,6 +318,142 @@ const BoadingPage: React.FC = () => {
 							</div>
 						</div>
 						{/* end slide 2 */}
+
+						{/* slide 3 */}
+						<div className='swiper-slide h-full'>
+							<div className='flex flex-col w-full h-full ion-padding-top'>
+								<div className='block ion-tcenter mt-auto mb-4 mt-auto'>
+									<div className='w-full mx-auto relative'>
+										<h1 className='block ion-text-center !mt-0 px-3'>
+											<IonText className='text-2xl font-bold'>
+												What are you studying right now?
+											</IonText>
+										</h1>
+									</div>
+								</div>
+
+								<div className="w-full h-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
+									<form onSubmit={handleSubmit(onSubmit)}>
+										<div className='block'>
+											<Controller
+												name="title"
+												control={control}
+												rules={{ required: true }}
+												render={({ field: { onChange, onBlur, value, ref } }) => (
+													<IonTextarea
+														autoGrow
+														ref={ref}
+														value={value}
+														onIonInput={(e) => onChange(e.detail.value)}
+														onIonBlur={onBlur}
+														color="dark"
+														label="Study class name"
+														placeholder='e.g. Macroeconomics with Mr. Sanji'
+														labelPlacement="floating"
+														fill="outline"
+														rows={1}
+														className='text-2xl'
+													>
+														<IonIcon slot="start" icon={schoolOutline} aria-hidden="true" className='text-2xl'></IonIcon>
+													</IonTextarea>
+												)}
+											/>
+										</div>
+
+										<div className='block mt-6'>
+											<Controller
+												name="language_code"
+												control={control}
+												rules={{ required: true }}
+												render={({ field: { onChange, value } }) => (
+													<div className='block'>
+														<IonSelect
+															label="Main language for the class content"
+															labelPlacement="floating"
+															fill="outline"
+															mode="md"
+															placeholder='Select a language'
+															onIonChange={(e) => onChange(e.detail.value)}
+															value={value}
+															interface="popover"
+															shape='round'
+														>
+															{languages.sort((a, b) => a.name.localeCompare(b.name)).map((lang) => (
+																<IonSelectOption key={lang.code} value={lang.code}>
+																	{lang.name}
+																</IonSelectOption>
+															))}
+														</IonSelect>
+													</div>
+												)}
+											/>
+										</div>
+
+										<div className='block mt-6'>
+											<Controller
+												name="content_type"
+												control={control}
+												rules={{ required: true }}
+												render={({ field: { onChange, value } }) => (
+													<IonRadioGroup className='ion-no-background !bg-transparent' value={value} onIonChange={(e) => onChange(e.detail.value)}>
+														<IonList className='ion-no-padding divider !bg-transparent'>
+															<IonItemDivider className='ion-no-background !bg-transparent'>
+																<IonLabel>
+																	<p className='!mb-0'>Choose how to save the notes</p>
+																	You can change it later
+																</IonLabel>
+															</IonItemDivider>
+
+															<IonItem className='ion-no-padding ion-no-background !bg-transparent'>
+																<IonRadio color="dark" value="text" labelPlacement="end" justify="start">Texting</IonRadio>
+																<div slot='end' className='flex items-center gap-2'>
+																	<IonText className='text-xs pt-1.5 italic text-neutral-600 mb-1.5'>Use keyboard</IonText>
+																	<IonIcon icon={textOutline} slot='icon-only' className='text-xl text-[#008C88]' />
+																</div>
+															</IonItem>
+
+															<IonItem className='ion-no-padding ion-no-background !bg-transparent'>
+																<IonRadio color="dark" value="canvas" labelPlacement="end" justify="start">Canvas</IonRadio>
+																<div slot='end' className='flex items-center gap-2'>
+																	<IonText className='text-xs pt-1.5 italic text-neutral-600 mb-1.5'>Freehand with stylus</IonText>
+																	<IonIcon icon={shapesOutline} slot='icon-only' className='text-xl text-[#32A315]' />
+																</div>
+															</IonItem>
+
+															<IonItem lines='none' className='ion-no-padding ion-no-background !bg-transparent'>
+																<IonRadio color="dark" value="file" labelPlacement="end" justify="start">Upload</IonRadio>
+																<div slot='end' className='flex items-center gap-2'>
+																	<IonText className='text-xs pt-1.5 italic text-neutral-600 mb-1.5'>Take notes photos</IonText>
+																	<IonIcon icon={imagesOutline} slot='icon-only' className='text-xl text-[#5B00C9]' />
+																</div>
+															</IonItem>
+														</IonList>
+													</IonRadioGroup>
+												)}
+											/>
+										</div>
+									</form>
+
+								</div>
+
+								<div className='block text-center mt-6 mb-6'>
+									<div className='flex flex-col gap-4 justify-center items-center'>
+										<IonButton
+											onClick={() => signupHandler('google')}
+											color={'dark'}
+											mode={'md'}
+											shape='round'
+											className='items-center gap-6 cta-button'
+											disabled={!isValid}
+										>
+											<IonIcon slot='start' icon={logoGoogle} />
+											<IonText className='ml-2'>Continue with Google</IonText>
+										</IonButton>
+									</div>
+								</div>
+							</div>
+						</div>
+						{/* end slide 3 */}
 
 					</div>
 

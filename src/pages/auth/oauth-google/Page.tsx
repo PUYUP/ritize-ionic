@@ -6,6 +6,9 @@ import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import CryptoJS from 'crypto-js';
 import { supabase } from '../../../lib/supabase';
+import { useCreateWorkspaceMutation } from '../../../services/workspace';
+import { LearningSessionTypes, useCreateSessionMutation } from '../../../services/learning.session';
+import NotesRepository from '../../../databases/datasources/NotesRepository';
 
 const enum Status {
     INIT = "init",
@@ -29,6 +32,8 @@ const sha256 = async (message: string) => {
 const OAuthGooglePage: React.FC = () => {
     const ionRouter = useIonRouter();
     const [status, setStatus] = useState<Status>(Status.LOADING);
+    const [createWorkspace] = useCreateWorkspaceMutation();
+    const [createSession, { isLoading }] = useCreateSessionMutation();
 
     useIonViewDidEnter(() => {
         window.dispatchEvent(new Event('resize'));
@@ -126,13 +131,60 @@ const OAuthGooglePage: React.FC = () => {
                             value: JSON.stringify({ ...userData, session: data.session })
                         });
                     }
-                }
 
-                // redirect to dashboard
-                setTimeout(() => {
-                    ionRouter.push('/dashboard', 'forward', 'push');
-                    setStatus(Status.SIGNIN_SUCCESS);
-                }, 2000);
+                    // redirect to dashboard
+                    setTimeout(async () => {
+                        // insert form from Preferences to onboarding_form table
+                        const { value } = await Preferences.get({ key: 'onboarding_form' });
+
+                        if (value) {
+                            // create workspace
+                            const jsonValue = JSON.parse(value);
+                            const contentType = jsonValue.content_type;
+
+                            let editor: string = 'richtext';
+
+                            if (contentType == 'canvas') {
+                                editor = 'canvas';
+                            } else if (contentType == 'file') {
+                                editor = 'files';
+                            }
+
+                            const { data: workspaceData, error: workspaceError } = await createWorkspace({
+                                title: jsonValue.title,
+                                scope: jsonValue.scope,
+                                language_code: jsonValue.language_code,
+                            });
+
+                            // create session
+                            if (workspaceData && userData) {
+                                const payload: Partial<LearningSessionTypes> = {
+                                    user_id: userData.id,
+                                    workspace_id: workspaceData.id,
+                                    started_at: new Date().toISOString(),
+                                    ended_at: undefined,
+                                    status: 'ongoing',
+                                }
+
+                                const { data: sessionData, error: sessionError } = await createSession({ body: payload });
+
+                                if (sessionData) {
+                                    // delete onboarding form
+                                    await Preferences.remove({ key: 'onboarding_form' });
+
+                                    ionRouter.push(
+                                        `/dashboard/editor/${editor}?languageCode=${workspaceData.language_code}&workspaceId=${workspaceData.id}&sessionId=${sessionData.id}`,
+                                        'root',
+                                    );
+                                }
+                            }
+                        } else {
+                            ionRouter.push('/dashboard', 'forward', 'push');
+                        }
+
+                        setStatus(Status.SIGNIN_SUCCESS);
+                    }, 2000);
+                }
             } else {
                 throw new Error("Invalid Google Login Response");
             }

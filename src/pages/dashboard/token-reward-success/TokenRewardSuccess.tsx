@@ -16,9 +16,9 @@ const TokenRewardSuccessPage: React.FC = () => {
                         <div className='text-center flex flex-col items-center justify-center'>
                             <div className='flex flex-col justify-center items-center'>
                                 <IonIcon icon={diamondSharp} className='text-6xl text-purple-600 animate-bounce' />
-                                <div className='flex flex-col w-28 h-28 bg-white rounded-full shadow-lg flex items-center justify-center -mt-8 border-4 border-neutral-100'>
+                                <div className='flex flex-col w-42 h-42 bg-white rounded-full shadow-lg flex items-center justify-center -mt-8 border-4 border-neutral-100'>
                                     <IonText className='oswald-font text-3xl text-purple-500 font-bold mt-4'>+{newToken}</IonText>
-                                    <IonText className='text-xs text-neutral-400 mt-0.5'>raised</IonText>
+                                    <IonText className='text-sm text-neutral-400 mt-0.5'>raised</IonText>
                                 </div>
                             </div>
                             <div className='flex flex-col justify-center items-center mt-6'>

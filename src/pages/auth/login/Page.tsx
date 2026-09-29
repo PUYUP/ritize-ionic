@@ -53,17 +53,18 @@ const LoginPage: React.FC = () => {
                     key: 'ritize_user',
                     value: JSON.stringify({ ...customUser, session: user.session })
                 });
-                // Reset form
-                reset();
 
                 // Success - redirect to home or dashboard
                 setTimeout(() => {
+                    // Reset form
+                    reset();
+                    setIsLoading(false);
+
                     ionRouter.push('/dashboard', 'forward', 'push');
                 }, 2500)
             }
         } catch (error: any) {
             setErrorMsg(error.message || 'Something went wrong');
-        } finally {
             setIsLoading(false);
         }
     };

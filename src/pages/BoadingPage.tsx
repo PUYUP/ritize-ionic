@@ -271,7 +271,7 @@ const BoadingPage: React.FC = () => {
 										<h1 className='block ion-text-center !mt-0 px-3'>
 											<IonText className='text-3xl font-bold'>
 												{/* Exchange lecture notes to assist studies every day. */}
-												Power up your study notes & assist <strong className='text-[#ec8d39] font-bold'>while you sleep.</strong>
+												Power up your study notes & keep learning <strong className='text-[#ec8d39] font-bold'>while you sleep.</strong>
 											</IonText>
 										</h1>
 

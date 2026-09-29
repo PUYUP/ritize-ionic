@@ -130,62 +130,64 @@ const SessionItem: React.FC<{
                 <div className='pl-8'>
                     <IonCard className="rounded-xl mt-1" routerLink={linkTo}>
                         <IonCardContent className="ion-padding">
-                            {item.title ? (
-                                <div className="block mb-2">
-                                    <div
-                                        dangerouslySetInnerHTML={{ __html: item.title }}
-                                        className='text-neutral-700 text-sm leading-5 line-clamp-3'
-                                    />
-                                </div>
-                            ) : (
-                                <div className="block mb-2">
-                                    <IonText className="text-neutral-500 italic text-sm leading-5 line-clamp-3">No topic provided.</IonText>
-                                </div>
-                            )}
-
-                            <div className="flex w-full items-center">
-                                <div className="flex-1 flex flex-row gap-4 items-center">
-                                    {/* <IonText className="text-[11px] uppercase tracking-widest">Notes:</IonText> */}
-
-                                    <div className="flex flex-row gap-1 items-end">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 ${item.pages_text && item.pages_text.length > 0 ? 'bg-[#E1F2F1] text-[#008C88] border-[#008C88]/30' : 'bg-neutral-100 text-neutral-500 border-neutral-300'} shadow border rounded-full relative z-10 flex items-center justify-center`}>
-                                                <IonIcon icon={textOutline} className={item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88]' : 'text-neutral-500'} />
-                                            </div>
-
-                                            <IonText className={`oswald-font text-xl font-normal pb-0.5 ${item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88]' : 'text-neutral-400'}`}>
-                                                {item.pages_text?.length ?? 0}
-                                            </IonText>
-                                        </div>
+                            <div className="flex">
+                                <div className="flex-1">
+                                    <div className="block mb-1">
+                                        {item.title ? (
+                                            <div
+                                                dangerouslySetInnerHTML={{ __html: item.title }}
+                                                className='text-neutral-700 text-[15px] leading-5 line-clamp-3 albert-font !font-normal'
+                                            />
+                                        ) : (
+                                            <IonText className="text-neutral-500 italic text-md leading-5 line-clamp-3">No topic provided.</IonText>
+                                        )}
                                     </div>
 
-                                    <div className="flex flex-row gap-1 items-end">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 ${item.pages_canvas && item.pages_canvas.length > 0 ? 'bg-[#E9F4E5] text-[#32A315] border-[#32A315]/30' : 'bg-neutral-100 text-neutral-500 border-neutral-300'} shadow border rounded-full relative z-10 flex items-center justify-center`}>
-                                                <IonIcon icon={shapesOutline} className={item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315]' : 'text-neutral-500'} />
+                                    <div className="flex w-full items-center">
+                                        <div className="flex-1 flex flex-row gap-5 items-center">
+                                            {/* <IonText className="text-[11px] uppercase tracking-widest">Notes:</IonText> */}
+
+                                            <div className="flex flex-row gap-1 items-end">
+                                                <div className="flex items-center gap-1">
+                                                    <div className={`w-4 h-4 flex items-center justify-center`}>
+                                                        <IonIcon icon={textOutline} className={item.pages_text && item.pages_text.length > 0 ? 'text-md text-[#008C88]' : 'text-md text-neutral-500'} />
+                                                    </div>
+
+                                                    <IonText className={`oswald-font text-md font-normal pb-0 ${item.pages_text && item.pages_text.length > 0 ? 'text-[#008C88] font-semibold' : 'text-neutral-400'}`}>
+                                                        {item.pages_text?.length ?? 0}
+                                                    </IonText>
+                                                </div>
                                             </div>
 
-                                            <IonText className={`oswald-font text-xl font-normal pb-0.5 ${item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315]' : 'text-neutral-400'}`}>
-                                                {item.pages_canvas?.length ?? 0}
-                                            </IonText>
-                                        </div>
-                                    </div>
+                                            <div className="flex flex-row gap-1 items-end">
+                                                <div className="flex items-center gap-1">
+                                                    <div className={`w-4 h-4 flex items-center justify-center`}>
+                                                        <IonIcon icon={shapesOutline} className={item.pages_canvas && item.pages_canvas.length > 0 ? 'text-md text-[#32A315]' : 'text-md text-neutral-500'} />
+                                                    </div>
 
-                                    <div className="flex flex-row gap-1 items-end">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 ${item.pages_file && item.pages_file.length > 0 ? 'bg-[#EEE4FA] text-[#5B00C9] border-[#5B00C9]/30' : 'bg-neutral-100 text-neutral-500 border-neutral-300'} shadow border rounded-full relative z-10 flex items-center justify-center`}>
-                                                <IonIcon icon={imageOutline} className={item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9]' : 'text-neutral-500'} />
+                                                    <IonText className={`oswald-font text-md font-normal pb-0 ${item.pages_canvas && item.pages_canvas.length > 0 ? 'text-[#32A315] font-semibold' : 'text-neutral-400'}`}>
+                                                        {item.pages_canvas?.length ?? 0}
+                                                    </IonText>
+                                                </div>
                                             </div>
 
-                                            <IonText className={`oswald-font text-xl font-normal pb-0.5 ${item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9]' : 'text-neutral-400'}`}>
-                                                {item.pages_file?.length ?? 0}
-                                            </IonText>
+                                            <div className="flex flex-row gap-1 items-end">
+                                                <div className="flex items-center gap-1">
+                                                    <div className={`w-4 h-4 flex items-center justify-center`}>
+                                                        <IonIcon icon={imageOutline} className={item.pages_file && item.pages_file.length > 0 ? 'text-md text-[#5B00C9]' : 'text-md text-neutral-500'} />
+                                                    </div>
+
+                                                    <IonText className={`oswald-font text-md font-normal pb-0.5 ${item.pages_file && item.pages_file.length > 0 ? 'text-[#5B00C9] font-semibold' : 'text-neutral-400'}`}>
+                                                        {item.pages_file?.length ?? 0}
+                                                    </IonText>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="ml-auto">
-                                    <IonButton mode="md" shape="round" size="small" color="light">
+                                <div className="ml-auto flex items-center">
+                                    <IonButton fill="clear" mode="ios" shape="round" size="small" color="medium">
                                         <IonIcon icon={chevronForwardSharp} slot="icon-only" />
                                     </IonButton>
                                 </div>

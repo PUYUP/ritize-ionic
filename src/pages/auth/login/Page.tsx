@@ -41,6 +41,7 @@ const LoginPage: React.FC = () => {
 
             if (error) {
                 setErrorMsg(error.message);
+                setIsLoading(false);
             } else {
                 // Getting user from custom `user` table
                 const { data: customUser, error: customUserError } = await supabase
@@ -58,8 +59,6 @@ const LoginPage: React.FC = () => {
                 setTimeout(() => {
                     // Reset form
                     reset();
-                    setIsLoading(false);
-
                     ionRouter.push('/dashboard', 'forward', 'push');
                 }, 2500)
             }

@@ -58,6 +58,82 @@ const DEMO_GREETING =
 
 const DEMO_PROMPT = 'Which date are my notes about ships from?';
 
+type NoteResult = {
+    content: string;
+    created_at: string;
+    study_class_name: string;
+    workspace__id: string;
+    note__id: string;
+    note__content_type: string;
+    note__learning_session__id: string;
+    distance: number;
+};
+
+function parseToolResult(output: any): any[] {
+    const raw =
+        output?.structuredContent?.result ??
+        output?.content?.find((c: any) => c.type === "text")?.text;
+    if (!raw) return [];
+    try {
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function getNoteResults(parts: UIMessage["parts"]): NoteResult[] {
+    const map = new Map<string, NoteResult>(); // dedupe antar pemanggilan tool
+    for (const part of parts as any[]) {
+        if (
+            part.type !== "dynamic-tool" ||
+            part.toolName !== "search_notes" ||
+            part.state !== "output-available" ||
+            part.output?.isError
+        ) continue;
+
+        for (const note of parseToolResult(part.output)) {
+            map.set(note.note_page__id, note);
+        }
+    }
+    return [...map.values()];
+}
+
+function NoteCard({ note }: { note: NoteResult }) {
+    let editor = 'richtext';
+    if (note.note__content_type == 'canvas') {
+        editor = 'canvas';
+    } else if (note.note__content_type == 'file') {
+        editor = 'files';
+    }
+    return (
+        <IonItem
+            className="clearx !bg-transparent !pl-0 rounded-xl shadow"
+            lines="none"
+            routerLink={`/dashboard/editor/${editor}?workspaceId=${note.workspace__id}&noteId=${note.note__id}&sessionId=${note.note__learning_session__id}`}
+            detail={true}
+            button={true}
+            style={{
+                '--background': '#ede5c3',
+                '--border-width': '1px',
+                '--border-radius': '0.75rem',
+                '--min-height': '36px',
+                '--padding-start': '12px',
+                '--inner-padding-end': '12px',
+                '--padding-top': '6px',
+                '--padding-bottom': '6px',
+            }}
+        >
+            <IonLabel className='line-clamp-1 !overflow-hidden'>
+                <p className="line-clamp-1 !overflow-hidden text-sm text-neutral-700 !mb-0">{note.study_class_name}</p>
+                <p className='line-clamp-1 !overflow-hidden !text-neutral-500 !mb-0'>{note.content}</p>
+            </IonLabel>
+
+            <IonText className="text-sm text-neutral-700" slot='end'>{format(note.created_at, 'MMM dd yy')}</IonText>
+        </IonItem>
+    );
+}
+
 // ============================================================
 // Lapis 1: shell + sidebar. Nggak pernah remount tiap ganti
 // percakapan, jadi IonMenu/IonSplitPane selalu stabil.
@@ -373,19 +449,33 @@ const ChatUI: React.FC<{
                                         </div>
                                     </div>
                                 )}
-                                {m.role === 'assistant' && (
-                                    <div className="block message-box">
-                                        {getTextParts(m.parts).map((part, i) => (
-                                            <div key={i} className="text-base">
-                                                <RichContent content={part.text} />
-                                            </div>
-                                        ))}
+                                {m.role === 'assistant' && (() => {
+                                    const notes = getNoteResults(m.parts);
+                                    return (
+                                        <div className="block message-box">
+                                            {getTextParts(m.parts).map((part, i) => (
+                                                <div key={i} className="text-base">
+                                                    <RichContent content={part.text} />
+                                                </div>
+                                            ))}
 
-                                        <div className='text-xs text-gray-500 italic'>
-                                            spend {(m.metadata as any)?.usage?.totalTokens ?? "…"} tokens
+                                            {notes.length > 0 && (
+                                                <div className="mt-3 flex flex-col gap-2 mb-2">
+                                                    <div className="text-xs font-medium text-neutral-500">
+                                                        {notes.length} found notes
+                                                    </div>
+                                                    {notes.map((n, index) => (
+                                                        <NoteCard key={index} note={n} />
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className='text-xs text-gray-500 italic'>
+                                                spend {(m.metadata as any)?.usage?.totalTokens ?? "…"} tokens
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
                         ))}
                         {showTypingIndicator && (

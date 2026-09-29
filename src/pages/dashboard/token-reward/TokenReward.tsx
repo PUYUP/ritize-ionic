@@ -9,6 +9,12 @@ import { RevenueCatUI } from '@revenuecat/purchases-capacitor-ui';
 import { PAYWALL_RESULT, Purchases } from '@revenuecat/purchases-capacitor';
 import { ensureRevenueCat } from '../../../utils/revenuecat';
 
+const TOKEN_REWARDS: Record<string, number> = {
+    token_topup_500k: 500000,
+    token_topup_1m: 1000000,
+    token_topup_5m: 5000000,
+};
+
 const TokenRewardPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { data: userData, isFetching: isUserDataFetching } = useGetCurrentUserQuery();
@@ -91,36 +97,29 @@ const TokenRewardPage: React.FC = () => {
             );
 
             const { result } = await RevenueCatUI.presentPaywall();
+            console.log('HASIL PAYWALL:', result);
 
-            if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+            if (result === PAYWALL_RESULT.PURCHASED) {
                 const after = await Purchases.getCustomerInfo();
                 const newTx = after.customerInfo.nonSubscriptionTransactions.filter(
                     (t) => !beforeIds.has(t.transactionIdentifier)
                 );
 
-                // newTx[0]?.productIdentifier -> produk yang baru dibeli
-                console.log('Pembelian baru:', newTx);
+                const reward = newTx.reduce(
+                    (sum, t) => sum + (TOKEN_REWARDS[t.productIdentifier] ?? 0),
+                    0
+                );
 
-                let reward = 500_000;
-
-                if (newTx[0]?.productIdentifier == 'token_topup_1m') {
-                    reward = 1_000_000;
-                } else if (newTx[0]?.productIdentifier == 'token_topup_5m') {
-                    reward = 5_000_000;
+                if (reward > 0 && userData) {
+                    const newBalance = Number(userData.token_balance) + reward;
+                    await updateUser({ id: userData.id, patch: { token_balance: newBalance } });
+                    ionRouter.push(
+                        `/dashboard/reward-success?balanced=${newBalance}&new=${reward}`,
+                        'forward',
+                        'replace'
+                    );
                 }
-
-                // update user balance token
-                if (userData) {
-                    const newBalance = Number(reward) + Number(userData.token_balance);
-                    await updateUser({
-                        id: userData.id,
-                        patch: { token_balance: newBalance }
-                    });
-
-                    ionRouter.push(`/dashboard/reward-success?balanced=${newBalance}&new=${reward}`, 'forward', 'replace');
-                }
-
-                return false;
+                return true;
             }
             return false;
         } catch (err) {

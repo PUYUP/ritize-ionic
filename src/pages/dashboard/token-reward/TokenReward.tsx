@@ -1,17 +1,19 @@
-import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonText, IonToolbar, useIonRouter } from '@ionic/react';
+import { IonBackButton, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonSpinner, IonText, IonToolbar, useIonRouter } from '@ionic/react';
 import './TokenReward.css';
-import { Link, useSearchParams } from 'react-router-dom';
-import { diamondSharp, playOutline } from 'ionicons/icons';
+import { pizzaOutline, playOutline } from 'ionicons/icons';
 import { AdMob, AdmobConsentStatus, BannerAdOptions, BannerAdSize, BannerAdPosition, RewardAdPluginEvents, AdLoadInfo, AdMobRewardItem, AdMobRevenueData } from '@capacitor-community/admob';
 import { Capacitor } from '@capacitor/core';
 import { useGetCurrentUserQuery, useUpdateUserMutation } from '../../../services/user';
-import { useEffect } from 'react';
-
+import { useEffect, useState } from 'react';
+import { RevenueCatUI } from '@revenuecat/purchases-capacitor-ui';
+import { PAYWALL_RESULT, Purchases } from '@revenuecat/purchases-capacitor';
+import { ensureRevenueCat } from '../../../utils/revenuecat';
 
 const TokenRewardPage: React.FC = () => {
     const ionRouter = useIonRouter();
     const { data: userData, isFetching: isUserDataFetching } = useGetCurrentUserQuery();
     const [updateUser] = useUpdateUserMutation();
+    const [adLoading, setAdLoading] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -41,6 +43,8 @@ const TokenRewardPage: React.FC = () => {
     }, [userData]);
 
     const showAd = async () => {
+        setAdLoading(true);
+
         const bannerAdId =
             Capacitor.getPlatform() === 'ios'
                 ? 'ca-app-pub-3940256099942544/2934735716'
@@ -58,6 +62,7 @@ const TokenRewardPage: React.FC = () => {
 
         if (!consentInfo.canRequestAds) {
             // Consent not ready — no banner is shown.
+            setAdLoading(false);
             return;
         }
 
@@ -72,6 +77,58 @@ const TokenRewardPage: React.FC = () => {
         const rewardItem = await AdMob.showRewardVideoAd();
         // Grant the reward once, using this result or the Rewarded event — not both.
         console.log(rewardItem);
+        setAdLoading(false);
+    };
+
+    const presentPaywall = async () => {
+        setAdLoading(true);
+        try {
+            await ensureRevenueCat();
+
+            const before = await Purchases.getCustomerInfo();
+            const beforeIds = new Set(
+                before.customerInfo.nonSubscriptionTransactions.map((t) => t.transactionIdentifier)
+            );
+
+            const { result } = await RevenueCatUI.presentPaywall();
+
+            if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+                const after = await Purchases.getCustomerInfo();
+                const newTx = after.customerInfo.nonSubscriptionTransactions.filter(
+                    (t) => !beforeIds.has(t.transactionIdentifier)
+                );
+
+                // newTx[0]?.productIdentifier -> produk yang baru dibeli
+                console.log('Pembelian baru:', newTx);
+
+                let reward = 500_000;
+
+                if (newTx[0]?.productIdentifier == 'token_topup_1m') {
+                    reward = 1_000_000;
+                } else if (newTx[0]?.productIdentifier == 'token_topup_5m') {
+                    reward = 5_000_000;
+                }
+
+                // update user balance token
+                if (userData) {
+                    const newBalance = Number(reward) + Number(userData.token_balance);
+                    await updateUser({
+                        id: userData.id,
+                        patch: { token_balance: newBalance }
+                    });
+
+                    ionRouter.push(`/dashboard/reward-success?balanced=${newBalance}&new=${reward}`, 'forward', 'replace');
+                }
+
+                return false;
+            }
+            return false;
+        } catch (err) {
+            console.error('Paywall error:', err);
+            return false;
+        } finally {
+            setAdLoading(false); // sebelumnya loading tidak pernah di-reset
+        }
     };
 
     return (
@@ -89,16 +146,27 @@ const TokenRewardPage: React.FC = () => {
                     <div className='flex h-full w-full justify-center items-center'>
                         <div className='text-center flex flex-col items-center justify-center'>
                             <div className='flex flex-col justify-center items-center mt-6'>
-                                <IonText className='uppercase tracker-wider text-sm text-neutral-600 albert-font !font-normal'>Getting Free Tokens</IonText>
+                                <IonText className='uppercase tracking-widest text-sm text-neutral-600 albert-font !font-normal'>Free Tokens</IonText>
                                 <IonText className='oswald-font text-6xl font-bold'>10.000</IonText>
                             </div>
 
-                            <div className='text-center mt-6 pb-20'>
+                            <div className='text-center mt-6 pb-32'>
                                 {Capacitor.isNativePlatform() && (
-                                    <IonButton onClick={async () => await showAd()} shape='round' mode='ios' color='success'>
-                                        <IonIcon icon={playOutline} className='mr-2' />
-                                        <IonText>Watch Ads</IonText>
-                                    </IonButton>
+                                    <div className='flex flex-col px-6'>
+                                        <IonButton expand='block' onClick={async () => await showAd()} shape='round' mode='ios' color='success' disabled={adLoading}>
+                                            {adLoading ? <IonSpinner name='crescent' className='mr-2' /> : <IonIcon icon={playOutline} className='mr-2' />}
+                                            <IonText>{adLoading ? 'Loading ads...' : 'Watch Ads'}</IonText>
+                                        </IonButton>
+
+                                        <div className="flex mt-8 mb-3">
+                                            <IonText className='text-neutral-500'>getting 5M+ tokens with top-up</IonText>
+                                        </div>
+
+                                        <IonButton expand='block' onClick={async () => await presentPaywall()} shape='round' mode='ios' color='dark' disabled={adLoading}>
+                                            {adLoading ? <IonSpinner name='crescent' className='mr-2' /> : <IonIcon icon={pizzaOutline} className='mr-2' />}
+                                            <IonText>{adLoading ? 'Loading ads...' : 'Top Up'}</IonText>
+                                        </IonButton>
+                                    </div>
                                 )}
 
                                 {!Capacitor.isNativePlatform() && (

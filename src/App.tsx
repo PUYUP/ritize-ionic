@@ -36,6 +36,7 @@ import { AuthProvider, useAuth } from './utils/authContext';
 import { Capacitor } from '@capacitor/core';
 import { getUser } from './utils/authState';
 import { supabase } from './lib/supabase';
+import { ensureRevenueCat, RevenueCatSync } from './utils/revenuecat';
 
 setupIonicReact({ mode: "md", animated: false });
 
@@ -122,22 +123,18 @@ const App: React.FC = () => {
 		})();
 
 		// revenuecat init
-		(async () => {
-			if (Capacitor.isNativePlatform()) {
-				const user = await getUser();
-				await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG }); // Enable to get debug logs
-				await Purchases.configure({
-					apiKey: "goog_LxigwsbWEExoyhCOZEAyaIcgjRq",
-					appUserID: user?.id ?? '',
-				});
-			}
-		})();
+		if (Capacitor.isNativePlatform()) {
+			ensureRevenueCat().catch((err) =>
+				console.error('RevenueCat configure gagal:', err)
+			);
+		}
 	}, []);
 
 	return (
 		<IonApp>
 			<AuthProvider>
 				<IonReactRouter>
+					<RevenueCatSync />
 					<AppLayout />
 				</IonReactRouter>
 			</AuthProvider>

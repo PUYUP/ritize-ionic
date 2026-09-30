@@ -1,4 +1,6 @@
 import {
+    IonAccordion,
+    IonAccordionGroup,
     IonBackButton,
     IonButton,
     IonButtons,
@@ -19,8 +21,6 @@ import {
     IonTitle,
     IonToolbar,
     useIonRouter,
-    useIonViewWillEnter,
-    useIonViewWillLeave,
 } from '@ionic/react';
 import { useParams } from 'react-router';
 import './Page.css';
@@ -60,12 +60,13 @@ const DEMO_PROMPT = 'Which date are my notes about ships from?';
 
 type NoteResult = {
     content: string;
+    content_source: string;
+    content_type: string;
     created_at: string;
     study_class_name: string;
-    workspace__id: string;
-    note__id: string;
-    note__content_type: string;
-    note__learning_session__id: string;
+    workspace_id: string;
+    note_id: string;
+    session_id: string;
     distance: number;
 };
 
@@ -93,7 +94,8 @@ function getNoteResults(parts: UIMessage["parts"]): NoteResult[] {
         ) continue;
 
         for (const note of parseToolResult(part.output)) {
-            map.set(note.note_page__id, note);
+            // fallback ke note_id supaya tidak semua note jatuh ke key `undefined`
+            map.set(note.note_page__id ?? note.note_id, note);
         }
     }
     return [...map.values()];
@@ -101,16 +103,16 @@ function getNoteResults(parts: UIMessage["parts"]): NoteResult[] {
 
 function NoteCard({ note }: { note: NoteResult }) {
     let editor = 'richtext';
-    if (note.note__content_type == 'canvas') {
+    if (note.content_type == 'canvas') {
         editor = 'canvas';
-    } else if (note.note__content_type == 'file') {
+    } else if (note.content_type == 'file') {
         editor = 'files';
     }
     return (
         <IonItem
             className="clearx !bg-transparent !pl-0 rounded-xl shadow"
             lines="none"
-            routerLink={`/dashboard/editor/${editor}?workspaceId=${note.workspace__id}&noteId=${note.note__id}&sessionId=${note.note__learning_session__id}`}
+            routerLink={`/dashboard/editor/${editor}?workspaceId=${note.workspace_id}&noteId=${note.note_id}&sessionId=${note.session_id}`}
             detail={true}
             button={true}
             style={{
@@ -118,18 +120,18 @@ function NoteCard({ note }: { note: NoteResult }) {
                 '--border-width': '1px',
                 '--border-radius': '0.75rem',
                 '--min-height': '36px',
-                '--padding-start': '12px',
-                '--inner-padding-end': '12px',
-                '--padding-top': '6px',
-                '--padding-bottom': '6px',
+                '--padding-start': '8px',
+                '--inner-padding-end': '8px',
+                '--padding-top': '4px',
+                '--padding-bottom': '4px',
             }}
         >
-            <IonLabel className='line-clamp-1 !overflow-hidden'>
-                <p className="line-clamp-1 !overflow-hidden text-sm text-neutral-700 !mb-0">{note.study_class_name}</p>
-                <p className='line-clamp-1 !overflow-hidden !text-neutral-500 !mb-0'>{note.content}</p>
+            <IonLabel className='line-clamp-1 !overflow-hidden ion-padding-end'>
+                <p className="line-clamp-1 !overflow-hidden !text-xs !text-neutral-700 !mb-0">{note.study_class_name}</p>
+                <p className='line-clamp-1 !overflow-hidden !text-xs !text-neutral-500 !mb-0'>{note.content_source}</p>
             </IonLabel>
 
-            <IonText className="text-sm text-neutral-700" slot='end'>{format(note.created_at, 'MMM dd yy')}</IonText>
+            <IonText className="!text-xs text-neutral-700" slot='end'>{format(note.created_at, 'MMM dd yy')}</IonText>
         </IonItem>
     );
 }
@@ -139,50 +141,77 @@ function NoteCard({ note }: { note: NoteResult }) {
 // percakapan, jadi IonMenu/IonSplitPane selalu stabil.
 // ============================================================
 const ChatbotPage: React.FC = () => {
+    const router = useIonRouter();
     const { name = 'Ritize! Chat', userId, conversationId } = useParams<RouteParams>();
+
+    // Satu-satunya sumber kebenaran: diturunkan langsung dari route, bukan state.
+    const isDemo = userId === DEMO_USER_ID;
+
     const [session, setSession] = useState<any>(null);
-    const [isDemo, setIsDemo] = useState<boolean>(false);
 
-    const { data: chats, isLoading } = useGetConversationsQuery({ from: 0, to: 50 });
+    // Query riwayat menunggu sesi siap (di mode demo, sesi dibuat dulu).
+    const { data: chats, isLoading } = useGetConversationsQuery(
+        { from: 0, to: 50 },
+        { skip: !session }
+    );
 
-    useEffect(() => {
-        const fetchSession = async () => {
-            // demo user
-            if (DEMO_USER_ID === userId) {
-                console.log('generate demo user session');
-                const { data: user, error } = await supabase.auth.signInWithPassword({
-                    email: DEMO_USER_EMAIL,
-                    password: DEMO_USER_PASSWORD,
-                });
-
-                // Getting user from custom `user` table
-                const { data: customUser, error: customUserError } = await supabase
-                    .from('user')
-                    .select('*')
-                    .eq('auth_user_id', user.user?.id)
-                    .single();
-
-                await Preferences.set({
-                    key: 'ritize_user',
-                    value: JSON.stringify({ ...customUser, session: user.session })
-                });
-
-                setSession(user.session);
-                setIsDemo(true);
-            } else {
-                const session = await getSession();
-                setSession(session);
-                setIsDemo(false);
-            }
-        };
-        fetchSession();
-    }, []);
+    // Helper agar semua link konsisten antara mode demo dan mode biasa.
+    const chatPath = (id: string) =>
+        isDemo ? `/chatbot/u/${DEMO_USER_ID}/c/${id}` : `/dashboard/chatbot/c/${id}`;
 
     useEffect(() => {
+        let cancelled = false;
+
         (async () => {
-            await supabase.auth.refreshSession();
+            try {
+                if (isDemo) {
+                    // Jangan login ulang kalau sudah memakai sesi demo.
+                    const current = await getSession();
+                    if (current?.user?.email === DEMO_USER_EMAIL) {
+                        if (!cancelled) setSession(current);
+                        return;
+                    }
+
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: DEMO_USER_EMAIL,
+                        password: DEMO_USER_PASSWORD,
+                    });
+                    if (error || !data.session || !data.user) {
+                        throw error ?? new Error('Demo login failed');
+                    }
+
+                    // Ambil data user dari tabel custom `user`
+                    const { data: customUser, error: customUserError } = await supabase
+                        .from('user')
+                        .select('*')
+                        .eq('auth_user_id', data.user.id)
+                        .single();
+                    if (customUserError) throw customUserError;
+
+                    await Preferences.set({
+                        key: 'ritize_user',
+                        value: JSON.stringify({ ...customUser, session: data.session }),
+                    });
+
+                    if (!cancelled) setSession(data.session);
+                } else {
+                    await supabase.auth.refreshSession();
+                    const s = await getSession();
+                    if (!cancelled) setSession(s);
+                }
+            } catch (e) {
+                console.error('fetchSession error', e);
+            }
         })();
-    }, []);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isDemo]);
+
+    const newChatHandler = () => {
+        router.push(chatPath(generateId()), 'root', 'push');
+    };
 
     return (
         <IonSplitPane when={false} contentId="main-chat">
@@ -193,7 +222,7 @@ const ChatbotPage: React.FC = () => {
                     </IonToolbar>
                 </IonHeader>
                 <IonContent className="ion-padding !pt-0 chat-history" color={'light'}>
-                    {isLoading && <IonSpinner color={'dark'} />}
+                    {(isLoading || !session) && <IonSpinner color={'dark'} />}
                     {!isLoading && chats && chats.length > 0 && (
                         <IonList lines="none" className="!py-0 !mt-0 !bg-transparent">
                             {chats.map((c: ChatTypes) => (
@@ -203,7 +232,7 @@ const ChatbotPage: React.FC = () => {
                                         detail={true}
                                         className="clear"
                                         style={{ '--padding-top': '4px', '--padding-bottom': '4px' }}
-                                        routerLink={`/dashboard/chatbot/c/${c.conversation_id}`}
+                                        routerLink={chatPath(c.conversation_id)}
                                         routerDirection={'root'}
                                     >
                                         <IonLabel>
@@ -226,12 +255,45 @@ const ChatbotPage: React.FC = () => {
               key={conversationId} memaksa React remount total ChatBody tiap
               ganti percakapan -> useChat selalu instance baru dari nol.
             */}
-            <ChatBody
-                key={conversationId ?? 'new'}
-                conversationId={conversationId}
-                session={session}
-                name={isDemo ? 'Ritize! Chat' : name}
-            />
+            <IonPage id="main-chat">
+                <IonHeader className="ion-no-border">
+                    <IonToolbar color={'light'} className="borderless">
+                        <IonButtons slot="start" className="ion-padding-start">
+                            <IonBackButton defaultHref={isDemo ? '/' : `/dashboard`} />
+                        </IonButtons>
+
+                        <IonTitle className="text-base text-center fixed left-16 right-12 top-0 bottom-0 text-lg">
+                            {isDemo ? 'Ritize! Chat' : name}
+                        </IonTitle>
+
+                        <div className='ion-padding-end flex items-center gap-x-3' slot='end'>
+                            <IonButton
+                                fill={'clear'}
+                                shape="round"
+                                mode="md"
+                                color="dark"
+                                className="normal-button"
+                                onClick={newChatHandler}
+                            >
+                                <IonIcon icon={createOutline} slot="icon-only" />
+                            </IonButton>
+
+                            <IonMenuToggle menu="chat-history-menu">
+                                <IonButton fill={'solid'} shape="round" mode="md" color="white" className="normal-button">
+                                    <IonIcon icon={listOutline} slot="icon-only" />
+                                </IonButton>
+                            </IonMenuToggle>
+                        </div>
+                    </IonToolbar>
+                </IonHeader>
+
+                <ChatBody
+                    key={conversationId ?? 'new'}
+                    conversationId={conversationId}
+                    session={session}
+                    isDemo={isDemo}
+                />
+            </IonPage>
         </IonSplitPane>
     );
 };
@@ -241,22 +303,23 @@ const ChatbotPage: React.FC = () => {
 // useChat sama sekali, supaya useChat di lapis 3 nggak pernah
 // ke-mount duluan dengan messages kosong.
 // ============================================================
-const ChatBody: React.FC<{ conversationId?: string; session: any; name: string }> = ({
+const ChatBody: React.FC<{ conversationId?: string; session: any; isDemo: boolean }> = ({
     conversationId,
     session,
-    name,
+    isDemo,
 }) => {
-    const router = useIonRouter();
     const [getConversation] = useLazyGetConversationByIdQuery();
     const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
     const [historyReady, setHistoryReady] = useState(!conversationId);
-    const isDemo = session?.user?.email === DEMO_USER_EMAIL;
 
     useEffect(() => {
         if (!conversationId) {
             setHistoryReady(true);
             return;
         }
+        // Tunggu sesi siap (penting di mode demo) sebelum fetch riwayat.
+        if (!session) return;
+
         let cancelled = false;
         (async () => {
             const { data } = await getConversation(conversationId);
@@ -268,54 +331,19 @@ const ChatBody: React.FC<{ conversationId?: string; session: any; name: string }
         return () => {
             cancelled = true;
         };
-    }, [conversationId, getConversation]);
+    }, [conversationId, getConversation, session]);
 
     const ready = !!session && historyReady;
 
-    const newChatHandler = async () => {
-        const newId = generateId();
-        if (isDemo) {
-            router.push(`/chatbot/u/${DEMO_USER_ID}/c/${newId}`, 'root', 'push');
-            return;
-        }
-
-        router.push(`/dashboard/chatbot/c/${newId}`, 'root', 'push');
-    };
-
     return (
-        <IonPage id="main-chat">
-            <IonHeader className="ion-no-border">
-                <IonToolbar color={'light'} className="borderless">
-                    <IonButtons slot="start" className="ion-padding-start">
-                        <IonBackButton defaultHref={isDemo ? '/' : `/dashboard`} />
-                    </IonButtons>
-                    <IonTitle className="text-base text-center fixed left-16 right-12 top-0 bottom-0 text-lg">
-                        {name}
-                    </IonTitle>
-
-                    <div className='ion-padding-end flex items-center gap-x-3' slot='end'>
-                        <IonButton
-                            fill={'clear'}
-                            shape="round"
-                            mode="md"
-                            color="dark"
-                            className="normal-button"
-                            onClick={newChatHandler}
-                        >
-                            <IonIcon icon={createOutline} slot="icon-only" />
-                        </IonButton>
-
-                        <IonMenuToggle menu="chat-history-menu">
-                            <IonButton fill={'solid'} shape="round" mode="md" color="white" className="normal-button">
-                                <IonIcon icon={listOutline} slot="icon-only" />
-                            </IonButton>
-                        </IonMenuToggle>
-                    </div>
-                </IonToolbar>
-            </IonHeader>
-
+        <>
             {ready ? (
-                <ChatUI conversationId={conversationId} session={session} initialMessages={initialMessages} />
+                <ChatUI
+                    conversationId={conversationId}
+                    session={session}
+                    initialMessages={initialMessages}
+                    isDemo={isDemo}
+                />
             ) : (
                 <IonContent className="ion-padding flex items-center justify-center" color={'light'}>
                     <div className='h-full w-full flex items-center justify-center'>
@@ -323,7 +351,7 @@ const ChatBody: React.FC<{ conversationId?: string; session: any; name: string }
                     </div>
                 </IonContent>
             )}
-        </IonPage>
+        </>
     );
 };
 
@@ -335,8 +363,10 @@ const ChatUI: React.FC<{
     conversationId?: string;
     session: any;
     initialMessages: UIMessage[];
-}> = ({ conversationId, session, initialMessages }) => {
+    isDemo: boolean;
+}> = ({ conversationId, session, initialMessages, isDemo }) => {
     const ionRouter = useIonRouter();
+    const dispatch = useDispatch<AppDispatch>();
     const contentRef = useRef<HTMLIonContentElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -346,6 +376,14 @@ const ChatUI: React.FC<{
         transport: new DefaultChatTransport({
             api: `${import.meta.env.VITE_CHAT_BASE_URL}`,
             headers: { Authorization: `Bearer ${session?.access_token}` },
+            // cegah mengirim ulang semua message ke server
+            // hanya gunakan message terakhir (incremental message)
+            prepareSendMessagesRequest: ({ id, messages }) => ({
+                body: {
+                    id,
+                    message: messages[messages.length - 1],
+                },
+            }),
         }),
         onFinish: async ({ message }) => {
             const user = await getUser();
@@ -372,6 +410,7 @@ const ChatUI: React.FC<{
     }, [messages, status]);
 
     const visibleMessages = messages.filter((m) => getTextParts(m.parts).length > 0);
+    const hasVisibleMessages = visibleMessages.length > 0;
     const isWaiting = status === 'submitted' || status === 'streaming';
     const lastMessage = messages[messages.length - 1];
     const lastMessageHasText = getTextParts(lastMessage?.parts).length > 0;
@@ -380,9 +419,6 @@ const ChatUI: React.FC<{
     const { control, handleSubmit, reset, watch, setValue } = useForm<Inputs>({ defaultValues: { message: '' } });
     const messageValue = watch('message');
     const isMessageEmpty = !messageValue?.trim();
-    const [isDemo, setIsDemo] = useState<boolean>(session?.user?.email === DEMO_USER_EMAIL);
-
-    const dispatch = useDispatch<AppDispatch>();
 
     const onSubmit: SubmitHandler<Inputs> = async (data) => {
         if (!data.message.trim() || !conversationId) return;
@@ -402,22 +438,12 @@ const ChatUI: React.FC<{
         reset();
     };
 
-    // set demo message
-    useEffect(() => {
-        console.log('TEST LOG: isDemo', isDemo);
-        if (isDemo && visibleMessages.length === 0) {
-            setTimeout(() => {
-                setValue('message', `Try: "${DEMO_PROMPT}"`);
-            }, 200);
-        }
-    }, [isDemo, visibleMessages]);
-
-    // demo start with own notes
+    // demo: keluar dari sesi demo dan mulai dengan catatan sendiri
     const startWithOwnNotes = async () => {
         await supabase.auth.signOut();
-        // delete all preferences
-        await Preferences.clear();
-        // redirect to into page
+        // hapus hanya key milik mode demo, bukan seluruh preferences
+        await Preferences.remove({ key: 'ritize_user' });
+        // redirect ke halaman intro
         ionRouter.push('/?index=2', 'root', 'replace');
     };
 
@@ -426,18 +452,25 @@ const ChatUI: React.FC<{
             <IonContent ref={contentRef} color={'light'} className="ion-padding">
                 <div className="w-full sm:w-12/12 md:w-8/12 lg:w-7/12 xl:w-5/12 mx-auto">
                     <div className="flex flex-col gap-4">
-                        {isDemo && visibleMessages.length === 0 && (
+                        {isDemo && !hasVisibleMessages && (
                             <div className="mt-10 text-center text-neutral-600">
                                 <p className="text-base font-medium">Hello! 👋</p>
                                 <p className="text-sm mt-1">{DEMO_GREETING}</p>
-                                {/* <p className="text-sm mt-3 text-neutral-500">
-                                    Try asking: <span className="italic">"{DEMO_PROMPT}"</span>
-                                </p> */}
+                                <IonButton
+                                    fill="outline"
+                                    shape="round"
+                                    mode="ios"
+                                    color="dark"
+                                    className="mt-3"
+                                    onClick={() => setValue('message', DEMO_PROMPT)}
+                                >
+                                    <IonText className="text-sm">Try: "{DEMO_PROMPT}" (click here)</IonText>
+                                </IonButton>
                             </div>
                         )}
 
                         {visibleMessages.map((m, index) => (
-                            <div key={`${m.id} - ${index}`} className="block">
+                            <div key={`${m.id}-${index}`} className="block">
                                 {m.role === 'user' && (
                                     <div className="flex w-full justify-end user-box">
                                         <div className="bg-neutral-200 rounded-4xl max-w-[80%] p-2 px-4 shadow-md">
@@ -461,14 +494,21 @@ const ChatUI: React.FC<{
 
                                             {notes.length > 0 && (
                                                 <div className="mt-3 flex flex-col gap-2 mb-2">
-                                                    <div className="text-xs font-medium text-neutral-500">
-                                                        {notes.length} found notes
-                                                    </div>
-                                                    {notes.map((n, index) => (
-                                                        <NoteCard key={index} note={n} />
-                                                    ))}
+                                                    <IonAccordionGroup className='ion-no-background'>
+                                                        <IonAccordion value={`${m.id}-${index}`} className='ion-no-background'>
+                                                            <IonItem slot="header" color="light" className='ion-no-padding'>
+                                                                <IonLabel>{notes.length} related notes</IonLabel>
+                                                            </IonItem>
+                                                            <div className="flex flex-col gap-3" slot="content">
+                                                                {notes.map((n, index) => (
+                                                                    <NoteCard key={index} note={n} />
+                                                                ))}
+                                                            </div>
+                                                        </IonAccordion>
+                                                    </IonAccordionGroup>
                                                 </div>
                                             )}
+
 
                                             <div className='text-xs text-gray-500 italic'>
                                                 spend {(m.metadata as any)?.usage?.totalTokens ?? "…"} tokens
@@ -514,12 +554,12 @@ const ChatUI: React.FC<{
                                     )}
                                 />
                                 <div className="px-2 pb-2 flex justify-end">
-                                    {status !== 'streaming' && status !== 'submitted' && (
-                                        <IonButton type="submit" mode="ios" shape="round" disabled={isWaiting || isMessageEmpty} color="dark">
+                                    {!isWaiting && (
+                                        <IonButton type="submit" mode="ios" shape="round" disabled={isMessageEmpty} color="dark">
                                             <IonIcon icon={arrowUp} slot="icon-only" />
                                         </IonButton>
                                     )}
-                                    {(status === 'submitted' || status === 'streaming') && (
+                                    {isWaiting && (
                                         <IonButton color="danger" mode="ios" shape="round" type="button" onClick={() => stop()}>
                                             <IonIcon icon={stopSharp} slot="icon-only" />
                                         </IonButton>

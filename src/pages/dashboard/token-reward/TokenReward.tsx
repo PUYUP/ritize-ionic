@@ -54,7 +54,7 @@ const TokenRewardPage: React.FC = () => {
         const bannerAdId =
             Capacitor.getPlatform() === 'ios'
                 ? 'ca-app-pub-3940256099942544/2934735716'
-                : 'ca-app-pub-3940256099942544/5224354917';
+                : 'ca-app-pub-7123582069830328/5334097971';
 
         await AdMob.initialize({
             testingDevices: ['efee4929-4725-463a-b349-d1bb2ec4bffb'],

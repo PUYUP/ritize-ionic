@@ -509,7 +509,6 @@ const ChatUI: React.FC<{
                                                 </div>
                                             )}
 
-
                                             <div className='text-xs text-gray-500 italic'>
                                                 spend {(m.metadata as any)?.usage?.totalTokens ?? "…"} tokens
                                             </div>

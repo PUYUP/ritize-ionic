@@ -55,6 +55,13 @@ const LoginPage: React.FC = () => {
                     value: JSON.stringify({ ...customUser, session: user.session })
                 });
 
+                if (user.session) {
+                    await Preferences.set({
+                        key: 'ritize_session',
+                        value: JSON.stringify(user.session),
+                    });
+                }
+
                 // Success - redirect to home or dashboard
                 setTimeout(() => {
                     // Reset form
